@@ -6,8 +6,68 @@ import { techniquesApi } from '@/lib/api'
 import { formatDate, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Plus } from 'lucide-react'
+import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play } from 'lucide-react'
 import type { Technique } from '@/lib/types'
+
+function getEmbedInfo(url: string): { type: 'youtube' | 'vimeo' | 'direct' | 'external'; src: string } {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (yt) return { type: 'youtube', src: `https://www.youtube.com/embed/${yt[1]}?rel=0` }
+
+  const vimeo = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeo) return { type: 'vimeo', src: `https://player.vimeo.com/video/${vimeo[1]}` }
+
+  if (/\.(mp4|webm|ogg)(\?.*)?$/i.test(url)) return { type: 'direct', src: url }
+
+  return { type: 'external', src: url }
+}
+
+function VideoEmbed({ url }: { url: string }) {
+  const { type, src } = getEmbedInfo(url)
+
+  if (type === 'youtube' || type === 'vimeo') {
+    return (
+      <div className="bg-mat-card border border-mat-border">
+        <div className="px-6 py-4 border-b border-mat-border flex items-center gap-2">
+          <Play size={14} className="text-mat-gold" />
+          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Reference Video</h3>
+        </div>
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            src={src}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Reference video"
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'direct') {
+    return (
+      <div className="bg-mat-card border border-mat-border">
+        <div className="px-6 py-4 border-b border-mat-border flex items-center gap-2">
+          <Play size={14} className="text-mat-gold" />
+          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Reference Video</h3>
+        </div>
+        <video src={src} controls className="w-full" />
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 btn-secondary px-5 py-2.5 w-fit text-xs"
+    >
+      <ExternalLink size={13} />
+      View Reference Video
+    </a>
+  )
+}
 
 const TYPE_COLORS: Record<string, string> = {
   submission: 'bg-mat-red/20 text-mat-red-light border-mat-red/30',
@@ -138,17 +198,7 @@ export default function TechniqueDetailPage() {
       )}
 
       {/* Video */}
-      {technique.video_url && (
-        <a
-          href={technique.video_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 btn-secondary px-5 py-2.5 w-fit text-xs"
-        >
-          <ExternalLink size={13} />
-          View Reference Video
-        </a>
-      )}
+      {technique.video_url && <VideoEmbed url={technique.video_url} />}
     </div>
   )
 }

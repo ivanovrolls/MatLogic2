@@ -24,7 +24,7 @@ const schema = z.object({
   partner_belt: z.enum(['white', 'blue', 'purple', 'brown', 'black', 'unknown']),
   duration_minutes: z.coerce.number().min(1).max(60),
   outcome: z.enum(['win', 'loss', 'draw']),
-  is_gi: z.boolean(),
+  is_gi: z.preprocess(val => val === 'true' ? true : val === 'false' ? false : val, z.boolean()),
   notes: z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
@@ -233,7 +233,7 @@ export default function SparringPage() {
                 <div className="flex gap-3">
                   {[{v: true, l: 'Gi'}, {v: false, l: 'No-Gi'}].map(({v, l}) => (
                     <label key={l} className="flex items-center gap-1.5 cursor-pointer">
-                      <input {...register('is_gi')} type="radio" value={v.toString()} onChange={() => {}} className="accent-mat-gold" />
+                      <input {...register('is_gi')} type="radio" value={v.toString()} className="accent-mat-gold" />
                       <span className="text-mat-text-muted text-xs">{l}</span>
                     </label>
                   ))}
