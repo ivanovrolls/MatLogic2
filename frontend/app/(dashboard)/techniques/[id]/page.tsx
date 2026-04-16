@@ -6,7 +6,7 @@ import { techniquesApi } from '@/lib/api'
 import { formatDate, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play } from 'lucide-react'
+import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play, Edit2 } from 'lucide-react'
 import type { Technique } from '@/lib/types'
 
 function getEmbedInfo(url: string): { type: 'youtube' | 'vimeo' | 'direct' | 'external'; src: string } {
@@ -129,12 +129,17 @@ export default function TechniqueDetailPage() {
             <h1 className="font-display text-3xl tracking-wider text-mat-text uppercase">{technique.name}</h1>
           </div>
         </div>
-        <button
-          onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate() }}
-          className="text-mat-text-dim hover:text-mat-red-light transition-colors p-2 mt-1"
-        >
-          <Trash2 size={14} />
-        </button>
+        <div className="flex items-center gap-2 mt-1">
+          <Link href={`/techniques/${id}/edit`} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-xs">
+            <Edit2 size={12} /> Edit
+          </Link>
+          <button
+            onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate() }}
+            className="text-mat-text-dim hover:text-mat-red-light transition-colors p-2"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Meta badges */}

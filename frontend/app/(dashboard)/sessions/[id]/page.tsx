@@ -73,6 +73,9 @@ export default function SessionDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/sessions/${id}/edit`} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-xs">
+            <Edit2 size={12} /> Edit
+          </Link>
           <button
             onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate() }}
             className="btn-ghost text-mat-red-light hover:text-mat-red p-2"

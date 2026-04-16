@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sparringApi } from '@/lib/api'
 import { formatDate, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Loader2, Swords, X } from 'lucide-react'
+import { Plus, Trash2, Loader2, Swords, X, Edit2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { SparringRound } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -93,6 +93,7 @@ function MultiPicker({ label, options, selected, onChange }: {
 
 export default function SparringPage() {
   const [showForm, setShowForm] = useState(false)
+  const [editingRound, setEditingRound] = useState<SparringRound | null>(null)
   const [dominant, setDominant] = useState<string[]>([])
   const [conceded, setConceded] = useState<string[]>([])
   const [subAttempted, setSubAttempted] = useState<string[]>([])
@@ -121,16 +122,44 @@ export default function SparringPage() {
   })
 
   const mutation = useMutation({
-    mutationFn: (data: object) => sparringApi.create(data),
+    mutationFn: (data: object) =>
+      editingRound ? sparringApi.update(editingRound.id, data) : sparringApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sparring'] })
-      toast.success('Round logged.')
+      toast.success(editingRound ? 'Round updated.' : 'Round logged.')
       reset()
       setDominant([]); setConceded([]); setSubAttempted([]); setSubConceded([])
       setShowForm(false)
+      setEditingRound(null)
     },
-    onError: () => toast.error('Failed to log round.'),
+    onError: () => toast.error(editingRound ? 'Failed to update round.' : 'Failed to log round.'),
   })
+
+  const startEdit = (round: SparringRound) => {
+    setEditingRound(round)
+    setDominant(round.dominant_positions)
+    setConceded(round.positions_conceded)
+    setSubAttempted(round.submissions_attempted)
+    setSubConceded(round.submissions_conceded)
+    reset({
+      date: round.date,
+      partner_name: round.partner_name,
+      partner_belt: round.partner_belt,
+      duration_minutes: round.duration_minutes,
+      outcome: round.outcome,
+      is_gi: String(round.is_gi) as any,
+      notes: round.notes,
+    })
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const cancelForm = () => {
+    setShowForm(false)
+    setEditingRound(null)
+    reset()
+    setDominant([]); setConceded([]); setSubAttempted([]); setSubConceded([])
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => sparringApi.delete(id),
@@ -160,7 +189,7 @@ export default function SparringPage() {
           <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Sparring</h1>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => showForm ? cancelForm() : setShowForm(true)}
           className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs"
         >
           <Plus size={14} /> {showForm ? 'Cancel' : 'Log Round'}
@@ -189,7 +218,7 @@ export default function SparringPage() {
         <div className="bg-mat-card border border-mat-border p-6 space-y-5 animate-slide-up">
           <h3 className="font-display text-xl tracking-wider text-mat-text uppercase flex items-center gap-2">
             <Swords size={16} className="text-mat-red-light" />
-            Log Sparring Round
+            {editingRound ? 'Edit Sparring Round' : 'Log Sparring Round'}
           </h3>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -278,7 +307,7 @@ export default function SparringPage() {
               disabled={mutation.isPending}
               className="btn-primary px-6 py-2.5 flex items-center gap-2"
             >
-              {mutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : 'Log Round'}
+              {mutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : editingRound ? 'Save Changes' : 'Log Round'}
             </button>
           </form>
         </div>
@@ -327,6 +356,12 @@ export default function SparringPage() {
                   {r.notes && <p className="text-mat-text-dim text-xs mt-1 italic">{r.notes}</p>}
                 </div>
                 <div className="text-mat-text-muted text-xs mr-4">{formatDate(r.date, 'MMM d')}</div>
+                <button
+                  onClick={() => startEdit(r)}
+                  className="text-mat-text-dim hover:text-mat-gold opacity-0 group-hover:opacity-100 transition-all p-1"
+                >
+                  <Edit2 size={12} />
+                </button>
                 <button
                   onClick={() => { if (confirm('Delete round?')) deleteMutation.mutate(r.id) }}
                   className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
