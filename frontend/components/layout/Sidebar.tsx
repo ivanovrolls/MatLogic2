@@ -9,6 +9,7 @@ import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   Swords, BarChart2, Trophy, User, LogOut, ChevronRight, Shield
 } from 'lucide-react'
+import { AndroidInstallButton } from '@/components/InstallPrompt'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -79,6 +80,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-mat-border py-3 px-2">
+        <AndroidInstallButton className="flex items-center gap-3 w-full px-3 py-2 text-mat-gold text-sm hover:bg-mat-card transition-colors" />
         <Link
           href="/profile"
           className="flex items-center gap-3 px-3 py-2 text-mat-text-muted hover:text-mat-text text-sm transition-colors hover:bg-mat-card"

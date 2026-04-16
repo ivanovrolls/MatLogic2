@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import {
   BookOpen, BarChart2, Target, Trophy, Users, Zap, ChevronRight
 } from 'lucide-react'
+import { AndroidInstallButton, IOSInstallBanner } from '@/components/InstallPrompt'
 
 const features = [
   {
@@ -91,6 +92,7 @@ export default function LandingPage() {
             <Link href="/login" className="btn-secondary px-8 py-3 text-sm">
               Sign In
             </Link>
+            <AndroidInstallButton />
           </div>
         </div>
       </section>
@@ -147,6 +149,9 @@ export default function LandingPage() {
       <footer className="border-t border-mat-border py-8 px-6 text-center text-mat-text-dim text-xs uppercase tracking-widest">
         MatLogic © 2024 — Train. Track. Improve.
       </footer>
+
+      {/* iOS install banner */}
+      <IOSInstallBanner />
     </div>
   )
 }

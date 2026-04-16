@@ -10,6 +10,7 @@ import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
   Swords, BarChart2, Trophy, User, LogOut
 } from 'lucide-react'
+import { AndroidInstallButton } from '@/components/InstallPrompt'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -73,6 +74,7 @@ export function Header() {
               )
             })}
             <div className="divider" />
+            <AndroidInstallButton className="flex items-center gap-4 w-full px-4 py-3 text-mat-gold text-sm" />
             <Link
               href="/profile"
               onClick={() => setOpen(false)}
