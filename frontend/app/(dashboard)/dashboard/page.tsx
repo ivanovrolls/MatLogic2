@@ -48,21 +48,22 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
         <span className="text-mat-text-muted text-xs">Last 30 days</span>
       </div>
 
-      {/* Day labels */}
-      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-        {DAY_LABELS.map(d => (
-          <div key={d} className="text-center text-mat-text-muted text-xs uppercase tracking-wider">{d}</div>
-        ))}
-      </div>
+      {/* Day labels + grid */}
+      <div className="inline-flex flex-col gap-[3px]">
+        {/* Day headers */}
+        <div className="flex gap-[3px]">
+          {DAY_LABELS.map(d => (
+            <div key={d} style={{ width: 11 }} className="text-center text-mat-text-muted text-[9px] uppercase">{d[0]}</div>
+          ))}
+        </div>
 
-      {/* Week rows */}
-      <div className="space-y-1.5">
+        {/* Week rows */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1.5">
+          <div key={wi} className="flex gap-[3px]">
             {week.map((day, di) => {
               const inRange = day >= rangeStart && day <= today
               if (!inRange) {
-                return <div key={di} className="aspect-square" />
+                return <div key={di} style={{ width: 11, height: 11 }} />
               }
               const count = getCount(day)
               const isToday = isSameDay(day, today)
@@ -73,7 +74,8 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
                 <div
                   key={di}
                   title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-                  className={`aspect-square border cursor-default transition-colors ${bg} ${isToday ? 'ring-1 ring-offset-1 ring-offset-mat-card ring-mat-gold' : ''}`}
+                  style={{ width: 11, height: 11 }}
+                  className={`border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
                 />
               )
             })}
