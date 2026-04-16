@@ -30,7 +30,7 @@ const PIE_COLORS = ['#c9a227', '#8b1a1a', '#2d5a9e', '#2d8a2d', '#a855f7', '#f97
 function SectionCard({ title, children, icon: Icon }: {
   title: string
   children: React.ReactNode
-  icon?: React.ComponentType<{ size: number; className?: string }>
+  icon?: React.ElementType
 }) {
   return (
     <div className="bg-mat-card border border-mat-border">
