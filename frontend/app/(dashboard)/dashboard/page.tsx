@@ -5,53 +5,96 @@ import { sessionsApi, analyticsApi, sparringApi } from '@/lib/api'
 import { formatDate, formatDuration, OUTCOME_COLORS, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
-import { format, subDays, parseISO, isSameDay } from 'date-fns'
+import { format, subDays, addDays, parseISO, isSameDay, getDay, startOfDay } from 'date-fns'
 import {
   BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight,
   Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse
 } from 'lucide-react'
 
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
-  const today = new Date()
-  const days = Array.from({ length: 30 }, (_, i) => subDays(today, 29 - i))
-  const sessionDates = (sessions || []).map(s => parseISO(s.date))
+  const today = startOfDay(new Date())
+  const rangeStart = subDays(today, 29)
+  const sessionDates = (sessions || []).map(s => startOfDay(parseISO(s.date)))
 
   const getCount = (day: Date) =>
     sessionDates.filter(d => isSameDay(d, day)).length
+
+  // Find the Monday of the week containing rangeStart (Mon=1...Sun=0 in getDay)
+  const dow = getDay(rangeStart) // 0=Sun,1=Mon,...,6=Sat
+  const mondayOffset = dow === 0 ? 6 : dow - 1
+  const gridStart = subDays(rangeStart, mondayOffset)
+
+  // Build weeks until we've covered today
+  const weeks: Date[][] = []
+  let cursor = gridStart
+  while (cursor <= today) {
+    const week: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      week.push(cursor)
+      cursor = addDays(cursor, 1)
+    }
+    weeks.push(week)
+  }
 
   return (
     <div className="bg-mat-card border border-mat-border p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
           <Flame size={15} className="text-mat-gold" />
-          Training Streak
+          Training Calendar
         </h2>
         <span className="text-mat-text-muted text-xs">Last 30 days</span>
       </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {days.map((day, i) => {
-          const count = getCount(day)
-          const isToday = isSameDay(day, today)
-          let bg = 'bg-mat-darker border-mat-border'
-          if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/50'
-          if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
-          return (
-            <div
-              key={i}
-              title={`${format(day, 'MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-              className={`w-6 h-6 border transition-colors cursor-default ${bg} ${isToday ? 'ring-1 ring-mat-gold/70' : ''}`}
-            />
-          )
-        })}
+
+      {/* Day labels */}
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        {DAY_LABELS.map(d => (
+          <div key={d} className="text-center text-mat-text-muted text-xs uppercase tracking-wider">{d}</div>
+        ))}
       </div>
-      <div className="flex items-center gap-3 mt-3">
-        <span className="text-mat-text-dim text-xs">Less</span>
-        <div className="flex gap-1">
-          <div className="w-3 h-3 bg-mat-darker border border-mat-border" />
-          <div className="w-3 h-3 bg-mat-gold/40 border border-mat-gold/50" />
-          <div className="w-3 h-3 bg-mat-gold border border-mat-gold" />
+
+      {/* Week rows */}
+      <div className="space-y-1.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5">
+            {week.map((day, di) => {
+              const inRange = day >= rangeStart && day <= today
+              if (!inRange) {
+                return <div key={di} className="aspect-square" />
+              }
+              const count = getCount(day)
+              const isToday = isSameDay(day, today)
+              let bg = 'bg-black border-mat-border'
+              if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
+              if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
+              return (
+                <div
+                  key={di}
+                  title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
+                  className={`aspect-square border cursor-default transition-colors ${bg} ${isToday ? 'ring-1 ring-offset-1 ring-offset-mat-card ring-mat-gold' : ''}`}
+                />
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-5 mt-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-black border border-mat-border" />
+          <span className="text-mat-text-dim text-xs">No training</span>
         </div>
-        <span className="text-mat-text-dim text-xs">More</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-mat-gold/40 border border-mat-gold/40" />
+          <span className="text-mat-text-dim text-xs">1 session</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 bg-mat-gold border border-mat-gold" />
+          <span className="text-mat-text-dim text-xs">2+ sessions</span>
+        </div>
       </div>
     </div>
   )
