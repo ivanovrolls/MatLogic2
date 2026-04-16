@@ -39,8 +39,8 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
   }
 
   return (
-    <div className="bg-mat-card border border-mat-border p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full bg-mat-card border border-mat-border p-5 flex flex-col">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
           <Flame size={15} className="text-mat-gold" />
           Training Calendar
@@ -49,7 +49,7 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
       </div>
 
       {/* Day labels + grid — fluid width */}
-      <div className="w-full">
+      <div className="w-full flex-1 flex flex-col min-h-0">
         {/* Day headers */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {DAY_LABELS.map(d => (
@@ -57,13 +57,13 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
           ))}
         </div>
 
-        {/* Week rows */}
-        <div className="space-y-1">
+        {/* Week rows — fill remaining vertical space */}
+        <div className="flex-1 flex flex-col gap-1 min-h-0">
           {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 gap-1">
+            <div key={wi} className="grid grid-cols-7 gap-1 flex-1 min-h-0">
               {week.map((day, di) => {
                 const inRange = day >= rangeStart && day <= today
-                if (!inRange) return <div key={di} className="aspect-square" />
+                if (!inRange) return <div key={di} className="rounded-[2px]" />
                 const count = getCount(day)
                 const isToday = isSameDay(day, today)
                 let bg = 'bg-black border-mat-border'
@@ -73,7 +73,7 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
                   <div
                     key={di}
                     title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-                    className={`aspect-square border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
+                    className={`border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
                   />
                 )
               })}
@@ -83,7 +83,7 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mt-4">
+      <div className="flex items-center gap-5 mt-3 shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 bg-black border border-mat-border" />
           <span className="text-mat-text-dim text-xs">No training</span>
@@ -210,12 +210,15 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        {/* Left col: Recent Sessions + Training Calendar */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Recent Sessions — capped to 3 entries */}
-          <div className="bg-mat-card border border-mat-border">
-            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+      {/* Main grid — both columns stretch to the same height */}
+      <div className="grid lg:grid-cols-3 gap-4 items-stretch">
+
+        {/* Left 2/3: flex column, 75% sessions + 25% calendar */}
+        <div className="lg:col-span-2 flex flex-col gap-4">
+
+          {/* Recent Sessions — flex-[3] = 75% */}
+          <div className="flex-[3] min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
+            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between shrink-0">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
                 <BookOpen size={15} className="text-mat-gold" />
                 Recent Sessions
@@ -224,18 +227,18 @@ export default function DashboardPage() {
                 All Sessions <ChevronRight size={12} />
               </Link>
             </div>
-            <div className="divide-y divide-mat-border">
+            <div className="divide-y divide-mat-border overflow-y-auto flex-1">
               {recentSessions?.length === 0 && (
                 <div className="px-5 py-8 text-center text-mat-text-dim text-sm">
                   No sessions logged yet.{' '}
                   <Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first one.</Link>
                 </div>
               )}
-              {recentSessions?.slice(0, 3).map((s: any) => (
+              {recentSessions?.map((s: any) => (
                 <Link
                   key={s.id}
                   href={`/sessions/${s.id}`}
-                  className="px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors group"
+                  className="px-5 py-3.5 flex items-center justify-between hover:bg-mat-darker transition-colors group"
                 >
                   <div>
                     <div className="flex items-center gap-2">
@@ -263,15 +266,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Training Calendar */}
-          <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
+          {/* Training Calendar — flex-[1] = 25% */}
+          <div className="flex-[1] min-h-0">
+            <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
+          </div>
+
         </div>
 
-        {/* Insights + Quick Actions */}
-        <div className="space-y-4">
-          {/* Insights */}
+        {/* Right 1/3: Insights + Quick Actions */}
+        <div className="flex flex-col gap-4">
           {allInsights.length > 0 && (
-            <div className="bg-mat-card border border-mat-border">
+            <div className="bg-mat-card border border-mat-border shrink-0">
               <div className="px-5 py-4 border-b border-mat-border">
                 <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
                   <Lightbulb size={15} className="text-mat-gold" />
@@ -286,8 +291,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Quick Actions */}
-          <div className="bg-mat-card border border-mat-border">
+          <div className="bg-mat-card border border-mat-border shrink-0">
             <div className="px-5 py-4 border-b border-mat-border">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text">
                 Quick Actions
@@ -315,6 +319,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )
