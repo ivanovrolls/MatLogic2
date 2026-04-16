@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-bebas: 'Bebas Neue', Impact, sans-serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background-color: #080808;
+  color: #ebebeb;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a227;
+}
+
+/* Selection */
+::selection {
+  background: rgba(201, 162, 39, 0.3);
+  color: #ebebeb;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-inter);
+    background-color: #080808;
+    color: #ebebeb;
+  }
+}
+
+@layer components {
+  .mat-card {
+    @apply bg-mat-card border border-mat-border rounded-none;
+  }
+
+  .mat-input {
+    @apply bg-mat-dark border border-mat-border text-mat-text placeholder:text-mat-text-dim
+           focus:outline-none focus:border-mat-gold focus:ring-1 focus:ring-mat-gold
+           px-3 py-2 text-sm w-full transition-colors duration-150;
+  }
+
+  .mat-label {
+    @apply text-xs font-semibold uppercase tracking-widest text-mat-text-muted mb-1 block;
+  }
+
+  .btn-primary {
+    @apply bg-mat-gold hover:bg-mat-gold-light text-mat-black font-bold
+           uppercase tracking-wider text-sm px-4 py-2
+           transition-all duration-150 active:scale-95 disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-mat-panel border border-mat-border hover:border-mat-gold
+           text-mat-text font-semibold uppercase tracking-wider text-sm
+           px-4 py-2 transition-all duration-150 active:scale-95;
+  }
+
+  .btn-danger {
+    @apply bg-mat-red hover:bg-mat-red-light text-white font-bold
+           uppercase tracking-wider text-sm px-4 py-2 transition-all duration-150;
+  }
+
+  .btn-ghost {
+    @apply text-mat-text-muted hover:text-mat-gold text-sm transition-colors duration-150;
+  }
+
+  .section-title {
+    @apply font-display text-2xl tracking-wide text-mat-text uppercase;
+  }
+
+  .stat-value {
+    @apply font-display text-4xl text-mat-gold;
+  }
+
+  .badge-win {
+    @apply text-xs font-bold uppercase tracking-wider text-mat-green-light bg-mat-green/20 px-2 py-0.5;
+  }
+  .badge-loss {
+    @apply text-xs font-bold uppercase tracking-wider text-mat-red-light bg-mat-red/20 px-2 py-0.5;
+  }
+  .badge-draw {
+    @apply text-xs font-bold uppercase tracking-wider text-mat-text-muted bg-mat-muted/30 px-2 py-0.5;
+  }
+
+  .divider {
+    @apply border-t border-mat-border my-4;
+  }
+
+  .gritty-bg {
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(201,162,39,0.03) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(139,26,26,0.03) 0%, transparent 50%);
+  }
+}
+
+/* Noise texture overlay */
+.noise-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Animated underline for nav items */
+.nav-item {
+  position: relative;
+}
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #c9a227;
+  transition: width 0.2s ease;
+}
+.nav-item:hover::after,
+.nav-item.active::after {
+  width: 100%;
+}
+
+/* Gold accent bar */
+.gold-bar {
+  border-left: 3px solid #c9a227;
+}
+
+/* Technique difficulty dots */
+.difficulty-dot {
+  @apply w-2 h-2 rounded-full;
+}
+
+/* Rating stars */
+.rating-filled {
+  color: #c9a227;
+}
+.rating-empty {
+  color: #333333;
+}

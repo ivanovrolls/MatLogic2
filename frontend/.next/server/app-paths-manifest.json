@@ -1,0 +1,10 @@
+{
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/competition/page": "app/(dashboard)/competition/page.js",
+  "/(dashboard)/sessions/new/page": "app/(dashboard)/sessions/new/page.js",
+  "/(dashboard)/sessions/[id]/page": "app/(dashboard)/sessions/[id]/page.js",
+  "/(dashboard)/sparring/page": "app/(dashboard)/sparring/page.js",
+  "/(dashboard)/analytics/page": "app/(dashboard)/analytics/page.js",
+  "/(dashboard)/planning/page": "app/(dashboard)/planning/page.js",
+  "/(dashboard)/techniques/page": "app/(dashboard)/techniques/page.js"
+}
