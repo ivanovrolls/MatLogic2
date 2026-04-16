@@ -3,10 +3,12 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sessionsApi, sparringApi } from '@/lib/api'
-import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS } from '@/lib/utils'
+import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Edit2, Swords, Plus, Loader2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Edit2, Swords, Plus, Loader2, Link2 } from 'lucide-react'
+import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound } from '@/lib/types'
 
 function RatingDisplay({ label, value }: { label: string; value: number | null }) {
@@ -28,6 +30,8 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const [showLinkPicker, setShowLinkPicker] = useState(false)
+  const [roundSearch, setRoundSearch] = useState('')
 
   const { data: session, isLoading } = useQuery<TrainingSession>({
     queryKey: ['session', id],
@@ -39,12 +43,37 @@ export default function SessionDetailPage() {
     queryFn: () => sparringApi.list({ session: id }).then(r => r.data),
   })
 
+  const { data: allRounds } = useQuery<{ results: SparringRound[] } | SparringRound[]>({
+    queryKey: ['sparring', 'all'],
+    queryFn: () => sparringApi.list({ page_size: 200 }).then(r => r.data),
+    enabled: showLinkPicker,
+  })
+
   const deleteMutation = useMutation({
     mutationFn: () => sessionsApi.delete(Number(id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
       toast.success('Session deleted.')
       router.push('/sessions')
+    },
+  })
+
+  const linkMutation = useMutation({
+    mutationFn: (roundId: number) => sparringApi.update(roundId, { session: Number(id) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sparring', 'session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sparring', 'all'] })
+      toast.success('Round linked to session.')
+    },
+    onError: () => toast.error('Failed to link round.'),
+  })
+
+  const unlinkMutation = useMutation({
+    mutationFn: (roundId: number) => sparringApi.update(roundId, { session: null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sparring', 'session', id] })
+      queryClient.invalidateQueries({ queryKey: ['sparring', 'all'] })
+      toast.success('Round removed from session.')
     },
   })
 
@@ -56,7 +85,18 @@ export default function SessionDetailPage() {
     return <div className="text-mat-text-muted py-20 text-center">Session not found.</div>
   }
 
-  const sparringRounds: SparringRound[] = rounds?.results || (Array.isArray(rounds) ? rounds : [])
+  const sparringRounds: SparringRound[] = (rounds as any)?.results || (Array.isArray(rounds) ? rounds : [])
+  const allRoundsArr: SparringRound[] = (allRounds as any)?.results || (Array.isArray(allRounds) ? allRounds : [])
+
+  // Rounds not already linked to this session
+  const linkedIds = new Set(sparringRounds.map(r => r.id))
+  const linkableRounds = allRoundsArr
+    .filter(r => !linkedIds.has(r.id))
+    .filter(r =>
+      roundSearch === '' ||
+      r.partner_name.toLowerCase().includes(roundSearch.toLowerCase()) ||
+      r.date.includes(roundSearch)
+    )
 
   return (
     <div className="max-w-3xl animate-fade-in space-y-5">
@@ -171,13 +211,59 @@ export default function SessionDetailPage() {
             <Swords size={15} className="text-mat-red-light" />
             Sparring Rounds
           </h3>
-          <Link
-            href={`/sparring?session=${id}`}
-            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
-          >
-            <Plus size={12} /> Add Round
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setShowLinkPicker(v => !v); setRoundSearch('') }}
+              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+            >
+              <Link2 size={12} /> Link Existing
+            </button>
+            <Link
+              href={`/sparring?session=${id}`}
+              className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+            >
+              <Plus size={12} /> New Round
+            </Link>
+          </div>
         </div>
+
+        {/* Link existing picker */}
+        {showLinkPicker && (
+          <div className="border-b border-mat-border p-4 space-y-3 bg-mat-darker animate-slide-up">
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest">Select a round to link</p>
+            <input
+              value={roundSearch}
+              onChange={e => setRoundSearch(e.target.value)}
+              className="mat-input text-sm"
+              placeholder="Search by partner name or date..."
+              autoFocus
+            />
+            <div className="max-h-52 overflow-y-auto divide-y divide-mat-border border border-mat-border">
+              {linkableRounds.length === 0 ? (
+                <p className="text-mat-text-dim text-xs text-center py-6">
+                  {allRoundsArr.length === 0 ? 'No rounds logged yet.' : 'All rounds are already linked.'}
+                </p>
+              ) : (
+                linkableRounds.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => linkMutation.mutate(r.id)}
+                    disabled={linkMutation.isPending}
+                    className="w-full text-left px-4 py-2.5 hover:bg-mat-card transition-colors flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
+                      <span className="text-mat-text text-sm font-medium">{r.partner_name}</span>
+                      <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
+                      <span className="text-mat-text-dim text-xs">{r.duration_minutes}min</span>
+                    </div>
+                    <span className="text-mat-text-dim text-xs">{formatDate(r.date, 'MMM d, yyyy')}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {sparringRounds.length === 0 ? (
           <div className="py-8 text-center text-mat-text-dim text-sm">
@@ -186,7 +272,7 @@ export default function SessionDetailPage() {
         ) : (
           <div className="divide-y divide-mat-border">
             {sparringRounds.map(r => (
-              <div key={r.id} className="px-6 py-3 flex items-center justify-between">
+              <div key={r.id} className="px-6 py-3 flex items-center justify-between group">
                 <div>
                   <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
                   <span className="text-mat-text-muted text-xs ml-2 capitalize">{r.partner_belt}</span>
@@ -196,6 +282,13 @@ export default function SessionDetailPage() {
                   <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>
                     {r.outcome}
                   </span>
+                  <button
+                    onClick={() => { if (confirm('Remove this round from the session?')) unlinkMutation.mutate(r.id) }}
+                    className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1 text-xs"
+                    title="Unlink from session"
+                  >
+                    ×
+                  </button>
                 </div>
               </div>
             ))}
