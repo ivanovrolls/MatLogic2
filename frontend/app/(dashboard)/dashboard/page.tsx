@@ -48,39 +48,38 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
         <span className="text-mat-text-muted text-xs">Last 30 days</span>
       </div>
 
-      {/* Day labels + grid */}
-      <div className="inline-flex flex-col gap-[3px]">
+      {/* Day labels + grid — fluid width */}
+      <div className="w-full">
         {/* Day headers */}
-        <div className="flex gap-[3px]">
+        <div className="grid grid-cols-7 gap-1 mb-1">
           {DAY_LABELS.map(d => (
-            <div key={d} style={{ width: 11 }} className="text-center text-mat-text-muted text-[9px] uppercase">{d[0]}</div>
+            <div key={d} className="text-center text-mat-text-muted text-[10px] uppercase">{d[0]}</div>
           ))}
         </div>
 
         {/* Week rows */}
-        {weeks.map((week, wi) => (
-          <div key={wi} className="flex gap-[3px]">
-            {week.map((day, di) => {
-              const inRange = day >= rangeStart && day <= today
-              if (!inRange) {
-                return <div key={di} style={{ width: 11, height: 11 }} />
-              }
-              const count = getCount(day)
-              const isToday = isSameDay(day, today)
-              let bg = 'bg-black border-mat-border'
-              if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
-              if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
-              return (
-                <div
-                  key={di}
-                  title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-                  style={{ width: 11, height: 11 }}
-                  className={`border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
-                />
-              )
-            })}
-          </div>
-        ))}
+        <div className="space-y-1">
+          {weeks.map((week, wi) => (
+            <div key={wi} className="grid grid-cols-7 gap-1">
+              {week.map((day, di) => {
+                const inRange = day >= rangeStart && day <= today
+                if (!inRange) return <div key={di} className="aspect-square" />
+                const count = getCount(day)
+                const isToday = isSameDay(day, today)
+                let bg = 'bg-black border-mat-border'
+                if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
+                if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
+                return (
+                  <div
+                    key={di}
+                    title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
+                    className={`aspect-square border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Legend */}
@@ -211,60 +210,61 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Training Calendar */}
-      <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
-
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* Recent Sessions */}
-        <div className="lg:col-span-2 bg-mat-card border border-mat-border">
-          <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
-            <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-              <BookOpen size={15} className="text-mat-gold" />
-              Recent Sessions
-            </h2>
-            <Link href="/sessions" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
-              All Sessions <ChevronRight size={12} />
-            </Link>
-          </div>
-          <div className="divide-y divide-mat-border">
-            {recentSessions?.length === 0 && (
-              <div className="px-5 py-8 text-center text-mat-text-dim text-sm">
-                No sessions logged yet.{' '}
-                <Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first one.</Link>
-              </div>
-            )}
-            {recentSessions?.map((s: any) => (
-              <Link
-                key={s.id}
-                href={`/sessions/${s.id}`}
-                className="px-5 py-3.5 flex items-center justify-between hover:bg-mat-darker transition-colors group"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || 'text-mat-text-muted'}`}>
-                      {s.session_type_display}
-                    </span>
-                    {s.title && (
-                      <span className="text-mat-text text-sm">{s.title}</span>
-                    )}
-                  </div>
-                  <div className="text-mat-text-muted text-xs mt-0.5 flex items-center gap-3">
-                    <span>{formatDate(s.date)}</span>
-                    <span>{formatDuration(s.duration)}</span>
-                    {s.round_count > 0 && <span>{s.round_count} rounds</span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {s.performance_rating && (
-                    <span className={`font-display text-xl ${getRatingColor(s.performance_rating)}`}>
-                      {s.performance_rating}/5
-                    </span>
-                  )}
-                  <ChevronRight size={14} className="text-mat-text-dim group-hover:text-mat-gold transition-colors" />
-                </div>
+        {/* Left col: Recent Sessions + Training Calendar */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Recent Sessions — capped to 3 entries */}
+          <div className="bg-mat-card border border-mat-border">
+            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                <BookOpen size={15} className="text-mat-gold" />
+                Recent Sessions
+              </h2>
+              <Link href="/sessions" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
+                All Sessions <ChevronRight size={12} />
               </Link>
-            ))}
+            </div>
+            <div className="divide-y divide-mat-border">
+              {recentSessions?.length === 0 && (
+                <div className="px-5 py-8 text-center text-mat-text-dim text-sm">
+                  No sessions logged yet.{' '}
+                  <Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first one.</Link>
+                </div>
+              )}
+              {recentSessions?.slice(0, 3).map((s: any) => (
+                <Link
+                  key={s.id}
+                  href={`/sessions/${s.id}`}
+                  className="px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors group"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || 'text-mat-text-muted'}`}>
+                        {s.session_type_display}
+                      </span>
+                      {s.title && <span className="text-mat-text text-sm">{s.title}</span>}
+                    </div>
+                    <div className="text-mat-text-muted text-xs mt-0.5 flex items-center gap-3">
+                      <span>{formatDate(s.date)}</span>
+                      <span>{formatDuration(s.duration)}</span>
+                      {s.round_count > 0 && <span>{s.round_count} rounds</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {s.performance_rating && (
+                      <span className={`font-display text-xl ${getRatingColor(s.performance_rating)}`}>
+                        {s.performance_rating}/5
+                      </span>
+                    )}
+                    <ChevronRight size={14} className="text-mat-text-dim group-hover:text-mat-gold transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
+
+          {/* Training Calendar */}
+          <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
         </div>
 
         {/* Insights + Quick Actions */}
