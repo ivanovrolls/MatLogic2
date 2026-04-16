@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,6 +10,7 @@ import { formatDate, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { Plus, Trash2, Loader2, Swords, X, Edit2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { useSearchParams, useRouter } from 'next/navigation'
 import type { SparringRound } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -92,6 +93,10 @@ function MultiPicker({ label, options, selected, onChange }: {
 }
 
 export default function SparringPage() {
+  const searchParams = useSearchParams()
+  const sessionId = searchParams.get('session')
+  const router = useRouter()
+
   const [showForm, setShowForm] = useState(false)
   const [editingRound, setEditingRound] = useState<SparringRound | null>(null)
   const [dominant, setDominant] = useState<string[]>([])
@@ -99,6 +104,10 @@ export default function SparringPage() {
   const [subAttempted, setSubAttempted] = useState<string[]>([])
   const [subConceded, setSubConceded] = useState<string[]>([])
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (sessionId) setShowForm(true)
+  }, [sessionId])
 
   const { data, isLoading } = useQuery({
     queryKey: ['sparring'],
@@ -131,6 +140,7 @@ export default function SparringPage() {
       setDominant([]); setConceded([]); setSubAttempted([]); setSubConceded([])
       setShowForm(false)
       setEditingRound(null)
+      if (sessionId && !editingRound) router.push(`/sessions/${sessionId}`)
     },
     onError: () => toast.error(editingRound ? 'Failed to update round.' : 'Failed to log round.'),
   })
@@ -176,6 +186,7 @@ export default function SparringPage() {
       positions_conceded: conceded,
       submissions_attempted: subAttempted,
       submissions_conceded: subConceded,
+      ...(sessionId && !editingRound ? { session: Number(sessionId) } : {}),
     })
   }
 
@@ -220,6 +231,9 @@ export default function SparringPage() {
             <Swords size={16} className="text-mat-red-light" />
             {editingRound ? 'Edit Sparring Round' : 'Log Sparring Round'}
           </h3>
+          {sessionId && !editingRound && (
+            <p className="text-mat-gold text-xs">This round will be linked to your session.</p>
+          )}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
