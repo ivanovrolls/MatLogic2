@@ -39,8 +39,8 @@ function InjuryForm({
   isPending: boolean
 }) {
   const [bodyPart, setBodyPart] = useState(initial?.body_part || '')
-  const [severity, setSeverity] = useState(initial?.severity || 'mild')
-  const [status, setStatus] = useState(initial?.status || 'active')
+  const [severity, setSeverity] = useState<'mild' | 'moderate' | 'severe'>(initial?.severity || 'mild')
+  const [status, setStatus] = useState<'active' | 'recovering' | 'resolved'>(initial?.status || 'active')
   const [dateOccurred, setDateOccurred] = useState(initial?.date_occurred || format(new Date(), 'yyyy-MM-dd'))
   const [dateResolved, setDateResolved] = useState(initial?.date_resolved || '')
   const [affectedTraining, setAffectedTraining] = useState(initial?.affected_training ?? true)
@@ -73,7 +73,7 @@ function InjuryForm({
         </div>
         <div>
           <label className="mat-label">Severity</label>
-          <select value={severity} onChange={e => setSeverity(e.target.value)} className="mat-input">
+          <select value={severity} onChange={e => setSeverity(e.target.value as 'mild' | 'moderate' | 'severe')} className="mat-input">
             <option value="mild">Mild</option>
             <option value="moderate">Moderate</option>
             <option value="severe">Severe</option>
@@ -81,7 +81,7 @@ function InjuryForm({
         </div>
         <div>
           <label className="mat-label">Status</label>
-          <select value={status} onChange={e => setStatus(e.target.value)} className="mat-input">
+          <select value={status} onChange={e => setStatus(e.target.value as 'active' | 'recovering' | 'resolved')} className="mat-input">
             <option value="active">Active</option>
             <option value="recovering">Recovering</option>
             <option value="resolved">Resolved</option>
