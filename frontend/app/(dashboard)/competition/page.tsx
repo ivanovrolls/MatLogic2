@@ -6,7 +6,7 @@ import { competitionApi, techniquesApi } from '@/lib/api'
 import { formatDate, RESULT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { Plus, Trophy, Loader2, ChevronDown, ChevronUp, Target, Swords, Medal } from 'lucide-react'
+import { Plus, Trophy, Loader2, ChevronDown, ChevronUp, Target, Swords, Medal, Edit2, Trash2, Check, X } from 'lucide-react'
 import type { Competition, CompetitionMatch, TechniqueMinimal } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -45,7 +45,65 @@ function MatchRow({ match, onDelete }: { match: CompetitionMatch; onDelete: () =
 function CompetitionCard({ comp }: { comp: Competition }) {
   const [expanded, setExpanded] = useState(false)
   const [showAddMatch, setShowAddMatch] = useState(false)
+  const [editing, setEditing] = useState(false)
   const queryClient = useQueryClient()
+
+  // edit field state — initialised from comp
+  const [editName, setEditName] = useState(comp.name)
+  const [editDate, setEditDate] = useState(comp.date)
+  const [editLocation, setEditLocation] = useState(comp.location)
+  const [editOrg, setEditOrg] = useState(comp.organization)
+  const [editWeight, setEditWeight] = useState(comp.weight_class)
+  const [editBelt, setEditBelt] = useState(comp.belt_division)
+  const [editGi, setEditGi] = useState(String(comp.is_gi))
+  const [editResult, setEditResult] = useState(comp.result || '')
+  const [editNotes, setEditNotes] = useState(comp.notes)
+
+  const openEdit = () => {
+    setEditName(comp.name)
+    setEditDate(comp.date)
+    setEditLocation(comp.location)
+    setEditOrg(comp.organization)
+    setEditWeight(comp.weight_class)
+    setEditBelt(comp.belt_division)
+    setEditGi(String(comp.is_gi))
+    setEditResult(comp.result || '')
+    setEditNotes(comp.notes)
+    setEditing(true)
+    setExpanded(true)
+  }
+
+  const updateMutation = useMutation({
+    mutationFn: (data: object) => competitionApi.update(comp.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competitions'] })
+      toast.success('Competition updated.')
+      setEditing(false)
+    },
+    onError: () => toast.error('Failed to update.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => competitionApi.delete(comp.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competitions'] })
+      toast.success('Competition deleted.')
+    },
+  })
+
+  const saveEdit = () => {
+    updateMutation.mutate({
+      name: editName,
+      date: editDate,
+      location: editLocation,
+      organization: editOrg,
+      weight_class: editWeight,
+      belt_division: editBelt,
+      is_gi: editGi === 'true',
+      result: editResult,
+      notes: editNotes,
+    })
+  }
 
   const matchMutation = useMutation({
     mutationFn: (data: object) => competitionApi.createMatch(data),
@@ -63,11 +121,11 @@ function CompetitionCard({ comp }: { comp: Competition }) {
 
   return (
     <div className="bg-mat-card border border-mat-border">
-      <div
-        className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-mat-darker transition-colors"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <div className="flex items-center gap-4">
+      <div className="px-6 py-4 flex items-center justify-between">
+        <div
+          className="flex items-center gap-4 flex-1 cursor-pointer"
+          onClick={() => !editing && setExpanded(!expanded)}
+        >
           <div>
             <h3 className="font-display text-xl tracking-wider text-mat-text uppercase">{comp.name}</h3>
             <p className="text-mat-text-muted text-xs mt-0.5">
@@ -77,22 +135,108 @@ function CompetitionCard({ comp }: { comp: Competition }) {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          {comp.result && (
+        <div className="flex items-center gap-3">
+          {comp.result && !editing && (
             <span className={cn('font-display text-lg uppercase', RESULT_COLORS[comp.result])}>
               {RESULT_LABELS[comp.result]}
             </span>
           )}
-          <div className="text-mat-text-muted text-xs flex gap-3">
-            <span className="text-mat-green-light">{comp.win_count}W</span>
-            <span className="text-mat-red-light">{comp.loss_count}L</span>
-          </div>
-          {expanded ? <ChevronUp size={14} className="text-mat-text-dim" /> : <ChevronDown size={14} className="text-mat-text-dim" />}
+          {!editing && (
+            <div className="text-mat-text-muted text-xs flex gap-3">
+              <span className="text-mat-green-light">{comp.win_count}W</span>
+              <span className="text-mat-red-light">{comp.loss_count}L</span>
+            </div>
+          )}
+          <button
+            onClick={e => { e.stopPropagation(); editing ? setEditing(false) : openEdit() }}
+            className="text-mat-text-dim hover:text-mat-gold transition-colors p-1"
+            title={editing ? 'Cancel edit' : 'Edit competition'}
+          >
+            {editing ? <X size={14} /> : <Edit2 size={14} />}
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); if (confirm('Delete this competition?')) deleteMutation.mutate() }}
+            className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button onClick={() => !editing && setExpanded(!expanded)} className="text-mat-text-dim p-1">
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
         </div>
       </div>
 
       {expanded && (
         <div className="border-t border-mat-border p-6 space-y-4 animate-slide-up">
+
+          {/* Edit form */}
+          {editing && (
+            <div className="bg-mat-panel border border-mat-gold/30 p-5 space-y-4">
+              <p className="text-mat-gold text-xs uppercase tracking-widest">Edit Competition</p>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <label className="mat-label">Name</label>
+                  <input value={editName} onChange={e => setEditName(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Date</label>
+                  <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Location</label>
+                  <input value={editLocation} onChange={e => setEditLocation(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Organization</label>
+                  <input value={editOrg} onChange={e => setEditOrg(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Weight Class</label>
+                  <input value={editWeight} onChange={e => setEditWeight(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Belt Division</label>
+                  <input value={editBelt} onChange={e => setEditBelt(e.target.value)} className="mat-input" />
+                </div>
+                <div>
+                  <label className="mat-label">Format</label>
+                  <select value={editGi} onChange={e => setEditGi(e.target.value)} className="mat-input">
+                    <option value="true">Gi</option>
+                    <option value="false">No-Gi</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mat-label">Result</label>
+                  <select value={editResult} onChange={e => setEditResult(e.target.value)} className="mat-input">
+                    <option value="">— Pending —</option>
+                    <option value="gold">Gold Medal</option>
+                    <option value="silver">Silver Medal</option>
+                    <option value="bronze">Bronze Medal</option>
+                    <option value="participated">Participated</option>
+                    <option value="withdrew">Withdrew</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="mat-label">Notes</label>
+                <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className="mat-input resize-none" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveEdit}
+                  disabled={updateMutation.isPending}
+                  className="btn-primary text-xs px-5 py-2 flex items-center gap-1.5"
+                >
+                  {updateMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                  Save Changes
+                </button>
+                <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-4 py-2">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Matches */}
           <div>
             <div className="flex items-center justify-between mb-3">
