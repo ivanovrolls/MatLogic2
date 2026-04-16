@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'sparring',
     'competition',
     'analytics',
+    'injuries',
 ]
 
 MIDDLEWARE = [

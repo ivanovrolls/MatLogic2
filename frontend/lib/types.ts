@@ -13,6 +13,9 @@ export interface User {
   is_premium: boolean
   avatar: string | null
   weight_class: string
+  gender: string
+  height_cm: number | null
+  weight_kg: number | null
   display_belt: string
   total_sessions: number
   total_rounds: number
@@ -209,6 +212,27 @@ export interface Competition {
   game_plans: GamePlan[]
   win_count: number
   loss_count: number
+  created_at: string
+  updated_at: string
+}
+
+// ---- Injuries ----
+export type InjurySeverity = 'mild' | 'moderate' | 'severe'
+export type InjuryStatus = 'active' | 'recovering' | 'resolved'
+
+export interface InjuryLog {
+  id: number
+  body_part: string
+  body_part_display: string
+  custom_body_part: string
+  severity: InjurySeverity
+  severity_display: string
+  status: InjuryStatus
+  status_display: string
+  date_occurred: string
+  date_resolved: string | null
+  affected_training: boolean
+  notes: string
   created_at: string
   updated_at: string
 }

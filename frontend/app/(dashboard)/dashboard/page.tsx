@@ -5,10 +5,57 @@ import { sessionsApi, analyticsApi, sparringApi } from '@/lib/api'
 import { formatDate, formatDuration, OUTCOME_COLORS, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
+import { format, subDays, parseISO, isSameDay } from 'date-fns'
 import {
   BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight,
-  Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2
+  Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse
 } from 'lucide-react'
+
+function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
+  const today = new Date()
+  const days = Array.from({ length: 30 }, (_, i) => subDays(today, 29 - i))
+  const sessionDates = (sessions || []).map(s => parseISO(s.date))
+
+  const getCount = (day: Date) =>
+    sessionDates.filter(d => isSameDay(d, day)).length
+
+  return (
+    <div className="bg-mat-card border border-mat-border p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+          <Flame size={15} className="text-mat-gold" />
+          Training Streak
+        </h2>
+        <span className="text-mat-text-muted text-xs">Last 30 days</span>
+      </div>
+      <div className="flex gap-1.5 flex-wrap">
+        {days.map((day, i) => {
+          const count = getCount(day)
+          const isToday = isSameDay(day, today)
+          let bg = 'bg-mat-darker border-mat-border'
+          if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/50'
+          if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
+          return (
+            <div
+              key={i}
+              title={`${format(day, 'MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
+              className={`w-6 h-6 border transition-colors cursor-default ${bg} ${isToday ? 'ring-1 ring-mat-gold/70' : ''}`}
+            />
+          )
+        })}
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <span className="text-mat-text-dim text-xs">Less</span>
+        <div className="flex gap-1">
+          <div className="w-3 h-3 bg-mat-darker border border-mat-border" />
+          <div className="w-3 h-3 bg-mat-gold/40 border border-mat-gold/50" />
+          <div className="w-3 h-3 bg-mat-gold border border-mat-gold" />
+        </div>
+        <span className="text-mat-text-dim text-xs">More</span>
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ label, value, sub, color = 'text-mat-gold' }: {
   label: string, value: string | number, sub?: string, color?: string
@@ -50,6 +97,11 @@ export default function DashboardPage() {
   const { data: recentSessions } = useQuery({
     queryKey: ['sessions', 'recent'],
     queryFn: () => sessionsApi.recent().then(r => r.data),
+  })
+
+  const { data: calendarSessions } = useQuery({
+    queryKey: ['sessions', 'calendar'],
+    queryFn: () => sessionsApi.list({ page_size: 200 }).then(r => r.data?.results || r.data),
   })
 
   const { data: stats } = useQuery({
@@ -113,6 +165,9 @@ export default function DashboardPage() {
           color="text-amber-400"
         />
       </div>
+
+      {/* Training Calendar */}
+      <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
 
       <div className="grid lg:grid-cols-3 gap-4">
         {/* Recent Sessions */}
@@ -200,6 +255,7 @@ export default function DashboardPage() {
                 { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
                 { href: '/planning', label: 'Set Weekly Plan', icon: TrendingUp, color: 'text-mat-green-light' },
                 { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
+                { href: '/injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
               ].map(({ href, label, icon: Icon, color }) => (
                 <Link
                   key={href}

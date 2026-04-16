@@ -35,6 +35,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'id', 'email', 'username', 'first_name', 'last_name',
             'belt', 'stripes', 'gym', 'start_date', 'bio',
             'is_premium', 'avatar', 'weight_class', 'display_belt',
+            'gender', 'height_cm', 'weight_kg',
             'total_sessions', 'total_rounds', 'date_joined'
         ]
         read_only_fields = ['id', 'email', 'is_premium', 'date_joined']

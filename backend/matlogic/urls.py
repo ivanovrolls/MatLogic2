@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/sparring/', include('sparring.urls')),
     path('api/competition/', include('competition.urls')),
     path('api/analytics/', include('analytics.urls')),
+    path('api/injuries/', include('injuries.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

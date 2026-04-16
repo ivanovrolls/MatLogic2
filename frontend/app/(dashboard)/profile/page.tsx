@@ -23,6 +23,9 @@ export default function ProfilePage() {
       start_date: user?.start_date || '',
       weight_class: user?.weight_class || '',
       bio: user?.bio || '',
+      gender: user?.gender || '',
+      height_cm: user?.height_cm ?? '',
+      weight_kg: user?.weight_kg ?? '',
     },
   })
 
@@ -121,6 +124,29 @@ export default function ProfilePage() {
           <div>
             <label className="mat-label">Weight Class</label>
             <input {...register('weight_class')} className="mat-input" placeholder="e.g. Lightweight / 76kg" />
+          </div>
+
+          <div className="border-t border-mat-border pt-5">
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-4">Body Metrics</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="mat-label">Gender</label>
+                <select {...register('gender')} className="mat-input">
+                  <option value="">— Select —</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="mat-label">Height (cm)</label>
+                <input {...register('height_cm')} type="number" step="0.1" min="100" max="250" className="mat-input" placeholder="e.g. 178" />
+              </div>
+              <div>
+                <label className="mat-label">Weight (kg)</label>
+                <input {...register('weight_kg')} type="number" step="0.1" min="30" max="200" className="mat-input" placeholder="e.g. 76.5" />
+              </div>
+            </div>
           </div>
 
           <div>

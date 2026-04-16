@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, User, LogOut
+  Swords, BarChart2, Trophy, User, LogOut, HeartPulse
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 
@@ -20,6 +20,7 @@ const navItems = [
   { href: '/sparring', label: 'Sparring', icon: Swords },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/competition', label: 'Competition', icon: Trophy },
+  { href: '/injuries', label: 'Injuries', icon: HeartPulse },
 ]
 
 export function Header() {

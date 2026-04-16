@@ -137,6 +137,15 @@ export const competitionApi = {
     api.patch(`/competition/game-plans/${id}/`, data),
 }
 
+// ---- Injuries ----
+export const injuriesApi = {
+  list: (params?: object) => api.get('/injuries/', { params }),
+  get: (id: number) => api.get(`/injuries/${id}/`),
+  create: (data: object) => api.post('/injuries/', data),
+  update: (id: number, data: object) => api.patch(`/injuries/${id}/`, data),
+  delete: (id: number) => api.delete(`/injuries/${id}/`),
+}
+
 // ---- Analytics ----
 export const analyticsApi = {
   overview: (period?: string) =>
