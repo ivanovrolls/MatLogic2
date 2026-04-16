@@ -39,8 +39,8 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
   }
 
   return (
-    <div className="h-full bg-mat-card border border-mat-border p-5 flex flex-col">
-      <div className="flex items-center justify-between mb-3 shrink-0">
+    <div className="bg-mat-card border border-mat-border p-5">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
           <Flame size={15} className="text-mat-gold" />
           Training Calendar
@@ -48,42 +48,39 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
         <span className="text-mat-text-muted text-xs">Last 30 days</span>
       </div>
 
-      {/* Day labels + grid — fluid width */}
-      <div className="w-full flex-1 flex flex-col min-h-0">
-        {/* Day headers */}
-        <div className="grid grid-cols-7 gap-1 mb-1">
-          {DAY_LABELS.map(d => (
-            <div key={d} className="text-center text-mat-text-muted text-[10px] uppercase">{d[0]}</div>
-          ))}
-        </div>
+      {/* Day labels */}
+      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+        {DAY_LABELS.map(d => (
+          <div key={d} className="text-center text-mat-text-muted text-[10px] uppercase">{d[0]}</div>
+        ))}
+      </div>
 
-        {/* Week rows — fill remaining vertical space */}
-        <div className="flex-1 flex flex-col gap-1 min-h-0">
-          {weeks.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 gap-1 flex-1 min-h-0">
-              {week.map((day, di) => {
-                const inRange = day >= rangeStart && day <= today
-                if (!inRange) return <div key={di} className="rounded-[2px]" />
-                const count = getCount(day)
-                const isToday = isSameDay(day, today)
-                let bg = 'bg-black border-mat-border'
-                if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
-                if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
-                return (
-                  <div
-                    key={di}
-                    title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-                    className={`border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
-                  />
-                )
-              })}
-            </div>
-          ))}
-        </div>
+      {/* Week rows — aspect-square cells so squares stay square */}
+      <div className="space-y-1.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5">
+            {week.map((day, di) => {
+              const inRange = day >= rangeStart && day <= today
+              if (!inRange) return <div key={di} className="aspect-square" />
+              const count = getCount(day)
+              const isToday = isSameDay(day, today)
+              let bg = 'bg-black border-mat-border'
+              if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
+              if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
+              return (
+                <div
+                  key={di}
+                  title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
+                  className={`aspect-square border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
+                />
+              )
+            })}
+          </div>
+        ))}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mt-3 shrink-0">
+      <div className="flex items-center gap-5 mt-3">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 bg-black border border-mat-border" />
           <span className="text-mat-text-dim text-xs">No training</span>
@@ -216,8 +213,8 @@ export default function DashboardPage() {
         {/* Left 2/3: flex column, 75% sessions + 25% calendar */}
         <div className="lg:col-span-2 flex flex-col gap-4">
 
-          {/* Recent Sessions — flex-[3] = 75% */}
-          <div className="flex-[3] min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
+          {/* Recent Sessions — fills remaining space above calendar */}
+          <div className="flex-1 min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
             <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between shrink-0">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
                 <BookOpen size={15} className="text-mat-gold" />
@@ -266,8 +263,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Training Calendar — flex-[1] = 25% */}
-          <div className="flex-[1] min-h-0">
+          {/* Training Calendar — natural height from aspect-square cells */}
+          <div className="shrink-0">
             <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
           </div>
 
