@@ -1,35 +1,70 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { sessionsApi, analyticsApi, sparringApi } from '@/lib/api'
-import { formatDate, formatDuration, OUTCOME_COLORS, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { sessionsApi, analyticsApi, competitionApi } from '@/lib/api'
+import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
-import { format, subDays, addDays, parseISO, isSameDay, getDay, startOfDay } from 'date-fns'
+import toast from 'react-hot-toast'
 import {
-  BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight,
-  Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse
+  format, subDays, addDays, parseISO, isSameDay, getDay, startOfDay,
+  startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth, getDate,
+} from 'date-fns'
+import {
+  BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
+  Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
 } from 'lucide-react'
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
+function TrainingCalendar({
+  sessions,
+  competitions,
+}: {
+  sessions: { date: string; id: number; session_type: string; session_type_display: string; duration: number }[]
+  competitions: { date: string; id: number; name: string; result: string; result_display: string }[]
+}) {
   const today = startOfDay(new Date())
-  const rangeStart = subDays(today, 29)
-  const sessionDates = (sessions || []).map(s => startOfDay(parseISO(s.date)))
+  const minMonth = startOfMonth(subMonths(today, 12))
+  const maxMonth = startOfMonth(addMonths(today, 12))
 
-  const getCount = (day: Date) =>
-    sessionDates.filter(d => isSameDay(d, day)).length
+  const [viewedMonth, setViewedMonth] = useState(startOfMonth(today))
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
+  const [showAddComp, setShowAddComp] = useState(false)
+  const [newCompName, setNewCompName] = useState('')
+  const [newCompResult, setNewCompResult] = useState('')
 
-  // Find the Monday of the week containing rangeStart (Mon=1...Sun=0 in getDay)
-  const dow = getDay(rangeStart) // 0=Sun,1=Mon,...,6=Sat
+  const queryClient = useQueryClient()
+
+  const createCompMutation = useMutation({
+    mutationFn: (data: object) => competitionApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['competitions'] })
+      toast.success('Competition saved.')
+      setShowAddComp(false)
+      setNewCompName('')
+      setNewCompResult('')
+    },
+    onError: () => toast.error('Failed to save competition.'),
+  })
+
+  const changeMonth = (newMonth: Date) => {
+    setViewedMonth(newMonth)
+    setSelectedDay(null)
+    setShowAddComp(false)
+  }
+
+  const monthStart = startOfMonth(viewedMonth)
+  const monthEnd = endOfMonth(viewedMonth)
+
+  const dow = getDay(monthStart)
   const mondayOffset = dow === 0 ? 6 : dow - 1
-  const gridStart = subDays(rangeStart, mondayOffset)
+  const gridStart = subDays(monthStart, mondayOffset)
 
-  // Build weeks until we've covered today
   const weeks: Date[][] = []
   let cursor = gridStart
-  while (cursor <= today) {
+  while (cursor <= monthEnd) {
     const week: Date[] = []
     for (let i = 0; i < 7; i++) {
       week.push(cursor)
@@ -38,41 +73,108 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
     weeks.push(week)
   }
 
+  const enrichedSessions = (sessions || []).map(s => ({ ...s, day: startOfDay(parseISO(s.date)) }))
+  const enrichedComps = (competitions || []).map(c => ({ ...c, day: startOfDay(parseISO(c.date)) }))
+
+  const getSessionsForDay = (day: Date) => enrichedSessions.filter(s => isSameDay(s.day, day))
+  const getCompsForDay = (day: Date) => enrichedComps.filter(c => isSameDay(c.day, day))
+
+  const canGoPrev = viewedMonth > minMonth
+  const canGoNext = viewedMonth < maxMonth
+
+  const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
+  const dayComps = selectedDay ? getCompsForDay(selectedDay) : []
+
   return (
     <div className="bg-mat-card border border-mat-border p-5">
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
           <Flame size={15} className="text-mat-gold" />
-          Training Calendar
+          Training Calendar — {format(viewedMonth, 'MMMM yyyy')}
         </h2>
-        <span className="text-mat-text-muted text-xs">Last 30 days</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => changeMonth(subMonths(viewedMonth, 1))}
+            disabled={!canGoPrev}
+            className="p-1 text-mat-text-muted hover:text-mat-gold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={15} />
+          </button>
+          <button
+            onClick={() => changeMonth(startOfMonth(today))}
+            className="px-2 text-mat-text-muted hover:text-mat-gold text-xs transition-colors"
+          >
+            Today
+          </button>
+          <button
+            onClick={() => changeMonth(addMonths(viewedMonth, 1))}
+            disabled={!canGoNext}
+            className="p-1 text-mat-text-muted hover:text-mat-gold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight size={15} />
+          </button>
+        </div>
       </div>
 
       {/* Day labels */}
-      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+      <div className="grid grid-cols-7 gap-1 mb-1">
         {DAY_LABELS.map(d => (
           <div key={d} className="text-center text-mat-text-muted text-[10px] uppercase">{d[0]}</div>
         ))}
       </div>
 
-      {/* Week rows — aspect-square cells so squares stay square */}
-      <div className="space-y-1.5">
+      {/* Week rows */}
+      <div className="space-y-1">
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1.5">
+          <div key={wi} className="grid grid-cols-7 gap-1">
             {week.map((day, di) => {
-              const inRange = day >= rangeStart && day <= today
-              if (!inRange) return <div key={di} className="aspect-square" />
-              const count = getCount(day)
+              const inMonth = isSameMonth(day, viewedMonth)
+              const count = inMonth ? getSessionsForDay(day).length : 0
+              const hasComp = inMonth && getCompsForDay(day).length > 0
               const isToday = isSameDay(day, today)
-              let bg = 'bg-black border-mat-border'
-              if (count === 1) bg = 'bg-mat-gold/40 border-mat-gold/40'
-              if (count >= 2) bg = 'bg-mat-gold border-mat-gold'
+              const isSelected = !!selectedDay && isSameDay(day, selectedDay)
+
+              let bg = inMonth ? 'bg-mat-panel hover:bg-mat-panel/80' : ''
+              if (inMonth && count === 1) bg = 'bg-mat-gold/30 hover:bg-mat-gold/40'
+              if (inMonth && count >= 2) bg = 'bg-mat-gold/60 hover:bg-mat-gold/70'
+
+              let borderCls = inMonth ? 'border-mat-border' : 'border-transparent'
+              if (inMonth && count === 1) borderCls = 'border-mat-gold/40'
+              if (inMonth && count >= 2) borderCls = 'border-mat-gold/60'
+              if (hasComp) borderCls = 'border-amber-500/70'
+
               return (
-                <div
+                <button
                   key={di}
-                  title={`${format(day, 'EEE MMM d')}${count > 0 ? ` · ${count} session${count > 1 ? 's' : ''}` : ''}`}
-                  className={`aspect-square border cursor-default transition-colors rounded-[2px] ${bg} ${isToday ? 'ring-1 ring-mat-gold' : ''}`}
-                />
+                  onClick={() => {
+                    if (!inMonth) return
+                    if (isSelected) {
+                      setSelectedDay(null)
+                      setShowAddComp(false)
+                    } else {
+                      setSelectedDay(day)
+                      setShowAddComp(false)
+                    }
+                  }}
+                  disabled={!inMonth}
+                  className={[
+                    'relative h-8 flex flex-col items-start justify-start p-1 border rounded-[2px] transition-colors',
+                    bg, borderCls,
+                    isToday ? 'ring-1 ring-mat-gold' : '',
+                    isSelected ? 'ring-1 ring-white/40' : '',
+                    inMonth ? 'cursor-pointer' : 'cursor-default',
+                  ].join(' ')}
+                >
+                  <span className={`text-[9px] leading-none font-medium ${
+                    isToday ? 'text-mat-gold' : inMonth ? 'text-mat-text-muted' : 'text-transparent'
+                  }`}>
+                    {getDate(day)}
+                  </span>
+                  {hasComp && (
+                    <Trophy size={7} className="absolute bottom-0.5 right-0.5 text-amber-400" />
+                  )}
+                </button>
               )
             })}
           </div>
@@ -82,18 +184,142 @@ function TrainingCalendar({ sessions }: { sessions: { date: string }[] }) {
       {/* Legend */}
       <div className="flex items-center gap-5 mt-3">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-black border border-mat-border" />
+          <div className="w-3 h-3 bg-mat-panel border border-mat-border rounded-[1px]" />
           <span className="text-mat-text-dim text-xs">No training</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-mat-gold/40 border border-mat-gold/40" />
+          <div className="w-3 h-3 bg-mat-gold/30 border border-mat-gold/40 rounded-[1px]" />
           <span className="text-mat-text-dim text-xs">1 session</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-mat-gold border border-mat-gold" />
+          <div className="w-3 h-3 bg-mat-gold/60 border border-mat-gold/60 rounded-[1px]" />
           <span className="text-mat-text-dim text-xs">2+ sessions</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <Trophy size={9} className="text-amber-400" />
+          <span className="text-mat-text-dim text-xs">Competition</span>
+        </div>
       </div>
+
+      {/* Day detail panel */}
+      {selectedDay && (
+        <div className="mt-3 border-t border-mat-border pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-mat-text text-sm font-medium">
+              {format(selectedDay, 'EEEE, MMMM d')}
+            </span>
+            <button
+              onClick={() => { setSelectedDay(null); setShowAddComp(false) }}
+              className="text-mat-text-dim hover:text-mat-text transition-colors"
+            >
+              <X size={13} />
+            </button>
+          </div>
+
+          {/* Sessions */}
+          {daySessions.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {daySessions.map((s: any) => (
+                <Link
+                  key={s.id}
+                  href={`/sessions/${s.id}`}
+                  className="flex items-center gap-2 text-xs text-mat-text-muted hover:text-mat-gold transition-colors"
+                >
+                  <BookOpen size={10} />
+                  <span className={SESSION_TYPE_COLORS[s.session_type] || 'text-mat-text-muted'}>
+                    {s.session_type_display}
+                  </span>
+                  <span>· {formatDuration(s.duration)}</span>
+                  <ChevronRight size={10} className="ml-auto" />
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Competitions */}
+          {dayComps.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {dayComps.map((c: any) => (
+                <div key={c.id} className="flex items-center gap-2 text-xs text-amber-400">
+                  <Trophy size={10} />
+                  <span>{c.name}</span>
+                  {c.result_display && (
+                    <span className="text-mat-text-muted">· {c.result_display}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {daySessions.length === 0 && dayComps.length === 0 && (
+            <p className="text-mat-text-dim text-xs mb-2">No activity logged.</p>
+          )}
+
+          {/* Action buttons */}
+          {!showAddComp && (
+            <div className="flex gap-2 flex-wrap">
+              <Link
+                href={`/sessions/new?date=${format(selectedDay, 'yyyy-MM-dd')}`}
+                className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              >
+                <Plus size={11} /> Log Session
+              </Link>
+              <button
+                onClick={() => setShowAddComp(true)}
+                className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              >
+                <Trophy size={11} /> Add Competition
+              </button>
+            </div>
+          )}
+
+          {/* Add competition mini-form */}
+          {showAddComp && (
+            <div className="space-y-2">
+              <input
+                className="mat-input text-xs"
+                placeholder="Competition name (e.g. IBJJF Pan Ams)"
+                value={newCompName}
+                onChange={e => setNewCompName(e.target.value)}
+              />
+              <select
+                className="mat-input text-xs"
+                value={newCompResult}
+                onChange={e => setNewCompResult(e.target.value)}
+              >
+                <option value="">— Result (leave blank if upcoming) —</option>
+                <option value="gold">Gold Medal</option>
+                <option value="silver">Silver Medal</option>
+                <option value="bronze">Bronze Medal</option>
+                <option value="participated">Participated</option>
+                <option value="withdrew">Withdrew</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    createCompMutation.mutate({
+                      name: newCompName,
+                      date: format(selectedDay, 'yyyy-MM-dd'),
+                      result: newCompResult,
+                    })
+                  }
+                  disabled={!newCompName.trim() || createCompMutation.isPending}
+                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {createCompMutation.isPending && <Loader2 size={10} className="animate-spin" />}
+                  Save
+                </button>
+                <button
+                  onClick={() => { setShowAddComp(false); setNewCompName(''); setNewCompResult('') }}
+                  className="btn-secondary text-xs px-3 py-1.5"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -142,7 +368,12 @@ export default function DashboardPage() {
 
   const { data: calendarSessions } = useQuery({
     queryKey: ['sessions', 'calendar'],
-    queryFn: () => sessionsApi.list({ page_size: 200 }).then(r => r.data?.results || r.data),
+    queryFn: () => sessionsApi.list({ page_size: 500 }).then(r => r.data?.results || r.data),
+  })
+
+  const { data: calendarCompetitions } = useQuery({
+    queryKey: ['competitions'],
+    queryFn: () => competitionApi.list().then(r => r.data?.results || r.data),
   })
 
   const { data: stats } = useQuery({
@@ -207,13 +438,13 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main grid — both columns stretch to the same height */}
+      {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-4 items-stretch">
 
-        {/* Left 2/3: flex column, 75% sessions + 25% calendar */}
+        {/* Left 2/3 */}
         <div className="lg:col-span-2 flex flex-col gap-4">
 
-          {/* Recent Sessions — fills remaining space above calendar */}
+          {/* Recent Sessions */}
           <div className="flex-1 min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
             <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between shrink-0">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
@@ -263,14 +494,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Training Calendar — natural height from aspect-square cells */}
+          {/* Training Calendar */}
           <div className="shrink-0">
-            <TrainingCalendar sessions={Array.isArray(calendarSessions) ? calendarSessions : []} />
+            <TrainingCalendar
+              sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
+              competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
+            />
           </div>
 
         </div>
 
-        {/* Right 1/3: Insights + Quick Actions */}
+        {/* Right 1/3 */}
         <div className="flex flex-col gap-4">
           {allInsights.length > 0 && (
             <div className="bg-mat-card border border-mat-border shrink-0">

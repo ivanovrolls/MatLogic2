@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { sessionsApi, techniquesApi } from '@/lib/api'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { ChevronLeft, Loader2, Plus, X } from 'lucide-react'
@@ -57,13 +57,14 @@ function RatingPicker({ label, value, onChange }: {
 export default function NewSessionPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
   const [selectedTechniques, setSelectedTechniques] = useState<TechniqueMinimal[]>([])
   const [techSearch, setTechSearch] = useState('')
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      date: format(new Date(), 'yyyy-MM-dd'),
+      date: searchParams.get('date') || format(new Date(), 'yyyy-MM-dd'),
       session_type: 'gi',
       duration: 90,
       performance_rating: null,
