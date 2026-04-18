@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi } from '@/lib/api'
+import { sessionsApi, templatesApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Plus, Search, Trash2, ChevronRight, Loader2, Filter } from 'lucide-react'
-import type { TrainingSession } from '@/lib/types'
+import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown } from 'lucide-react'
+import type { TrainingSession, SessionTemplate } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 const SESSION_TYPES = [
   { value: '', label: 'All Types' },
@@ -37,7 +38,23 @@ export default function SessionsPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [page, setPage] = useState(1)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: templatesData } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => templatesApi.list().then(r => r.data?.results || r.data),
+  })
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: number) => templatesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+      toast.success('Template deleted.')
+    },
+  })
+
+  const templates: SessionTemplate[] = Array.isArray(templatesData) ? templatesData : []
 
   const { data, isLoading } = useQuery({
     queryKey: ['sessions', page, typeFilter, search],
@@ -68,6 +85,64 @@ export default function SessionsPage() {
         <Link href="/sessions/new" className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs">
           <Plus size={14} /> Log Session
         </Link>
+      </div>
+
+      {/* Templates */}
+      <div className="bg-mat-card border border-mat-border">
+        <button
+          onClick={() => setTemplatesOpen(o => !o)}
+          className="w-full px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors group"
+        >
+          <div className="flex items-center gap-2">
+            <BookTemplate size={14} className="text-mat-gold" />
+            <span className="text-mat-text-muted text-xs uppercase tracking-widest">Session Templates</span>
+            {templates.length > 0 && (
+              <span className="text-mat-text-dim text-xs">({templates.length})</span>
+            )}
+          </div>
+          <ChevronDown size={13} className={cn('text-mat-text-dim group-hover:text-mat-gold transition-transform', templatesOpen ? 'rotate-180' : '')} />
+        </button>
+        {templatesOpen && (
+          <div className="border-t border-mat-border">
+            {templates.length === 0 ? (
+              <div className="px-5 py-6 text-center text-mat-text-dim text-sm">
+                No templates yet.{' '}
+                <Link href="/sessions/new" className="text-mat-gold hover:underline">Log a session</Link>
+                {' '}and save it as a template.
+              </div>
+            ) : (
+              <div className="divide-y divide-mat-border">
+                {templates.map(tmpl => (
+                  <div key={tmpl.id} className="px-5 py-3 flex items-center justify-between group hover:bg-mat-darker transition-colors">
+                    <div>
+                      <p className="text-mat-text text-sm font-medium">{tmpl.title}</p>
+                      <p className="text-mat-text-muted text-xs mt-0.5">
+                        <span className={SESSION_TYPE_COLORS[tmpl.session_type]}>{tmpl.session_type_display}</span>
+                        {' · '}{tmpl.duration}min
+                        {tmpl.techniques.length > 0 && ` · ${tmpl.techniques.length} technique${tmpl.techniques.length !== 1 ? 's' : ''}`}
+                        {tmpl.instructor && ` · ${tmpl.instructor}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/sessions/new?template=${tmpl.id}`}
+                        className="btn-secondary text-xs px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Use
+                      </Link>
+                      <button
+                        onClick={() => { if (confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
+                        className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filters */}

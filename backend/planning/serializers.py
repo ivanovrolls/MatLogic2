@@ -28,7 +28,8 @@ class WeeklyPlanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'week_start', 'week_end', 'title', 'goals',
             'focus_techniques', 'focus_technique_ids', 'notes',
-            'sessions_planned', 'checklists', 'created_at', 'updated_at'
+            'sessions_planned', 'drill_mode', 'weekly_drills',
+            'checklists', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

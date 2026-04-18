@@ -18,6 +18,12 @@ class WeeklyPlan(models.Model):
     )
     notes = models.TextField(blank=True)
     sessions_planned = models.PositiveIntegerField(default=3)
+    drill_mode = models.CharField(
+        max_length=10,
+        choices=[('weekly', 'Weekly'), ('daily', 'Daily')],
+        default='weekly'
+    )
+    weekly_drills = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

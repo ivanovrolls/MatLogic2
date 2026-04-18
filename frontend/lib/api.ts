@@ -65,6 +65,14 @@ export const sessionsApi = {
   stats: () => api.get('/sessions/stats/'),
 }
 
+// ---- Session Templates ----
+export const templatesApi = {
+  list: () => api.get('/sessions/templates/'),
+  create: (data: object) => api.post('/sessions/templates/', data),
+  update: (id: number, data: object) => api.patch(`/sessions/templates/${id}/`, data),
+  delete: (id: number) => api.delete(`/sessions/templates/${id}/`),
+}
+
 // ---- Techniques ----
 export const techniquesApi = {
   list: (params?: object) => api.get('/techniques/', { params }),
@@ -110,8 +118,10 @@ export const planningApi = {
     api.post(`/planning/${planId}/generate_checklist/`, data),
   // Checklists
   getChecklist: (id: number) => api.get(`/planning/checklists/${id}/`),
+  createChecklist: (data: object) => api.post('/planning/checklists/', data),
   updateChecklist: (id: number, data: object) =>
     api.patch(`/planning/checklists/${id}/`, data),
+  deleteChecklist: (id: number) => api.delete(`/planning/checklists/${id}/`),
   toggleChecklistItem: (id: number, itemId: string) =>
     api.patch(`/planning/checklists/${id}/toggle_item/`, { item_id: itemId }),
 }

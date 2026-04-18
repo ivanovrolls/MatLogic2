@@ -27,6 +27,20 @@ export type Belt = 'white' | 'blue' | 'purple' | 'brown' | 'black'
 // ---- Training Sessions ----
 export type SessionType = 'gi' | 'nogi' | 'open_mat' | 'competition' | 'drilling' | 'wrestling' | 'fundamentals'
 
+export interface SessionTemplate {
+  id: number
+  title: string
+  session_type: SessionType
+  session_type_display: string
+  duration: number
+  notes: string
+  instructor: string
+  gym_location: string
+  techniques: TechniqueMinimal[]
+  created_at: string
+  updated_at: string
+}
+
 export interface TrainingSession {
   id: number
   date: string
@@ -127,10 +141,19 @@ export interface SparringRound {
 }
 
 // ---- Planning ----
+export interface DrillItem {
+  technique_id: number
+  technique_name: string
+  sets: number
+  reps: number
+}
+
 export interface ChecklistItem {
   id: string
   technique_id: number | null
   text: string
+  sets?: number
+  reps?: number
   completed: boolean
 }
 
@@ -153,6 +176,8 @@ export interface WeeklyPlan {
   focus_techniques: TechniqueMinimal[]
   notes: string
   sessions_planned: number
+  drill_mode: 'weekly' | 'daily'
+  weekly_drills: DrillItem[]
   checklists: SessionChecklist[]
   created_at: string
   updated_at: string

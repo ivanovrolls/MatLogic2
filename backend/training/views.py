@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import TrainingSession
-from .serializers import TrainingSessionSerializer, TrainingSessionListSerializer
+from .models import TrainingSession, SessionTemplate
+from .serializers import TrainingSessionSerializer, TrainingSessionListSerializer, SessionTemplateSerializer
 
 
 class TrainingSessionViewSet(viewsets.ModelViewSet):
@@ -49,3 +49,14 @@ class TrainingSessionViewSet(viewsets.ModelViewSet):
             'avg_performance': qs.aggregate(a=Avg('performance_rating'))['a'],
             'avg_session_duration': qs.aggregate(a=Avg('duration'))['a'],
         })
+
+
+class SessionTemplateViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SessionTemplateSerializer
+
+    def get_queryset(self):
+        return SessionTemplate.objects.filter(user=self.request.user).prefetch_related('techniques')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

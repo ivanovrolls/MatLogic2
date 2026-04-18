@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import TrainingSession
+from .models import TrainingSession, SessionTemplate
 from techniques.serializers import TechniqueMinimalSerializer
+from techniques.models import Technique
 
 
 class TrainingSessionSerializer(serializers.ModelSerializer):
@@ -56,3 +57,38 @@ class TrainingSessionListSerializer(serializers.ModelSerializer):
 
     def get_technique_count(self, obj):
         return obj.techniques_worked.count()
+
+
+class SessionTemplateSerializer(serializers.ModelSerializer):
+    session_type_display = serializers.CharField(source='get_session_type_display', read_only=True)
+    techniques = TechniqueMinimalSerializer(many=True, read_only=True)
+    technique_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        source='techniques',
+        queryset=Technique.objects.all(),
+        required=False
+    )
+
+    class Meta:
+        model = SessionTemplate
+        fields = [
+            'id', 'title', 'session_type', 'session_type_display', 'duration',
+            'notes', 'instructor', 'gym_location', 'techniques', 'technique_ids',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        techniques = validated_data.pop('techniques', [])
+        validated_data['user'] = self.context['request'].user
+        template = super().create(validated_data)
+        template.techniques.set(techniques)
+        return template
+
+    def update(self, instance, validated_data):
+        techniques = validated_data.pop('techniques', None)
+        instance = super().update(instance, validated_data)
+        if techniques is not None:
+            instance.techniques.set(techniques)
+        return instance
