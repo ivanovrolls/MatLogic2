@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import { format, parseISO, isThisWeek, isPast, addDays } from 'date-fns'
 import {
   Plus, CalendarDays, CheckCircle2, Circle, Loader2,
-  Target, ChevronDown, Trophy, ChevronRight
+  Target, ChevronDown, Trophy, ChevronRight, Pencil, Trash2, X,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { WeeklyPlan, TechniqueMinimal, ChecklistItem } from '@/lib/types'
@@ -41,13 +41,11 @@ function Collapsible({ open, children }: { open: boolean; children: React.ReactN
     const el = ref.current
     if (!el) return
     if (open) {
-      // measure then transition to exact height, then set auto
       const h = el.scrollHeight
       setHeight(h)
       const timer = setTimeout(() => setHeight('auto'), 300)
       return () => clearTimeout(timer)
     } else {
-      // snapshot current height first so transition has a start point
       const h = el.scrollHeight
       setHeight(h)
       requestAnimationFrame(() => setHeight(0))
@@ -125,111 +123,290 @@ function ChecklistWidget({ checklist, onToggle }: {
 
 // ── plan card ─────────────────────────────────────────────────────────────────
 
-function PlanCard({ plan, defaultOpen, onToggleItem, isToggling }: {
+function PlanCard({ plan, defaultOpen, onToggleItem, isToggling, allTechniques }: {
   plan: WeeklyPlan
   defaultOpen: boolean
   onToggleItem: (checklistId: number, itemId: string) => void
   isToggling: boolean
+  allTechniques: TechniqueMinimal[]
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState(plan.title)
+  const [editGoals, setEditGoals] = useState(plan.goals)
+  const [editSessions, setEditSessions] = useState(plan.sessions_planned)
+  const [editTechs, setEditTechs] = useState<TechniqueMinimal[]>(plan.focus_techniques)
+  const [techSearch, setTechSearch] = useState('')
+
+  const queryClient = useQueryClient()
   const complete = isPlanComplete(plan)
   const current = isCurrentWeek(plan.week_start)
+
+  const updateMutation = useMutation({
+    mutationFn: (data: object) => planningApi.update(plan.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Plan updated.')
+      setEditing(false)
+      setTechSearch('')
+    },
+    onError: () => toast.error('Failed to update plan.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => planningApi.delete(plan.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Plan deleted.')
+    },
+    onError: () => toast.error('Failed to delete plan.'),
+  })
+
+  const startEdit = () => {
+    setEditTitle(plan.title)
+    setEditGoals(plan.goals)
+    setEditSessions(plan.sessions_planned)
+    setEditTechs(plan.focus_techniques)
+    setTechSearch('')
+    setEditing(true)
+    setOpen(true)
+  }
+
+  const cancelEdit = () => {
+    setEditing(false)
+    setTechSearch('')
+  }
+
+  const saveEdit = () => {
+    updateMutation.mutate({
+      title: editTitle,
+      goals: editGoals,
+      sessions_planned: editSessions,
+      focus_technique_ids: editTechs.map(t => t.id),
+    })
+  }
+
+  const filteredTechs = allTechniques.filter(t =>
+    t.name.toLowerCase().includes(techSearch.toLowerCase()) &&
+    !editTechs.find(e => e.id === t.id)
+  )
 
   return (
     <div className={cn(
       'border transition-colors duration-300',
       complete ? 'bg-mat-card border-mat-gold/50' : 'bg-mat-card border-mat-border'
     )}>
-      {/* Header — click to expand/collapse */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full px-6 py-4 flex items-center justify-between text-left group"
-      >
-        <div className="flex items-center gap-3">
-          {complete && (
-            <Trophy size={15} className="text-mat-gold shrink-0" />
-          )}
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-display text-xl tracking-wider text-mat-text uppercase">
-                {plan.title || `Week of ${formatDate(plan.week_start)}`}
-              </h3>
-              {current && (
-                <span className="text-xs uppercase tracking-wider text-mat-black bg-mat-gold px-2 py-0.5 font-bold">
-                  This Week
-                </span>
-              )}
-              {complete && (
-                <span className="text-xs uppercase tracking-wider text-mat-gold border border-mat-gold/50 px-2 py-0.5">
-                  Complete
-                </span>
-              )}
+      {/* Header */}
+      <div className="w-full px-6 py-4 flex items-center justify-between">
+        <button
+          onClick={() => !editing && setOpen(o => !o)}
+          className="flex items-center gap-3 flex-1 text-left group"
+        >
+          <div className="flex items-center gap-3">
+            {complete && <Trophy size={15} className="text-mat-gold shrink-0" />}
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-display text-xl tracking-wider text-mat-text uppercase">
+                  {plan.title || `Week of ${formatDate(plan.week_start)}`}
+                </h3>
+                {current && (
+                  <span className="text-xs uppercase tracking-wider text-mat-black bg-mat-gold px-2 py-0.5 font-bold">
+                    This Week
+                  </span>
+                )}
+                {complete && (
+                  <span className="text-xs uppercase tracking-wider text-mat-gold border border-mat-gold/50 px-2 py-0.5">
+                    Complete
+                  </span>
+                )}
+              </div>
+              <p className="text-mat-text-muted text-xs mt-0.5">
+                {formatDate(plan.week_start, 'MMM d')} – {formatDate(plan.week_end, 'MMM d, yyyy')}
+                {' '}· {plan.sessions_planned} sessions planned
+              </p>
             </div>
-            <p className="text-mat-text-muted text-xs mt-0.5">
-              {formatDate(plan.week_start, 'MMM d')} – {formatDate(plan.week_end, 'MMM d, yyyy')}
-              {' '}· {plan.sessions_planned} sessions planned
-            </p>
           </div>
-        </div>
-        <ChevronDown
-          size={16}
-          className={cn(
-            'text-mat-text-dim group-hover:text-mat-gold transition-transform duration-300 shrink-0',
-            open ? 'rotate-180' : 'rotate-0'
+        </button>
+        <div className="flex items-center gap-1 shrink-0 ml-3">
+          <button
+            onClick={e => { e.stopPropagation(); editing ? cancelEdit() : startEdit() }}
+            className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
+            title={editing ? 'Cancel edit' : 'Edit plan'}
+          >
+            {editing ? <X size={13} /> : <Pencil size={13} />}
+          </button>
+          <button
+            onClick={e => {
+              e.stopPropagation()
+              if (confirm('Delete this plan?')) deleteMutation.mutate()
+            }}
+            className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
+            title="Delete plan"
+          >
+            <Trash2 size={13} />
+          </button>
+          {!editing && (
+            <button onClick={() => setOpen(o => !o)} className="p-1.5">
+              <ChevronDown
+                size={16}
+                className={cn(
+                  'text-mat-text-dim hover:text-mat-gold transition-transform duration-300',
+                  open ? 'rotate-180' : 'rotate-0'
+                )}
+              />
+            </button>
           )}
-        />
-      </button>
+        </div>
+      </div>
 
       {/* Collapsible body */}
       <Collapsible open={open}>
         <div className="px-6 pb-6 space-y-4 border-t border-mat-border pt-4">
-          {plan.goals && (
-            <div>
-              <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Goals</p>
-              <p className="text-mat-text-muted text-sm">{plan.goals}</p>
-            </div>
-          )}
 
-          {plan.focus_techniques.length > 0 && (
-            <div>
-              <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-2">Focus Techniques</p>
-              <div className="flex flex-wrap gap-2">
-                {plan.focus_techniques.map(t => (
-                  <Link
-                    key={t.id}
-                    href={`/techniques/${t.id}`}
-                    className="border border-mat-border hover:border-mat-gold px-3 py-1 text-xs text-mat-text transition-colors"
-                  >
-                    {t.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {plan.checklists.length > 0 && (
-            <div>
-              <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Session Checklists</p>
+          {/* Edit form */}
+          {editing && (
+            <div className="bg-mat-panel border border-mat-gold/30 p-4 space-y-4">
+              <p className="text-mat-gold text-xs uppercase tracking-widest">Edit Plan</p>
               <div className="grid md:grid-cols-2 gap-3">
-                {plan.checklists.map(cl => (
-                  <ChecklistWidget
-                    key={cl.id}
-                    checklist={cl}
-                    onToggle={onToggleItem}
+                <div>
+                  <label className="mat-label">Title</label>
+                  <input
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value)}
+                    className="mat-input"
+                    placeholder="e.g. Guard Passing Week"
                   />
-                ))}
+                </div>
+                <div>
+                  <label className="mat-label">Sessions Planned</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={14}
+                    value={editSessions}
+                    onChange={e => setEditSessions(Number(e.target.value))}
+                    className="mat-input"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mat-label">Goals</label>
+                <textarea
+                  value={editGoals}
+                  onChange={e => setEditGoals(e.target.value)}
+                  rows={2}
+                  className="mat-input resize-none"
+                  placeholder="What do you want to achieve this week?"
+                />
+              </div>
+              <div>
+                <label className="mat-label">Focus Techniques</label>
+                {editTechs.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {editTechs.map(t => (
+                      <span key={t.id} className="flex items-center gap-1 bg-mat-panel border border-mat-gold/30 px-2.5 py-0.5 text-xs text-mat-gold">
+                        {t.name}
+                        <button type="button" onClick={() => setEditTechs(p => p.filter(x => x.id !== t.id))}>
+                          <X size={9} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <input
+                    value={techSearch}
+                    onChange={e => setTechSearch(e.target.value)}
+                    className="mat-input text-sm"
+                    placeholder="Search techniques..."
+                  />
+                  {techSearch && filteredTechs.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 z-10 bg-mat-panel border border-mat-border max-h-36 overflow-y-auto">
+                      {filteredTechs.slice(0, 6).map(t => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => { setEditTechs(p => [...p, t]); setTechSearch('') }}
+                          className="w-full text-left px-4 py-2 hover:bg-mat-darker text-sm flex items-center gap-2"
+                        >
+                          <span className="text-mat-text">{t.name}</span>
+                          <span className="text-mat-text-dim text-xs">{t.position}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveEdit}
+                  disabled={updateMutation.isPending}
+                  className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
+                >
+                  {updateMutation.isPending
+                    ? <><Loader2 size={11} className="animate-spin" /> Saving...</>
+                    : 'Save Changes'
+                  }
+                </button>
+                <button onClick={cancelEdit} className="btn-secondary text-xs px-4 py-2">
+                  Cancel
+                </button>
               </div>
             </div>
           )}
 
-          <GenerateChecklistButton plan={plan} />
+          {/* View mode content */}
+          {!editing && (
+            <>
+              {plan.goals && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Goals</p>
+                  <p className="text-mat-text-muted text-sm">{plan.goals}</p>
+                </div>
+              )}
+
+              {plan.focus_techniques.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-2">Focus Techniques</p>
+                  <div className="flex flex-wrap gap-2">
+                    {plan.focus_techniques.map(t => (
+                      <Link
+                        key={t.id}
+                        href={`/techniques/${t.id}`}
+                        className="border border-mat-border hover:border-mat-gold px-3 py-1 text-xs text-mat-text transition-colors"
+                      >
+                        {t.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {plan.checklists.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Session Checklists</p>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {plan.checklists.map(cl => (
+                      <ChecklistWidget
+                        key={cl.id}
+                        checklist={cl}
+                        onToggle={onToggleItem}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <GenerateChecklistButton plan={plan} />
+            </>
+          )}
         </div>
       </Collapsible>
     </div>
   )
 }
 
-// ── generate checklist button (extracted to avoid prop drilling) ──────────────
+// ── generate checklist button ─────────────────────────────────────────────────
 
 function GenerateChecklistButton({ plan }: { plan: WeeklyPlan }) {
   const queryClient = useQueryClient()
@@ -298,7 +475,9 @@ export default function PlanningPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['plans'] }),
   })
 
-  const filteredTechs = (techniques || []).filter((t: TechniqueMinimal) =>
+  const allTechniques: TechniqueMinimal[] = Array.isArray(techniques) ? techniques : []
+
+  const filteredTechs = allTechniques.filter(t =>
     t.name.toLowerCase().includes(techSearch.toLowerCase()) &&
     !selectedTechs.find(s => s.id === t.id)
   )
@@ -420,7 +599,6 @@ export default function PlanningPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Current & future plans — default open */}
           {currentAndFuture.map(plan => (
             <PlanCard
               key={plan.id}
@@ -430,10 +608,10 @@ export default function PlanningPage() {
                 toggleMutation.mutate({ checklistId, itemId })
               }
               isToggling={toggleMutation.isPending}
+              allTechniques={allTechniques}
             />
           ))}
 
-          {/* Past plans — collapsed under a toggle */}
           {pastPlans.length > 0 && (
             <div className="border border-mat-border">
               <button
@@ -462,6 +640,7 @@ export default function PlanningPage() {
                         toggleMutation.mutate({ checklistId, itemId })
                       }
                       isToggling={toggleMutation.isPending}
+                      allTechniques={allTechniques}
                     />
                   ))}
                 </div>

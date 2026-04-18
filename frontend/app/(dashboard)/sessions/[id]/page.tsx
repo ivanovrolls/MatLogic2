@@ -6,7 +6,7 @@ import { sessionsApi, sparringApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Edit2, Swords, Plus, Loader2, Link2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound } from '@/lib/types'
@@ -22,6 +22,131 @@ function RatingDisplay({ label, value }: { label: string; value: number | null }
         ))}
         <span className="text-mat-gold text-sm ml-1 font-bold">{value}/5</span>
       </div>
+    </div>
+  )
+}
+
+function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlink: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
+  const hasSubs = r.submissions_attempted.length > 0 || r.submissions_conceded.length > 0
+  const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
+
+  return (
+    <div>
+      <div
+        className="px-6 py-3 flex items-center justify-between group hover:bg-mat-darker transition-colors cursor-pointer"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
+            <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
+            <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
+            <span className="text-mat-text-muted text-xs">{r.duration_minutes}min</span>
+            <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 ml-3 shrink-0">
+          <ChevronDown
+            size={13}
+            className={`text-mat-text-dim transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          />
+          <button
+            onClick={e => { e.stopPropagation(); onUnlink() }}
+            className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1 text-xs"
+            title="Unlink from session"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-6 pb-4 pt-1 bg-mat-darker border-t border-mat-border space-y-2">
+          {hasPositions && (
+            <div className="grid grid-cols-2 gap-3">
+              {r.dominant_positions.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Held</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.dominant_positions.map(p => (
+                      <span key={p} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5 capitalize">
+                        {p.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {r.positions_conceded.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Conceded</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.positions_conceded.map(p => (
+                      <span key={p} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5 capitalize">
+                        {p.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasSubs && (
+            <div className="grid grid-cols-2 gap-3">
+              {r.submissions_attempted.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Submissions Attempted</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.submissions_attempted.map(s => (
+                      <span key={s} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {r.submissions_conceded.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Tapped To</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.submissions_conceded.map(s => (
+                      <span key={s} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasCounts && (
+            <div className="flex gap-4">
+              {r.sweeps_completed > 0 && (
+                <span className="text-xs text-mat-text-muted">
+                  <span className="text-mat-gold font-bold">{r.sweeps_completed}</span> sweep{r.sweeps_completed !== 1 ? 's' : ''}
+                </span>
+              )}
+              {r.takedowns_completed > 0 && (
+                <span className="text-xs text-mat-text-muted">
+                  <span className="text-mat-gold font-bold">{r.takedowns_completed}</span> takedown{r.takedowns_completed !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
+
+          {r.notes && (
+            <p className="text-mat-text-dim text-xs italic leading-relaxed">{r.notes}</p>
+          )}
+
+          {!hasPositions && !hasSubs && !hasCounts && !r.notes && (
+            <p className="text-mat-text-dim text-xs">No additional details recorded.</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -114,7 +239,7 @@ export default function SessionDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/sessions/${id}/edit`} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-xs">
-            <Edit2 size={12} /> Edit
+            <Pencil size={12} /> Edit
           </Link>
           <button
             onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate() }}
@@ -272,25 +397,11 @@ export default function SessionDetailPage() {
         ) : (
           <div className="divide-y divide-mat-border">
             {sparringRounds.map(r => (
-              <div key={r.id} className="px-6 py-3 flex items-center justify-between group">
-                <div>
-                  <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
-                  <span className="text-mat-text-muted text-xs ml-2 capitalize">{r.partner_belt}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-mat-text-muted text-xs">{r.duration_minutes}min</span>
-                  <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>
-                    {r.outcome}
-                  </span>
-                  <button
-                    onClick={() => { if (confirm('Remove this round from the session?')) unlinkMutation.mutate(r.id) }}
-                    className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1 text-xs"
-                    title="Unlink from session"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
+              <SessionRoundRow
+                key={r.id}
+                round={r}
+                onUnlink={() => { if (confirm('Remove this round from the session?')) unlinkMutation.mutate(r.id) }}
+              />
             ))}
           </div>
         )}

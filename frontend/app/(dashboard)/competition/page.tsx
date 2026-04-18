@@ -6,7 +6,7 @@ import { competitionApi, techniquesApi } from '@/lib/api'
 import { formatDate, RESULT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { Plus, Trophy, Loader2, ChevronDown, ChevronUp, Target, Swords, Medal, Edit2, Trash2, Check, X } from 'lucide-react'
+import { Plus, Trophy, Loader2, ChevronDown, ChevronUp, Target, Swords, Medal, Pencil, Trash2, Check, X } from 'lucide-react'
 import type { Competition, CompetitionMatch, TechniqueMinimal } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -152,7 +152,7 @@ function CompetitionCard({ comp }: { comp: Competition }) {
             className="text-mat-text-dim hover:text-mat-gold transition-colors p-1"
             title={editing ? 'Cancel edit' : 'Edit competition'}
           >
-            {editing ? <X size={14} /> : <Edit2 size={14} />}
+            {editing ? <X size={14} /> : <Pencil size={14} />}
           </button>
           <button
             onClick={e => { e.stopPropagation(); if (confirm('Delete this competition?')) deleteMutation.mutate() }}

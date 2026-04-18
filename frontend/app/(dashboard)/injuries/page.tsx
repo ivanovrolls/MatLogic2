@@ -6,7 +6,7 @@ import { injuriesApi } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { Plus, Loader2, AlertTriangle, CheckCircle2, Edit2, Trash2, X } from 'lucide-react'
+import { Plus, Loader2, AlertTriangle, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
 import type { InjuryLog } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -165,7 +165,7 @@ function InjuryCard({ injury, onEdit, onDelete }: {
       </div>
       <div className="flex items-center gap-1 shrink-0">
         <button onClick={onEdit} className="text-mat-text-dim hover:text-mat-gold p-1.5 transition-colors">
-          <Edit2 size={13} />
+          <Pencil size={13} />
         </button>
         <button onClick={onDelete} className="text-mat-text-dim hover:text-mat-red-light p-1.5 transition-colors">
           <Trash2 size={13} />

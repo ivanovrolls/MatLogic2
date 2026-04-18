@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sparringApi } from '@/lib/api'
 import { formatDate, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Loader2, Swords, X, Edit2 } from 'lucide-react'
+import { Plus, Trash2, Loader2, Swords, X, Pencil, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { useSearchParams, useRouter } from 'next/navigation'
 import type { SparringRound } from '@/lib/types'
@@ -343,50 +343,151 @@ export default function SparringPage() {
         ) : (
           <div className="divide-y divide-mat-border">
             {rounds.map(r => (
-              <div key={r.id} className="px-5 py-3 flex items-start justify-between group hover:bg-mat-darker transition-colors">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
-                    <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
-                    <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
-                    <span className="text-mat-text-dim text-xs">{r.duration_minutes}min</span>
-                    <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>
-                  </div>
-                  {formatDate(r.date)}
-                  {(r.submissions_conceded.length > 0 || r.submissions_attempted.length > 0) && (
-                    <div className="flex items-center gap-4 mt-1">
-                      {r.submissions_attempted.length > 0 && (
-                        <span className="text-xs text-mat-green-light">
-                          Attempted: {r.submissions_attempted.join(', ')}
-                        </span>
-                      )}
-                      {r.submissions_conceded.length > 0 && (
-                        <span className="text-xs text-mat-red-light">
-                          Tapped to: {r.submissions_conceded.join(', ')}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {r.notes && <p className="text-mat-text-dim text-xs mt-1 italic">{r.notes}</p>}
-                </div>
-                <div className="text-mat-text-muted text-xs mr-4">{formatDate(r.date, 'MMM d')}</div>
-                <button
-                  onClick={() => startEdit(r)}
-                  className="text-mat-text-dim hover:text-mat-gold opacity-0 group-hover:opacity-100 transition-all p-1"
-                >
-                  <Edit2 size={12} />
-                </button>
-                <button
-                  onClick={() => { if (confirm('Delete round?')) deleteMutation.mutate(r.id) }}
-                  className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
+              <RoundRow
+                key={r.id}
+                round={r}
+                onEdit={() => startEdit(r)}
+                onDelete={() => { if (confirm('Delete round?')) deleteMutation.mutate(r.id) }}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function RoundRow({ round: r, onEdit, onDelete }: {
+  round: SparringRound
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
+  const hasSubs = r.submissions_attempted.length > 0 || r.submissions_conceded.length > 0
+  const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
+
+  return (
+    <div>
+      <div
+        className="px-5 py-3 flex items-center justify-between group hover:bg-mat-darker transition-colors cursor-pointer"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className={`text-sm font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
+            <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
+            <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
+            <span className="text-mat-text-dim text-xs">{r.duration_minutes}min</span>
+            <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>
+          </div>
+          <p className="text-mat-text-muted text-xs mt-0.5">{formatDate(r.date)}</p>
+        </div>
+        <div className="flex items-center gap-1 ml-3 shrink-0">
+          <ChevronDown
+            size={13}
+            className={`text-mat-text-dim transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+          />
+          <button
+            onClick={e => { e.stopPropagation(); onEdit() }}
+            className="text-mat-text-dim hover:text-mat-gold opacity-0 group-hover:opacity-100 transition-all p-1"
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="px-5 pb-4 pt-1 bg-mat-darker border-t border-mat-border space-y-2">
+          {hasPositions && (
+            <div className="grid grid-cols-2 gap-3">
+              {r.dominant_positions.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Held</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.dominant_positions.map(p => (
+                      <span key={p} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5 capitalize">
+                        {p.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {r.positions_conceded.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Conceded</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.positions_conceded.map(p => (
+                      <span key={p} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5 capitalize">
+                        {p.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasSubs && (
+            <div className="grid grid-cols-2 gap-3">
+              {r.submissions_attempted.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Submissions Attempted</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.submissions_attempted.map(s => (
+                      <span key={s} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {r.submissions_conceded.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Tapped To</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.submissions_conceded.map(s => (
+                      <span key={s} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {hasCounts && (
+            <div className="flex gap-4">
+              {r.sweeps_completed > 0 && (
+                <span className="text-xs text-mat-text-muted">
+                  <span className="text-mat-gold font-bold">{r.sweeps_completed}</span> sweep{r.sweeps_completed !== 1 ? 's' : ''}
+                </span>
+              )}
+              {r.takedowns_completed > 0 && (
+                <span className="text-xs text-mat-text-muted">
+                  <span className="text-mat-gold font-bold">{r.takedowns_completed}</span> takedown{r.takedowns_completed !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          )}
+
+          {r.notes && (
+            <p className="text-mat-text-dim text-xs italic leading-relaxed">{r.notes}</p>
+          )}
+
+          {!hasPositions && !hasSubs && !hasCounts && !r.notes && (
+            <p className="text-mat-text-dim text-xs">No additional details recorded.</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
