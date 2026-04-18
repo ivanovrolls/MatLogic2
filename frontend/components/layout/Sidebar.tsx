@@ -14,7 +14,7 @@ import { AndroidInstallButton } from '@/components/InstallPrompt'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/sessions', label: 'Sessions', icon: BookOpen },
-  { href: '/techniques', label: 'Techniques', icon: Database },
+  { href: '/techniques', label: 'Arsenal', icon: Database },
   { href: '/planning', label: 'Planner', icon: CalendarDays },
   { href: '/sparring', label: 'Sparring', icon: Swords },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
@@ -84,7 +84,12 @@ export function Sidebar() {
         <AndroidInstallButton className="flex items-center gap-3 w-full px-3 py-2 text-mat-gold text-sm hover:bg-mat-card transition-colors" />
         <Link
           href="/profile"
-          className="flex items-center gap-3 px-3 py-2 text-mat-text-muted hover:text-mat-text text-sm transition-colors hover:bg-mat-card"
+          className={cn(
+            'flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-mat-card border-l-2',
+            pathname === '/profile'
+              ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
+              : 'text-mat-text-muted hover:text-mat-text border-transparent'
+          )}
         >
           <User size={14} />
           <span>Profile</span>
