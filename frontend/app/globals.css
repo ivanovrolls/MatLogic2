@@ -144,6 +144,14 @@ body {
   }
 }
 
+/* Semi-opaque overlay — bg-mat-black/95 breaks with CSS variable colors in Tailwind */
+.mat-overlay {
+  background-color: rgba(8, 8, 8, 0.97);
+}
+[data-theme="light"] .mat-overlay {
+  background-color: rgba(240, 236, 228, 0.97);
+}
+
 /* Noise texture overlay */
 .noise-overlay::after {
   content: '';

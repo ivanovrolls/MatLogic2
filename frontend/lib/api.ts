@@ -52,6 +52,13 @@ export const authApi = {
   logout: (refresh: string) => api.post('/auth/logout/', { refresh }),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (data: object) => api.patch('/auth/profile/', data),
+  uploadAvatar: (file: File) => {
+    const form = new FormData()
+    form.append('avatar', file)
+    return api.patch('/auth/profile/', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ---- Training Sessions ----

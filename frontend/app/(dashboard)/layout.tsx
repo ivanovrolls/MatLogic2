@@ -38,7 +38,7 @@ function ProfileSetupModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-mat-black/95 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
       <div className="bg-mat-card border border-mat-gold/30 w-full max-w-md p-8 space-y-6 animate-slide-up">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-mat-gold/10 border border-mat-gold/30 flex items-center justify-center">

@@ -2,16 +2,36 @@
 
 import { useForm } from 'react-hook-form'
 import { useMutation } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
-import { Loader2, Shield, Star } from 'lucide-react'
+import { Loader2, Star, Camera } from 'lucide-react'
 import { BELT_COLORS } from '@/lib/utils'
 
 const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  const avatarMutation = useMutation({
+    mutationFn: (file: File) => authApi.uploadAvatar(file),
+    onSuccess: (res) => {
+      updateUser(res.data)
+      setAvatarPreview(null)
+      toast.success('Profile picture updated.')
+    },
+    onError: () => toast.error('Failed to upload picture.'),
+  })
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarPreview(URL.createObjectURL(file))
+    avatarMutation.mutate(file)
+  }
 
   const { register, handleSubmit, formState: { isDirty } } = useForm({
     defaultValues: {
@@ -42,9 +62,44 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl animate-fade-in space-y-5">
-      <div>
-        <p className="text-mat-text-muted text-xs uppercase tracking-widest">Account</p>
-        <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Profile</h1>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest">Account</p>
+          <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Profile</h1>
+        </div>
+
+        {/* Avatar upload */}
+        <div className="relative shrink-0">
+          <div
+            className="w-20 h-20 bg-mat-muted border border-mat-border overflow-hidden flex items-center justify-center cursor-pointer group"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {(avatarPreview || user?.avatar) ? (
+              <img
+                src={avatarPreview || user!.avatar!}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-mat-gold font-bold text-2xl select-none">
+                {user?.username.slice(0, 2).toUpperCase()}
+              </span>
+            )}
+            <div className="absolute inset-0 bg-mat-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {avatarMutation.isPending
+                ? <Loader2 size={18} className="text-white animate-spin" />
+                : <Camera size={18} className="text-white" />
+              }
+            </div>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
       </div>
 
       {/* Stats overview */}

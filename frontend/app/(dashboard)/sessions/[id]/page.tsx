@@ -11,7 +11,8 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound } from '@/lib/types'
 import { useAuthStore } from '@/stores/authStore'
-import { estimateCalories } from '@/lib/calories'
+import { estimateCalories, estimateCaloriesFromBlocks, BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
+import type { BlockType } from '@/lib/types'
 
 function RatingDisplay({ label, value }: { label: string; value: number | null }) {
   if (!value) return null
@@ -215,13 +216,16 @@ export default function SessionDetailPage() {
 
   const sparringRounds: SparringRound[] = (rounds as any)?.results || (Array.isArray(rounds) ? rounds : [])
   const sparringMinutes = sparringRounds.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
+  const hasBlocks = session?.session_blocks && session.session_blocks.length > 0
   const calories = session && user?.weight_kg
-    ? estimateCalories({
-        sessionType: session.session_type,
-        durationMinutes: session.duration,
-        weightKg: user.weight_kg,
-        sparringMinutes,
-      })
+    ? hasBlocks
+      ? estimateCaloriesFromBlocks(session.session_blocks!, user.weight_kg)
+      : estimateCalories({
+          sessionType: session.session_type,
+          durationMinutes: session.duration,
+          weightKg: user.weight_kg,
+          sparringMinutes,
+        })
     : null
   const allRoundsArr: SparringRound[] = (allRounds as any)?.results || (Array.isArray(allRounds) ? allRounds : [])
 
@@ -310,20 +314,35 @@ export default function SessionDetailPage() {
         )}
 
         {calories != null && (
-          <div className="mt-4 pt-4 border-t border-mat-border flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-mat-text-muted text-xs uppercase tracking-widest">
-              <Flame size={12} className="text-mat-gold" />
-              Est. Calories Burned
-              {sparringMinutes > 0 && (
-                <span className="text-mat-text-dim normal-case tracking-normal">
-                  (incl. {sparringMinutes}min sparring)
+          <div className="mt-4 pt-4 border-t border-mat-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-mat-text-muted text-xs uppercase tracking-widest">
+                <Flame size={12} className="text-mat-gold" />
+                Est. Calories Burned
+                <span className="text-mat-text-dim normal-case tracking-normal font-normal">
+                  {hasBlocks ? '(block-based)' : sparringMinutes > 0 ? `(incl. ${sparringMinutes}min sparring)` : ''}
                 </span>
-              )}
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="font-display text-3xl text-mat-gold">{calories.toLocaleString()}</span>
+                <span className="text-mat-text-muted text-xs">kcal</span>
+              </div>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="font-display text-3xl text-mat-gold">{calories.toLocaleString()}</span>
-              <span className="text-mat-text-muted text-xs">kcal</span>
-            </div>
+            {hasBlocks && (
+              <div className="mt-2 space-y-1">
+                {session!.session_blocks!.map((b, i) => {
+                  const kcal = user?.weight_kg
+                    ? Math.round((BLOCK_MET[b.block_type] ?? 5) * user.weight_kg * (b.duration_minutes / 60))
+                    : null
+                  return (
+                    <div key={i} className="flex items-center justify-between text-xs text-mat-text-muted">
+                      <span>{BLOCK_LABELS[b.block_type]} · {b.duration_minutes}min</span>
+                      {kcal != null && <span className="text-mat-text-dim">{kcal} kcal</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -346,6 +365,21 @@ export default function SessionDetailPage() {
           <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap">
             {session.notes}
           </p>
+        </div>
+      )}
+
+      {/* Session structure blocks */}
+      {hasBlocks && (
+        <div className="bg-mat-card border border-mat-border p-6">
+          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase mb-4">Session Structure</h3>
+          <div className="flex flex-wrap gap-2">
+            {session.session_blocks!.map((b, i) => (
+              <div key={i} className="flex items-center gap-2 bg-mat-panel border border-mat-border px-3 py-2 text-xs">
+                <span className="text-mat-text font-medium">{BLOCK_LABELS[b.block_type as BlockType]}</span>
+                <span className="text-mat-gold font-bold">{b.duration_minutes}min</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

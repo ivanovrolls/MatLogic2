@@ -27,6 +27,14 @@ export type Belt = 'white' | 'blue' | 'purple' | 'brown' | 'black'
 // ---- Training Sessions ----
 export type SessionType = 'gi' | 'nogi' | 'open_mat' | 'competition' | 'drilling' | 'wrestling' | 'fundamentals'
 
+export type BlockType = 'warmup' | 'drilling' | 'technique' | 'sparring' | 'conditioning' | 'cool_down'
+
+export interface SessionBlock {
+  id: string
+  block_type: BlockType
+  duration_minutes: number
+}
+
 export interface SessionTemplate {
   id: number
   title: string
@@ -56,6 +64,7 @@ export interface TrainingSession {
   gym_location: string
   round_count: number
   technique_count?: number
+  session_blocks?: SessionBlock[]
   created_at: string
   updated_at: string
 }

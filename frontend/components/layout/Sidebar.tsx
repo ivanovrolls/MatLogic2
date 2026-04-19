@@ -49,8 +49,11 @@ export function Sidebar() {
       {/* User info */}
       {user && (
         <Link href="/profile" className="px-4 py-4 border-b border-mat-border flex items-center gap-3 hover:bg-mat-card transition-colors group">
-          <div className="w-9 h-9 bg-mat-muted flex items-center justify-center text-mat-gold font-bold text-sm shrink-0">
-            {user.username.slice(0, 2).toUpperCase()}
+          <div className="w-9 h-9 bg-mat-muted flex items-center justify-center text-mat-gold font-bold text-sm shrink-0 overflow-hidden border border-mat-border">
+            {user.avatar
+              ? <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
+              : user.username.slice(0, 2).toUpperCase()
+            }
           </div>
           <div className="overflow-hidden">
             <p className="text-mat-text text-xs font-semibold truncate">{user.username}</p>

@@ -9,11 +9,118 @@ import { sessionsApi, techniquesApi, templatesApi } from '@/lib/api'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown } from 'lucide-react'
+import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown, LayoutList, Minus } from 'lucide-react'
 import Link from 'next/link'
-import type { TechniqueMinimal, SessionTemplate } from '@/lib/types'
+import type { TechniqueMinimal, SessionTemplate, SessionBlock, BlockType } from '@/lib/types'
 import { SESSION_TYPE_COLORS } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
+
+// ── Session block builder ─────────────────────────────────────────────────────
+
+const BLOCK_TYPES: BlockType[] = ['warmup', 'drilling', 'technique', 'sparring', 'conditioning', 'cool_down']
+
+const BLOCK_COLORS: Record<BlockType, string> = {
+  warmup: 'text-orange-400',
+  drilling: 'text-purple-400',
+  technique: 'text-mat-blue-light',
+  sparring: 'text-mat-red-light',
+  conditioning: 'text-mat-green-light',
+  cool_down: 'text-cyan-400',
+}
+
+function SessionBlockBuilder({
+  blocks,
+  onChange,
+}: {
+  blocks: SessionBlock[]
+  onChange: (blocks: SessionBlock[]) => void
+}) {
+  const addBlock = () => {
+    onChange([
+      ...blocks,
+      { id: crypto.randomUUID(), block_type: 'drilling', duration_minutes: 15 },
+    ])
+  }
+
+  const updateBlock = (id: string, patch: Partial<SessionBlock>) => {
+    onChange(blocks.map(b => b.id === id ? { ...b, ...patch } : b))
+  }
+
+  const removeBlock = (id: string) => {
+    onChange(blocks.filter(b => b.id !== id))
+  }
+
+  const total = blocks.reduce((s, b) => s + b.duration_minutes, 0)
+
+  return (
+    <div className="space-y-2">
+      {blocks.length === 0 && (
+        <p className="text-mat-text-dim text-xs py-2">No blocks yet. Add your first activity block below.</p>
+      )}
+      {blocks.map((block, i) => (
+        <div key={block.id} className="flex items-center gap-2">
+          <span className="text-mat-text-dim text-xs w-5 shrink-0 text-right">{i + 1}.</span>
+          <select
+            value={block.block_type}
+            onChange={e => updateBlock(block.id, { block_type: e.target.value as BlockType })}
+            className={cn('mat-input flex-1 text-sm', BLOCK_COLORS[block.block_type])}
+          >
+            {BLOCK_TYPES.map(t => (
+              <option key={t} value={t}>{BLOCK_LABELS[t]}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => updateBlock(block.id, { duration_minutes: Math.max(1, block.duration_minutes - 5) })}
+              className="w-7 h-9 border border-mat-border text-mat-text-muted hover:text-mat-gold hover:border-mat-gold transition-colors flex items-center justify-center"
+            >
+              <Minus size={11} />
+            </button>
+            <input
+              type="number"
+              value={block.duration_minutes}
+              onChange={e => updateBlock(block.id, { duration_minutes: Math.max(1, Number(e.target.value)) })}
+              className="mat-input w-16 text-sm text-center"
+              min={1}
+            />
+            <button
+              type="button"
+              onClick={() => updateBlock(block.id, { duration_minutes: block.duration_minutes + 5 })}
+              className="w-7 h-9 border border-mat-border text-mat-text-muted hover:text-mat-gold hover:border-mat-gold transition-colors flex items-center justify-center"
+            >
+              <Plus size={11} />
+            </button>
+            <span className="text-mat-text-dim text-xs w-6">min</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => removeBlock(block.id)}
+            className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1 shrink-0"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ))}
+
+      <div className="flex items-center justify-between pt-1">
+        <button
+          type="button"
+          onClick={addBlock}
+          className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+        >
+          <Plus size={11} /> Add Block
+        </button>
+        {total > 0 && (
+          <span className="text-mat-text-muted text-xs">
+            Total: <span className="text-mat-gold font-bold">{total} min</span>
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const schema = z.object({
   date: z.string(),
@@ -65,6 +172,8 @@ export default function NewSessionPage() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [saveAsTemplate, setSaveAsTemplate] = useState(false)
   const [templateTitle, setTemplateTitle] = useState('')
+  const [sessionMode, setSessionMode] = useState<'simple' | 'structured'>('simple')
+  const [sessionBlocks, setSessionBlocks] = useState<SessionBlock[]>([])
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -146,10 +255,17 @@ export default function NewSessionPage() {
     toast.success(`Loaded "${tmpl.title}"`)
   }
 
+  const blocksTotalMinutes = sessionBlocks.reduce((s, b) => s + b.duration_minutes, 0)
+
   const onSubmit = (data: FormData) => {
+    const effectiveDuration = sessionMode === 'structured' && blocksTotalMinutes > 0
+      ? blocksTotalMinutes
+      : data.duration
     mutation.mutate({
       ...data,
+      duration: effectiveDuration,
       techniques_worked_ids: selectedTechniques.map(t => t.id),
+      session_blocks: sessionMode === 'structured' ? sessionBlocks : [],
     })
   }
 
@@ -247,14 +363,65 @@ export default function NewSessionPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mat-label">Duration (minutes)</label>
-              <input {...register('duration')} type="number" className="mat-input" placeholder="90" min="1" />
+              <label className="mat-label">
+                Duration (minutes)
+                {sessionMode === 'structured' && blocksTotalMinutes > 0 && (
+                  <span className="text-mat-gold ml-1 normal-case tracking-normal font-normal">
+                    — auto from blocks ({blocksTotalMinutes}m)
+                  </span>
+                )}
+              </label>
+              <input
+                {...register('duration')}
+                type="number"
+                className={cn('mat-input', sessionMode === 'structured' && blocksTotalMinutes > 0 && 'opacity-40 pointer-events-none')}
+                placeholder="90"
+                min="1"
+                value={sessionMode === 'structured' && blocksTotalMinutes > 0 ? blocksTotalMinutes : undefined}
+                readOnly={sessionMode === 'structured' && blocksTotalMinutes > 0}
+              />
               {errors.duration && <p className="text-mat-red-light text-xs mt-1">{errors.duration.message}</p>}
             </div>
             <div>
               <label className="mat-label">Title (optional)</label>
               <input {...register('title')} className="mat-input" placeholder="e.g. Friday night class" />
             </div>
+          </div>
+
+          {/* Session structure */}
+          <div className="border border-mat-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LayoutList size={14} className="text-mat-gold" />
+                <span className="text-mat-text text-sm font-medium">Session Structure</span>
+              </div>
+              <div className="flex items-center gap-1 bg-mat-panel border border-mat-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setSessionMode('simple')}
+                  className={cn('text-xs px-3 py-1.5 transition-colors', sessionMode === 'simple' ? 'bg-mat-gold text-mat-black font-bold' : 'text-mat-text-muted hover:text-mat-text')}
+                >
+                  Simple
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSessionMode('structured')}
+                  className={cn('text-xs px-3 py-1.5 transition-colors', sessionMode === 'structured' ? 'bg-mat-gold text-mat-black font-bold' : 'text-mat-text-muted hover:text-mat-text')}
+                >
+                  Structured
+                </button>
+              </div>
+            </div>
+
+            {sessionMode === 'simple' && (
+              <p className="text-mat-text-dim text-xs">
+                The whole session is logged as one type. Switch to Structured to break it into activity blocks for accurate calorie tracking.
+              </p>
+            )}
+
+            {sessionMode === 'structured' && (
+              <SessionBlockBuilder blocks={sessionBlocks} onChange={setSessionBlocks} />
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
