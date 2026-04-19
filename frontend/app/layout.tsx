@@ -18,6 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="MatLogic" />
+        {/* Prevents flash of unstyled theme on load */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var s=localStorage.getItem('matlogic-theme');if(s){var d=JSON.parse(s);if(d.state&&d.state.theme==='light'){document.documentElement.setAttribute('data-theme','light')}}}catch(e){}})()` }} />
       </head>
       <body className="bg-mat-black text-mat-text antialiased">
         <Providers>{children}</Providers>

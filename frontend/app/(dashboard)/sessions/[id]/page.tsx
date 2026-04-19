@@ -6,10 +6,12 @@ import { sessionsApi, sparringApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound } from '@/lib/types'
+import { useAuthStore } from '@/stores/authStore'
+import { estimateCalories } from '@/lib/calories'
 
 function RatingDisplay({ label, value }: { label: string; value: number | null }) {
   if (!value) return null
@@ -155,6 +157,7 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
   const [showLinkPicker, setShowLinkPicker] = useState(false)
   const [roundSearch, setRoundSearch] = useState('')
 
@@ -211,6 +214,15 @@ export default function SessionDetailPage() {
   }
 
   const sparringRounds: SparringRound[] = (rounds as any)?.results || (Array.isArray(rounds) ? rounds : [])
+  const sparringMinutes = sparringRounds.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
+  const calories = session && user?.weight_kg
+    ? estimateCalories({
+        sessionType: session.session_type,
+        durationMinutes: session.duration,
+        weightKg: user.weight_kg,
+        sparringMinutes,
+      })
+    : null
   const allRoundsArr: SparringRound[] = (allRounds as any)?.results || (Array.isArray(allRounds) ? allRounds : [])
 
   // Rounds not already linked to this session
@@ -294,6 +306,35 @@ export default function SessionDetailPage() {
           <div className="grid grid-cols-2 gap-5 mt-4 pt-4 border-t border-mat-border">
             <RatingDisplay label="Performance" value={session.performance_rating} />
             <RatingDisplay label="Energy Level" value={session.energy_level} />
+          </div>
+        )}
+
+        {calories != null && (
+          <div className="mt-4 pt-4 border-t border-mat-border flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-mat-text-muted text-xs uppercase tracking-widest">
+              <Flame size={12} className="text-mat-gold" />
+              Est. Calories Burned
+              {sparringMinutes > 0 && (
+                <span className="text-mat-text-dim normal-case tracking-normal">
+                  (incl. {sparringMinutes}min sparring)
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-3xl text-mat-gold">{calories.toLocaleString()}</span>
+              <span className="text-mat-text-muted text-xs">kcal</span>
+            </div>
+          </div>
+        )}
+
+        {session && !user?.weight_kg && (
+          <div className="mt-4 pt-4 border-t border-mat-border">
+            <p className="text-mat-text-dim text-xs flex items-center gap-1.5">
+              <Flame size={11} />
+              <span>
+                Add your weight in <a href="/profile" className="text-mat-gold hover:underline">Profile</a> to see estimated calories burned.
+              </span>
+            </p>
           </div>
         )}
       </div>

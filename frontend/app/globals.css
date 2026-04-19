@@ -7,6 +7,31 @@
 :root {
   --font-bebas: 'Bebas Neue', Impact, sans-serif;
   --font-inter: 'Inter', system-ui, sans-serif;
+
+  /* Dark theme (default) */
+  --mat-black: #080808;
+  --mat-darker: #0d0d0d;
+  --mat-dark: #111111;
+  --mat-card: #161616;
+  --mat-panel: #1c1c1c;
+  --mat-border: #262626;
+  --mat-muted: #333333;
+  --mat-text: #ebebeb;
+  --mat-text-muted: #7a7a7a;
+  --mat-text-dim: #4a4a4a;
+}
+
+[data-theme="light"] {
+  --mat-black: #f0ece4;
+  --mat-darker: #e8e3d8;
+  --mat-dark: #ddd8cc;
+  --mat-card: #faf8f4;
+  --mat-panel: #ffffff;
+  --mat-border: #d4cdc0;
+  --mat-muted: #c8c2b5;
+  --mat-text: #1a1710;
+  --mat-text-muted: #6b6459;
+  --mat-text-dim: #b0a898;
 }
 
 * {
@@ -19,8 +44,8 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: #080808;
-  color: #ebebeb;
+  background-color: var(--mat-black);
+  color: var(--mat-text);
 }
 
 /* Scrollbar */
@@ -29,10 +54,10 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111111;
+  background: var(--mat-dark);
 }
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: var(--mat-muted);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
@@ -48,8 +73,8 @@ body {
 @layer base {
   body {
     font-family: var(--font-inter);
-    background-color: #080808;
-    color: #ebebeb;
+    background-color: var(--mat-black);
+    color: var(--mat-text);
   }
 }
 

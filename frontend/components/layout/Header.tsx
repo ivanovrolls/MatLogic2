@@ -8,14 +8,15 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, User, LogOut, HeartPulse
+  Swords, BarChart2, Trophy, User, LogOut, HeartPulse, Sun, Moon,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
+import { useThemeStore } from '@/stores/themeStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/sessions', label: 'Sessions', icon: BookOpen },
-  { href: '/techniques', label: 'Techniques', icon: Database },
+  { href: '/techniques', label: 'Arsenal', icon: Database },
   { href: '/planning', label: 'Planner', icon: CalendarDays },
   { href: '/sparring', label: 'Sparring', icon: Swords },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
@@ -28,6 +29,7 @@ export function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuthStore()
+  const { theme, toggleTheme } = useThemeStore()
 
   const handleLogout = async () => {
     await logout()
@@ -76,10 +78,22 @@ export function Header() {
             })}
             <div className="divider" />
             <AndroidInstallButton className="flex items-center gap-4 w-full px-4 py-3 text-mat-gold text-sm" />
+            <button
+              onClick={() => { toggleTheme(); setOpen(false) }}
+              className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </button>
             <Link
               href="/profile"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-4 px-4 py-3 text-mat-text-muted text-sm"
+              className={cn(
+                'flex items-center gap-4 px-4 py-3 text-sm border-l-2',
+                pathname === '/profile'
+                  ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
+                  : 'text-mat-text-muted border-transparent'
+              )}
             >
               <User size={16} /> Profile
             </Link>

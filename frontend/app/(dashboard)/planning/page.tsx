@@ -655,12 +655,12 @@ export default function PlanningPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-mat-text-muted text-xs uppercase tracking-widest">Deliberate Practice</p>
-          <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Weekly Planner</h1>
+          <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">Weekly Planner</h1>
         </div>
-        <button onClick={() => setShowNewPlan(!showNewPlan)} className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs">
+        <button onClick={() => setShowNewPlan(!showNewPlan)} className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs shrink-0">
           <Plus size={14} /> {showNewPlan ? 'Cancel' : 'New Plan'}
         </button>
       </div>
@@ -722,7 +722,7 @@ export default function PlanningPage() {
 
           {/* Drill mode toggle */}
           <div className="border border-mat-border p-4 space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Dumbbell size={14} className="text-mat-gold" />
                 <span className="text-mat-text text-sm font-medium">Drill Tracking</span>

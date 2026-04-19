@@ -7,9 +7,11 @@ import { cn, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, User, LogOut, ChevronRight, Shield, HeartPulse
+  Swords, BarChart2, Trophy, User, LogOut, ChevronRight, Shield, HeartPulse,
+  Sun, Moon,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
+import { useThemeStore } from '@/stores/themeStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -26,6 +28,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuthStore()
+  const { theme, toggleTheme } = useThemeStore()
 
   const handleLogout = async () => {
     await logout()
@@ -82,6 +85,13 @@ export function Sidebar() {
       {/* Footer */}
       <div className="border-t border-mat-border py-3 px-2">
         <AndroidInstallButton className="flex items-center gap-3 w-full px-3 py-2 text-mat-gold text-sm hover:bg-mat-card transition-colors" />
+        <button
+          onClick={toggleTheme}
+          className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors hover:bg-mat-card"
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
         <Link
           href="/profile"
           className={cn(

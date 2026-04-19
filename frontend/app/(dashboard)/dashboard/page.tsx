@@ -6,6 +6,7 @@ import { sessionsApi, analyticsApi, competitionApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import {
   format, subDays, addDays, parseISO, isSameDay, getDay, startOfDay,
@@ -14,7 +15,9 @@ import {
 import {
   BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
   Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
+  Zap, ChevronDown,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
@@ -324,6 +327,105 @@ function TrainingCalendar({
   )
 }
 
+function QuickLogPanel() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [sessionType, setSessionType] = useState('gi')
+  const [duration, setDuration] = useState(90)
+  const [title, setTitle] = useState('')
+
+  const mutation = useMutation({
+    mutationFn: (data: object) => sessionsApi.create(data),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics'] })
+      toast.success('Session logged!')
+      router.push(`/sessions/${res.data.id}`)
+    },
+    onError: () => toast.error('Failed to log session.'),
+  })
+
+  const handleLog = () => {
+    mutation.mutate({
+      date: format(new Date(), 'yyyy-MM-dd'),
+      session_type: sessionType,
+      duration,
+      title: title.trim() || undefined,
+    })
+  }
+
+  return (
+    <div className="bg-mat-card border border-mat-border">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors"
+      >
+        <div className="flex items-center gap-2 text-mat-text-muted">
+          <Zap size={13} className="text-mat-gold" />
+          <span className="text-sm font-medium">Quick Log Today&apos;s Session</span>
+        </div>
+        <ChevronDown size={14} className={cn('text-mat-text-dim transition-transform duration-200', open ? 'rotate-180' : '')} />
+      </button>
+
+      {open && (
+        <div className="border-t border-mat-border px-5 py-4 animate-slide-up">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <label className="mat-label">Type</label>
+              <select
+                value={sessionType}
+                onChange={e => setSessionType(e.target.value)}
+                className="mat-input w-36"
+              >
+                {[
+                  { value: 'gi', label: 'Gi' },
+                  { value: 'nogi', label: 'No-Gi' },
+                  { value: 'open_mat', label: 'Open Mat' },
+                  { value: 'drilling', label: 'Drilling' },
+                  { value: 'wrestling', label: 'Wrestling' },
+                  { value: 'fundamentals', label: 'Fundamentals' },
+                  { value: 'competition', label: 'Competition' },
+                ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mat-label">Duration (min)</label>
+              <input
+                type="number"
+                value={duration}
+                onChange={e => setDuration(Number(e.target.value))}
+                className="mat-input w-24"
+                min={1}
+              />
+            </div>
+            <div className="flex-1 min-w-32">
+              <label className="mat-label">Title (optional)</label>
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="mat-input"
+                placeholder="e.g. Friday night class"
+              />
+            </div>
+            <button
+              onClick={handleLog}
+              disabled={mutation.isPending}
+              className="btn-primary px-5 py-2 flex items-center gap-2 text-xs shrink-0 disabled:opacity-50"
+            >
+              {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+              Log Now
+            </button>
+            <Link href="/sessions/new" className="btn-secondary px-4 py-2 text-xs shrink-0">
+              Full Form
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function StatCard({ label, value, sub, color = 'text-mat-gold' }: {
   label: string, value: string | number, sub?: string, color?: string
 }) {
@@ -395,21 +497,24 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-mat-text-muted text-xs uppercase tracking-widest">Welcome back</p>
-          <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">
+          <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">
             {user?.username || 'Athlete'}
           </h1>
           <p className="text-mat-text-muted text-sm capitalize mt-0.5">
             {user?.display_belt} {user?.gym ? `· ${user.gym}` : ''}
           </p>
         </div>
-        <Link href="/sessions/new" className="btn-primary px-5 py-2.5 flex items-center gap-2 text-xs">
+        <Link href="/sessions/new" className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-xs shrink-0">
           <Plus size={14} />
-          Log Session
+          Full Log
         </Link>
       </div>
+
+      {/* Quick Log */}
+      <QuickLogPanel />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
