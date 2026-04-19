@@ -6,7 +6,7 @@ import { techniquesApi } from '@/lib/api'
 import { POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { Plus, Search, Trash2, ChevronRight, Loader2, Star } from 'lucide-react'
+import { Plus, Search, Trash2, Loader2, Pencil } from 'lucide-react'
 import type { Technique } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
@@ -129,9 +129,9 @@ export default function TechniquesPage() {
                 {techs.map(t => (
                   <div
                     key={t.id}
-                    className="bg-mat-card border border-mat-border hover:border-mat-gold/40 transition-colors group relative"
+                    className="bg-mat-card border border-mat-border hover:border-mat-gold/40 transition-colors group flex flex-col"
                   >
-                    <Link href={`/techniques/${t.id}`} className="block p-4">
+                    <Link href={`/techniques/${t.id}`} className="block p-4 flex-1">
                       <div className="flex items-start justify-between mb-2">
                         <p className="text-mat-text font-semibold text-sm leading-tight pr-2">{t.name}</p>
                         <span className={`text-xs font-bold uppercase shrink-0 ${TYPE_COLORS[t.technique_type] || 'text-mat-text-muted'}`}>
@@ -150,12 +150,22 @@ export default function TechniquesPage() {
                         )}
                       </div>
                     </Link>
-                    <button
-                      onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
-                      className="absolute top-3 right-3 text-mat-text-dim hover:text-mat-red-light transition-colors opacity-0 group-hover:opacity-100 p-1"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    {/* Action row — always visible on mobile, hover-reveal on desktop */}
+                    <div className="flex items-center justify-end gap-0.5 px-3 pb-2 border-t border-mat-border sm:border-transparent sm:opacity-0 sm:group-hover:opacity-100 sm:border-t-0 transition-opacity">
+                      <Link
+                        href={`/techniques/${t.id}/edit`}
+                        className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <Pencil size={12} />
+                      </Link>
+                      <button
+                        onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
+                        className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
