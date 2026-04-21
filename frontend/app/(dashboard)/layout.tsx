@@ -12,14 +12,52 @@ import { Loader2, User } from 'lucide-react'
 
 function ProfileSetupModal() {
   const { user, updateUser } = useAuthStore()
+  const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
   const [gender, setGender] = useState(user?.gender || '')
-  const [height, setHeight] = useState(user?.height_cm?.toString() || '')
-  const [weight, setWeight] = useState(user?.weight_kg?.toString() || '')
+  // metric inputs
+  const [heightCm, setHeightCm] = useState(user?.height_cm?.toString() || '')
+  const [weightKg, setWeightKg] = useState(user?.weight_kg?.toString() || '')
+  // imperial inputs
+  const [heightFt, setHeightFt] = useState('')
+  const [heightIn, setHeightIn] = useState('')
+  const [weightLbs, setWeightLbs] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  const switchUnits = (next: 'metric' | 'imperial') => {
+    if (next === units) return
+    if (next === 'imperial') {
+      // convert metric → imperial for display
+      if (heightCm) {
+        const totalIn = parseFloat(heightCm) / 2.54
+        setHeightFt(String(Math.floor(totalIn / 12)))
+        setHeightIn((totalIn % 12).toFixed(1))
+      }
+      if (weightKg) setWeightLbs((parseFloat(weightKg) * 2.2046).toFixed(1))
+    } else {
+      // convert imperial → metric for display
+      if (heightFt || heightIn) {
+        const totalIn = (parseFloat(heightFt || '0') * 12) + parseFloat(heightIn || '0')
+        setHeightCm((totalIn * 2.54).toFixed(1))
+      }
+      if (weightLbs) setWeightKg((parseFloat(weightLbs) / 2.2046).toFixed(1))
+    }
+    setUnits(next)
+  }
+
   const handleSave = async () => {
-    if (!gender || !height || !weight) {
+    let finalHeightCm: number
+    let finalWeightKg: number
+
+    if (units === 'metric') {
+      finalHeightCm = parseFloat(heightCm)
+      finalWeightKg = parseFloat(weightKg)
+    } else {
+      finalHeightCm = ((parseFloat(heightFt || '0') * 12) + parseFloat(heightIn || '0')) * 2.54
+      finalWeightKg = parseFloat(weightLbs) / 2.2046
+    }
+
+    if (!gender || isNaN(finalHeightCm) || isNaN(finalWeightKg)) {
       setError('All three fields are required.')
       return
     }
@@ -28,8 +66,8 @@ function ProfileSetupModal() {
     try {
       const res = await authApi.updateProfile({
         gender,
-        height_cm: parseFloat(height),
-        weight_kg: parseFloat(weight),
+        height_cm: Math.round(finalHeightCm * 10) / 10,
+        weight_kg: Math.round(finalWeightKg * 10) / 10,
       })
       updateUser(res.data)
     } catch {
@@ -55,47 +93,74 @@ function ProfileSetupModal() {
         </div>
 
         <div className="space-y-4">
+          {/* Units toggle */}
+          <div className="flex items-center gap-1 self-start border border-mat-border p-0.5 w-fit">
+            {(['metric', 'imperial'] as const).map(u => (
+              <button
+                key={u}
+                onClick={() => switchUnits(u)}
+                className={`px-4 py-1.5 text-xs uppercase tracking-wider transition-colors ${
+                  units === u ? 'bg-mat-gold text-mat-black font-bold' : 'text-mat-text-muted hover:text-mat-text'
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+
           <div>
             <label className="mat-label">Biological Sex</label>
-            <select
-              value={gender}
-              onChange={e => setGender(e.target.value)}
-              className="mat-input"
-            >
+            <select value={gender} onChange={e => setGender(e.target.value)} className="mat-input">
               <option value="">— Select —</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other / Prefer not to say</option>
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mat-label">Height (cm)</label>
-              <input
-                type="number"
-                value={height}
-                onChange={e => setHeight(e.target.value)}
-                className="mat-input"
-                placeholder="e.g. 178"
-                min="100"
-                max="250"
-                step="0.1"
-              />
+
+          {units === 'metric' ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mat-label">Height (cm)</label>
+                <input
+                  type="number" value={heightCm} onChange={e => setHeightCm(e.target.value)}
+                  className="mat-input" placeholder="e.g. 178" min="100" max="250" step="0.1"
+                />
+              </div>
+              <div>
+                <label className="mat-label">Weight (kg)</label>
+                <input
+                  type="number" value={weightKg} onChange={e => setWeightKg(e.target.value)}
+                  className="mat-input" placeholder="e.g. 76.5" min="30" max="300" step="0.1"
+                />
+              </div>
             </div>
-            <div>
-              <label className="mat-label">Weight (kg)</label>
-              <input
-                type="number"
-                value={weight}
-                onChange={e => setWeight(e.target.value)}
-                className="mat-input"
-                placeholder="e.g. 76.5"
-                min="30"
-                max="200"
-                step="0.1"
-              />
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mat-label">Feet</label>
+                <input
+                  type="number" value={heightFt} onChange={e => setHeightFt(e.target.value)}
+                  className="mat-input" placeholder="5" min="3" max="8"
+                />
+              </div>
+              <div>
+                <label className="mat-label">Inches</label>
+                <input
+                  type="number" value={heightIn} onChange={e => setHeightIn(e.target.value)}
+                  className="mat-input" placeholder="10" min="0" max="11" step="0.5"
+                />
+              </div>
+              <div>
+                <label className="mat-label">Weight (lbs)</label>
+                <input
+                  type="number" value={weightLbs} onChange={e => setWeightLbs(e.target.value)}
+                  className="mat-input" placeholder="168" min="66" max="660" step="0.5"
+                />
+              </div>
             </div>
-          </div>
+          )}
+
           {error && <p className="text-mat-red-light text-xs">{error}</p>}
         </div>
 
@@ -128,15 +193,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     fetchProfile()
   }, [isAuthenticated, router, fetchProfile])
 
+  const needsBodyMetrics = user && (!user.gender || user.height_cm == null || user.weight_kg == null)
+
   useEffect(() => {
-    if (isAuthenticated && !hasSeenTutorial) {
+    if (isAuthenticated && user && !needsBodyMetrics && !hasSeenTutorial) {
       openTutorial()
     }
-  }, [isAuthenticated, hasSeenTutorial, openTutorial])
+  }, [isAuthenticated, user, needsBodyMetrics, hasSeenTutorial, openTutorial])
 
   if (!isAuthenticated) return null
-
-  const needsBodyMetrics = user && (!user.gender || user.height_cm == null || user.weight_kg == null)
 
   return (
     <div className="min-h-screen bg-mat-black">
