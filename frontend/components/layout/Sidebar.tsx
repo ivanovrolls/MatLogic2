@@ -15,14 +15,14 @@ import { useThemeStore } from '@/stores/themeStore'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/sessions', label: 'Sessions', icon: BookOpen },
-  { href: '/techniques', label: 'Arsenal', icon: Database },
-  { href: '/planning', label: 'Planner', icon: CalendarDays },
-  { href: '/sparring', label: 'Sparring', icon: Swords },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { href: '/competition', label: 'Competition', icon: Trophy },
-  { href: '/injuries', label: 'Injuries', icon: HeartPulse },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
+  { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
+  { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
+  { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
+  { href: '/sparring', label: 'Sparring', icon: Swords, tutorialId: 'nav-sparring' },
+  { href: '/analytics', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
+  { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
+  { href: '/injuries', label: 'Injuries', icon: HeartPulse, tutorialId: 'nav-injuries' },
 ]
 
 export function Sidebar() {
@@ -67,12 +67,13 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-3">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map(({ href, label, icon: Icon, tutorialId }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
               href={href}
+              data-tutorial={tutorialId}
               className={cn(
                 'flex items-center gap-3 px-5 py-2.5 text-sm transition-all duration-150 relative group',
                 active
@@ -99,6 +100,7 @@ export function Sidebar() {
         </button>
         <Link
           href="/profile"
+          data-tutorial="nav-profile"
           className={cn(
             'flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-mat-card border-l-2',
             pathname === '/profile'

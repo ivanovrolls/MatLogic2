@@ -356,7 +356,7 @@ function QuickLogPanel() {
   }
 
   return (
-    <div className="bg-mat-card border border-mat-border">
+    <div className="bg-mat-card border border-mat-border" data-tutorial="quick-log">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors"
