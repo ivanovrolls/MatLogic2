@@ -8,10 +8,11 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, User, LogOut, HeartPulse, Sun, Moon,
+  Swords, BarChart2, Trophy, User, LogOut, HeartPulse, Sun, Moon, HelpCircle,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
+import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,6 +31,7 @@ export function Header() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
+  const { open: openTutorial } = useTutorialStore()
 
   const handleLogout = async () => {
     await logout()
@@ -97,6 +99,12 @@ export function Header() {
             >
               <User size={16} /> Profile
             </Link>
+            <button
+              onClick={() => { openTutorial(); setOpen(false) }}
+              className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
+            >
+              <HelpCircle size={16} /> Help Tour
+            </button>
             <button
               onClick={handleLogout}
               className="flex items-center gap-4 w-full px-4 py-3 text-mat-red-light text-sm"

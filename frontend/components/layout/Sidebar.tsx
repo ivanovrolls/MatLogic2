@@ -8,10 +8,11 @@ import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   Swords, BarChart2, Trophy, User, LogOut, ChevronRight, Shield, HeartPulse,
-  Sun, Moon,
+  Sun, Moon, HelpCircle,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
+import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -29,6 +30,7 @@ export function Sidebar() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
+  const { open: openTutorial } = useTutorialStore()
 
   const handleLogout = async () => {
     await logout()
@@ -107,6 +109,13 @@ export function Sidebar() {
           <User size={14} />
           <span>Profile</span>
         </Link>
+        <button
+          onClick={openTutorial}
+          className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors hover:bg-mat-card"
+        >
+          <HelpCircle size={14} />
+          <span>Help Tour</span>
+        </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-red-light text-sm transition-colors hover:bg-mat-card"

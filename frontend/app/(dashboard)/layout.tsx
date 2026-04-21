@@ -6,6 +6,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { authApi } from '@/lib/api'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
+import { Tutorial } from '@/components/Tutorial'
+import { useTutorialStore } from '@/stores/tutorialStore'
 import { Loader2, User } from 'lucide-react'
 
 function ProfileSetupModal() {
@@ -115,6 +117,7 @@ function ProfileSetupModal() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, fetchProfile, user } = useAuthStore()
+  const { hasSeenTutorial, open: openTutorial } = useTutorialStore()
   const router = useRouter()
 
   useEffect(() => {
@@ -124,6 +127,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     fetchProfile()
   }, [isAuthenticated, router, fetchProfile])
+
+  useEffect(() => {
+    if (isAuthenticated && !hasSeenTutorial) {
+      openTutorial()
+    }
+  }, [isAuthenticated, hasSeenTutorial, openTutorial])
 
   if (!isAuthenticated) return null
 
@@ -139,6 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </main>
       {needsBodyMetrics && <ProfileSetupModal />}
+      <Tutorial />
     </div>
   )
 }
