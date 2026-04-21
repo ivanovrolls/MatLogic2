@@ -13,7 +13,7 @@ import {
   startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth, getDate,
 } from 'date-fns'
 import {
-  BookOpen, Swords, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
+  BookOpen, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
   Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
   Zap, ChevronDown,
 } from 'lucide-react'
@@ -657,7 +657,6 @@ export default function DashboardPage() {
             <div className="p-3 space-y-1.5">
               {[
                 { href: '/sessions/new', label: 'Log Training Session', icon: BookOpen, color: 'text-mat-gold' },
-                { href: '/sessions?tab=sparring', label: 'Add Sparring Round', icon: Swords, color: 'text-mat-red-light' },
                 { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
                 { href: '/planning', label: 'Set Weekly Plan', icon: TrendingUp, color: 'text-mat-green-light' },
                 { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
