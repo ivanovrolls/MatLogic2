@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, ChevronRight, LayoutDashboard, BookOpen, Database, CalendarDays,
-  TrendingUp, User, Zap, HelpCircle, Flame, Lightbulb,
+  BarChart2, Trophy, User, Zap, HelpCircle, Flame, Lightbulb,
 } from 'lucide-react'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
@@ -61,7 +61,7 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: 'Sessions',
-    body: 'Log full training sessions with duration, type, and notes. Switch to the Sparring tab to track individual rounds and partners.',
+    body: 'Log full training sessions with duration, type, and notes. The Injuries tab here lets you track and monitor anything affecting your training.',
     target: '[data-tutorial="nav-sessions"]',
     placement: 'right',
   },
@@ -80,10 +80,17 @@ const STEPS: Step[] = [
     placement: 'right',
   },
   {
-    icon: TrendingUp,
-    title: 'Progress',
-    body: 'Analytics, Competition, and Injuries — all in one place. See training trends, log tournament results, and track your health.',
-    target: '[data-tutorial="nav-progress"]',
+    icon: BarChart2,
+    title: 'Analytics',
+    body: 'Visualize training volume, technique usage, and sparring trends. The Sparring Log tab shows a full read-only history of all your rounds.',
+    target: '[data-tutorial="nav-analytics"]',
+    placement: 'right',
+  },
+  {
+    icon: Trophy,
+    title: 'Competition',
+    body: 'Log tournament results, match-by-match breakdowns, and outcomes. Keep a complete competitive record.',
+    target: '[data-tutorial="nav-competition"]',
     placement: 'right',
   },
   {

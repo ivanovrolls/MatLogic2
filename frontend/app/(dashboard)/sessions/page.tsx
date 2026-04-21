@@ -1,21 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, templatesApi, sparringApi } from '@/lib/api'
-import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor, OUTCOME_COLORS } from '@/lib/utils'
+import { sessionsApi, templatesApi, injuriesApi } from '@/lib/api'
+import { formatDate, formatDuration, SESSION_TYPE_COLORS } from '@/lib/utils'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, Swords, X, Pencil } from 'lucide-react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, HeartPulse, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
-import type { TrainingSession, SessionTemplate, SparringRound } from '@/lib/types'
+import type { TrainingSession, SessionTemplate, InjuryLog } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-// ─── Sessions tab helpers ─────────────────────────────────────────────────────
+// ─── Sessions tab ─────────────────────────────────────────────────────────────
 
 const SESSION_TYPES = [
   { value: '', label: 'All Types' },
@@ -62,11 +59,7 @@ function SessionsTab() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['sessions', page, typeFilter, search],
-    queryFn: () => sessionsApi.list({
-      page,
-      session_type: typeFilter || undefined,
-      search: search || undefined,
-    }).then(r => r.data),
+    queryFn: () => sessionsApi.list({ page, session_type: typeFilter || undefined, search: search || undefined }).then(r => r.data),
   })
 
   const deleteMutation = useMutation({
@@ -90,9 +83,7 @@ function SessionsTab() {
           <div className="flex items-center gap-2">
             <BookTemplate size={14} className="text-mat-gold" />
             <span className="text-mat-text-muted text-xs uppercase tracking-widest">Session Templates</span>
-            {templates.length > 0 && (
-              <span className="text-mat-text-dim text-xs">({templates.length})</span>
-            )}
+            {templates.length > 0 && <span className="text-mat-text-dim text-xs">({templates.length})</span>}
           </div>
           <ChevronDown size={13} className={cn('text-mat-text-dim group-hover:text-mat-gold transition-transform', templatesOpen ? 'rotate-180' : '')} />
         </button>
@@ -118,12 +109,7 @@ function SessionsTab() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link
-                        href={`/sessions/new?template=${tmpl.id}`}
-                        className="btn-secondary text-xs px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        Use
-                      </Link>
+                      <Link href={`/sessions/new?template=${tmpl.id}`} className="btn-secondary text-xs px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">Use</Link>
                       <button
                         onClick={() => { if (confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
                         className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
@@ -150,27 +136,18 @@ function SessionsTab() {
             className="mat-input pl-8"
           />
         </div>
-        <select
-          value={typeFilter}
-          onChange={e => { setTypeFilter(e.target.value); setPage(1) }}
-          className="mat-input w-auto"
-        >
-          {SESSION_TYPES.map(t => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
+        <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1) }} className="mat-input w-auto">
+          {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       </div>
 
       {/* Table */}
       <div className="bg-mat-card border border-mat-border">
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 size={20} className="animate-spin text-mat-gold" />
-          </div>
+          <div className="flex items-center justify-center py-16"><Loader2 size={20} className="animate-spin text-mat-gold" /></div>
         ) : sessions.length === 0 ? (
           <div className="py-16 text-center text-mat-text-dim text-sm">
-            No sessions found.{' '}
-            <Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first session.</Link>
+            No sessions found.{' '}<Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first session.</Link>
           </div>
         ) : (
           <>
@@ -183,28 +160,18 @@ function SessionsTab() {
               <div className="col-span-2">Rating</div>
               <div className="col-span-1"></div>
             </div>
-            {sessions.map((s) => (
+            {sessions.map(s => (
               <div key={s.id} className="grid grid-cols-12 gap-3 items-center px-5 py-3.5 border-b border-mat-border last:border-0 hover:bg-mat-darker transition-colors group">
-                <div className="col-span-12 md:col-span-2 text-mat-text-muted text-sm">
-                  {formatDate(s.date, 'MMM d, yy')}
-                </div>
+                <div className="col-span-12 md:col-span-2 text-mat-text-muted text-sm">{formatDate(s.date, 'MMM d, yy')}</div>
                 <div className="col-span-6 md:col-span-2">
-                  <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || ''}`}>
-                    {s.session_type_display}
-                  </span>
+                  <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || ''}`}>{s.session_type_display}</span>
                 </div>
                 <div className="col-span-12 md:col-span-3 text-mat-text text-sm truncate">
                   {s.title || <span className="text-mat-text-dim italic">No title</span>}
                 </div>
-                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">
-                  {formatDuration(s.duration)}
-                </div>
-                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">
-                  {s.round_count > 0 ? s.round_count : '—'}
-                </div>
-                <div className="col-span-4 md:col-span-2">
-                  <RatingDots rating={s.performance_rating} />
-                </div>
+                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{formatDuration(s.duration)}</div>
+                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{s.round_count > 0 ? s.round_count : '—'}</div>
+                <div className="col-span-4 md:col-span-2"><RatingDots rating={s.performance_rating} /></div>
                 <div className="col-span-12 md:col-span-1 flex items-center justify-end gap-2">
                   <button
                     onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate(s.id) }}
@@ -222,25 +189,12 @@ function SessionsTab() {
         )}
       </div>
 
-      {/* Pagination */}
       {data && data.count > 20 && (
         <div className="flex items-center justify-between">
           <p className="text-mat-text-muted text-xs">{data.count} total sessions</p>
           <div className="flex gap-2">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={!data.previous}
-              className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage(p => p + 1)}
-              disabled={!data.next}
-              className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-40"
-            >
-              Next
-            </button>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={!data.previous} className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-40">Previous</button>
+            <button onClick={() => setPage(p => p + 1)} disabled={!data.next} className="btn-secondary text-xs px-3 py-1.5 disabled:opacity-40">Next</button>
           </div>
         </div>
       )}
@@ -248,327 +202,162 @@ function SessionsTab() {
   )
 }
 
-// ─── Sparring tab ─────────────────────────────────────────────────────────────
+// ─── Injuries tab ─────────────────────────────────────────────────────────────
 
-const POSITIONS = [
-  'mount', 'back', 'side_control', 'knee_on_belly', 'closed_guard',
-  'half_guard', 'open_guard', 'turtle', 'standing', 'north_south', 'leg_entanglement'
-]
+const BODY_PARTS = ['neck', 'shoulder', 'elbow', 'wrist', 'back', 'hip', 'knee', 'ankle', 'rib', 'finger', 'head', 'other']
+const SEVERITY_COLORS: Record<string, string> = {
+  mild: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/5',
+  moderate: 'text-orange-400 border-orange-400/30 bg-orange-400/5',
+  severe: 'text-mat-red-light border-mat-red/30 bg-mat-red/5',
+}
+const STATUS_COLORS: Record<string, string> = {
+  active: 'text-mat-red-light',
+  recovering: 'text-yellow-400',
+  resolved: 'text-mat-green-light',
+}
 
-const sparringSchema = z.object({
-  date: z.string(),
-  partner_name: z.string().min(1, 'Partner name required'),
-  partner_belt: z.enum(['white', 'blue', 'purple', 'brown', 'black', 'unknown']),
-  duration_minutes: z.coerce.number().min(1).max(60),
-  outcome: z.enum(['win', 'loss', 'draw']),
-  is_gi: z.preprocess(val => val === 'true' ? true : val === 'false' ? false : val, z.boolean()),
-  notes: z.string().optional(),
-})
-type SparringFormData = z.infer<typeof sparringSchema>
-
-function MultiPicker({ label, options, selected, onChange }: {
-  label: string
-  options: string[]
-  selected: string[]
-  onChange: (vals: string[]) => void
+function InjuryForm({ initial, onSave, onCancel, isPending }: {
+  initial?: Partial<InjuryLog>
+  onSave: (data: object) => void
+  onCancel: () => void
+  isPending: boolean
 }) {
-  const [custom, setCustom] = useState('')
-  const toggle = (val: string) => {
-    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val])
-  }
-  const addCustom = () => {
-    const v = custom.trim()
-    if (v && !selected.includes(v)) { onChange([...selected, v]) }
-    setCustom('')
+  const [bodyPart, setBodyPart] = useState(initial?.body_part || '')
+  const [severity, setSeverity] = useState<'mild' | 'moderate' | 'severe'>(initial?.severity || 'mild')
+  const [status, setStatus] = useState<'active' | 'recovering' | 'resolved'>(initial?.status || 'active')
+  const [dateOccurred, setDateOccurred] = useState(initial?.date_occurred || format(new Date(), 'yyyy-MM-dd'))
+  const [dateResolved, setDateResolved] = useState(initial?.date_resolved || '')
+  const [affectedTraining, setAffectedTraining] = useState(initial?.affected_training ?? true)
+  const [notes, setNotes] = useState(initial?.notes || '')
+
+  const submit = () => {
+    if (!bodyPart) { toast.error('Select a body part.'); return }
+    onSave({ body_part: bodyPart, severity, status, date_occurred: dateOccurred, date_resolved: dateResolved || null, affected_training: affectedTraining, notes })
   }
 
   return (
-    <div>
-      <label className="mat-label">{label}</label>
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {options.map(opt => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => toggle(opt)}
-            className={cn(
-              'text-xs px-2.5 py-1 border transition-all capitalize',
-              selected.includes(opt)
-                ? 'bg-mat-gold/20 border-mat-gold text-mat-gold'
-                : 'border-mat-border text-mat-text-dim hover:border-mat-muted'
-            )}
-          >
-            {opt.replace(/_/g, ' ')}
-          </button>
-        ))}
+    <div className="bg-mat-card border border-mat-border p-6 space-y-4 animate-slide-up">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div>
+          <label className="mat-label">Body Part</label>
+          <select value={bodyPart} onChange={e => setBodyPart(e.target.value)} className="mat-input">
+            <option value="">Select...</option>
+            {BODY_PARTS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mat-label">Severity</label>
+          <select value={severity} onChange={e => setSeverity(e.target.value as any)} className="mat-input">
+            <option value="mild">Mild</option>
+            <option value="moderate">Moderate</option>
+            <option value="severe">Severe</option>
+          </select>
+        </div>
+        <div>
+          <label className="mat-label">Status</label>
+          <select value={status} onChange={e => setStatus(e.target.value as any)} className="mat-input">
+            <option value="active">Active</option>
+            <option value="recovering">Recovering</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </div>
+        <div>
+          <label className="mat-label">Date Occurred</label>
+          <input type="date" value={dateOccurred} onChange={e => setDateOccurred(e.target.value)} className="mat-input" />
+        </div>
+        <div>
+          <label className="mat-label">Date Resolved</label>
+          <input type="date" value={dateResolved} onChange={e => setDateResolved(e.target.value)} className="mat-input" />
+        </div>
+        <div className="flex items-end pb-1">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={affectedTraining} onChange={e => setAffectedTraining(e.target.checked)} className="accent-mat-gold w-4 h-4" />
+            <span className="text-mat-text-muted text-xs uppercase tracking-wider">Affected Training</span>
+          </label>
+        </div>
       </div>
-      <div className="flex gap-1.5">
-        <input
-          value={custom}
-          onChange={e => setCustom(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
-          className="mat-input text-xs flex-1"
-          placeholder="Custom (e.g. Rear Naked Choke)..."
-        />
-        <button type="button" onClick={addCustom} className="btn-secondary px-2.5 py-1.5">
-          <Plus size={12} />
+      <div>
+        <label className="mat-label">Notes</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="mat-input resize-none" placeholder="How did it happen? What aggravates it?" />
+      </div>
+      <div className="flex gap-3">
+        <button onClick={submit} disabled={isPending} className="btn-primary px-6 py-2.5 flex items-center gap-2">
+          {isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : initial?.id ? 'Save Changes' : 'Log Injury'}
         </button>
+        <button onClick={onCancel} className="btn-secondary px-5 py-2.5">Cancel</button>
       </div>
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-1.5">
-          {selected.map(v => (
-            <span key={v} className="flex items-center gap-1 text-xs bg-mat-panel border border-mat-gold/30 text-mat-gold px-2 py-0.5">
-              {v}
-              <button type="button" onClick={() => toggle(v)}><X size={9} /></button>
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
 
-function RoundRow({ round: r, onEdit, onDelete }: {
-  round: SparringRound
-  onEdit: () => void
-  onDelete: () => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-
-  const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
-  const hasSubs = r.submissions_attempted.length > 0 || r.submissions_conceded.length > 0
-  const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
-
+function InjuryCard({ injury, onEdit, onDelete }: { injury: InjuryLog; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div>
-      <div
-        className="px-5 py-3 flex items-center justify-between group hover:bg-mat-darker transition-colors cursor-pointer"
-        onClick={() => setExpanded(e => !e)}
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className={`text-sm font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
-            <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
-            <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
-            <span className="text-mat-text-dim text-xs">{r.duration_minutes}min</span>
-            <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>
-          </div>
-          <p className="text-mat-text-muted text-xs mt-0.5">{formatDate(r.date)}</p>
+    <div className={cn('border p-5 flex items-start justify-between gap-4 bg-mat-card border-mat-border', injury.status === 'resolved' && 'opacity-70')}>
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="font-display text-lg tracking-wider text-mat-text uppercase">{injury.body_part_display}</span>
+          <span className={cn('text-xs font-bold uppercase px-2 py-0.5 border', SEVERITY_COLORS[injury.severity])}>{injury.severity_display}</span>
+          <span className={cn('text-xs font-bold uppercase', STATUS_COLORS[injury.status])}>{injury.status_display}</span>
         </div>
-        <div className="flex items-center gap-1 ml-3 shrink-0">
-          <ChevronDown
-            size={13}
-            className={`text-mat-text-dim transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          />
-          <button
-            onClick={e => { e.stopPropagation(); onEdit() }}
-            className="text-mat-text-dim hover:text-mat-gold opacity-0 group-hover:opacity-100 transition-all p-1"
-          >
-            <Pencil size={12} />
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); onDelete() }}
-            className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
-          >
-            <Trash2 size={12} />
-          </button>
+        <div className="flex items-center gap-4 text-xs text-mat-text-muted">
+          <span>Occurred: {formatDate(injury.date_occurred, 'MMM d, yyyy')}</span>
+          {injury.date_resolved && <span>Resolved: {formatDate(injury.date_resolved, 'MMM d, yyyy')}</span>}
+          {injury.affected_training && <span className="text-yellow-400">Affected training</span>}
         </div>
+        {injury.notes && <p className="text-mat-text-muted text-sm leading-relaxed">{injury.notes}</p>}
       </div>
-
-      {expanded && (
-        <div className="px-5 pb-4 pt-1 bg-mat-darker border-t border-mat-border space-y-2">
-          {hasPositions && (
-            <div className="grid grid-cols-2 gap-3">
-              {r.dominant_positions.length > 0 && (
-                <div>
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Held</p>
-                  <div className="flex flex-wrap gap-1">
-                    {r.dominant_positions.map(p => (
-                      <span key={p} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5 capitalize">
-                        {p.replace(/_/g, ' ')}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {r.positions_conceded.length > 0 && (
-                <div>
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Positions Conceded</p>
-                  <div className="flex flex-wrap gap-1">
-                    {r.positions_conceded.map(p => (
-                      <span key={p} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5 capitalize">
-                        {p.replace(/_/g, ' ')}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {hasSubs && (
-            <div className="grid grid-cols-2 gap-3">
-              {r.submissions_attempted.length > 0 && (
-                <div>
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Submissions Attempted</p>
-                  <div className="flex flex-wrap gap-1">
-                    {r.submissions_attempted.map(s => (
-                      <span key={s} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {r.submissions_conceded.length > 0 && (
-                <div>
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Tapped To</p>
-                  <div className="flex flex-wrap gap-1">
-                    {r.submissions_conceded.map(s => (
-                      <span key={s} className="text-xs bg-mat-panel border border-mat-red-light/30 text-mat-red-light px-2 py-0.5">{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {hasCounts && (
-            <div className="flex gap-4">
-              {r.sweeps_completed > 0 && (
-                <span className="text-xs text-mat-text-muted">
-                  <span className="text-mat-gold font-bold">{r.sweeps_completed}</span> sweep{r.sweeps_completed !== 1 ? 's' : ''}
-                </span>
-              )}
-              {r.takedowns_completed > 0 && (
-                <span className="text-xs text-mat-text-muted">
-                  <span className="text-mat-gold font-bold">{r.takedowns_completed}</span> takedown{r.takedowns_completed !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          )}
-          {r.notes && (
-            <p className="text-mat-text-dim text-xs italic leading-relaxed">{r.notes}</p>
-          )}
-          {!hasPositions && !hasSubs && !hasCounts && !r.notes && (
-            <p className="text-mat-text-dim text-xs">No additional details recorded.</p>
-          )}
-        </div>
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={onEdit} className="text-mat-text-dim hover:text-mat-gold p-1.5 transition-colors"><Pencil size={13} /></button>
+        <button onClick={onDelete} className="text-mat-text-dim hover:text-mat-red-light p-1.5 transition-colors"><Trash2 size={13} /></button>
+      </div>
     </div>
   )
 }
 
-function SparringTab({ sessionId }: { sessionId: string | null }) {
-  const router = useRouter()
-  const [showForm, setShowForm] = useState(!!sessionId)
-  const [editingRound, setEditingRound] = useState<SparringRound | null>(null)
-  const [dominant, setDominant] = useState<string[]>([])
-  const [conceded, setConceded] = useState<string[]>([])
-  const [subAttempted, setSubAttempted] = useState<string[]>([])
-  const [subConceded, setSubConceded] = useState<string[]>([])
+function InjuriesTab() {
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const queryClient = useQueryClient()
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['sparring'],
-    queryFn: () => sparringApi.list({ page_size: 50 }).then(r => r.data),
+  const { data, isLoading } = useQuery({ queryKey: ['injuries'], queryFn: () => injuriesApi.list().then(r => r.data?.results || r.data) })
+  const createMutation = useMutation({
+    mutationFn: (d: object) => injuriesApi.create(d),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['injuries'] }); toast.success('Injury logged.'); setShowForm(false) },
+    onError: () => toast.error('Failed to log injury.'),
   })
-
-  const { data: stats } = useQuery({
-    queryKey: ['sparring', 'stats'],
-    queryFn: () => sparringApi.stats().then(r => r.data),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: object }) => injuriesApi.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['injuries'] }); toast.success('Injury updated.'); setEditingId(null) },
+    onError: () => toast.error('Failed to update.'),
   })
-
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<SparringFormData>({
-    resolver: zodResolver(sparringSchema),
-    defaultValues: {
-      date: format(new Date(), 'yyyy-MM-dd'),
-      partner_belt: 'unknown',
-      outcome: 'draw',
-      duration_minutes: 5,
-      is_gi: true,
-    },
-  })
-
-  const mutation = useMutation({
-    mutationFn: (data: object) =>
-      editingRound ? sparringApi.update(editingRound.id, data) : sparringApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sparring'] })
-      toast.success(editingRound ? 'Round updated.' : 'Round logged.')
-      reset()
-      setDominant([]); setConceded([]); setSubAttempted([]); setSubConceded([])
-      setShowForm(false)
-      setEditingRound(null)
-      if (sessionId && !editingRound) router.push(`/sessions/${sessionId}`)
-    },
-    onError: () => toast.error(editingRound ? 'Failed to update round.' : 'Failed to log round.'),
-  })
-
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => sparringApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sparring'] })
-      toast.success('Round deleted.')
-    },
+    mutationFn: (id: number) => injuriesApi.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['injuries'] }); toast.success('Injury removed.') },
   })
 
-  const startEdit = (round: SparringRound) => {
-    setEditingRound(round)
-    setDominant(round.dominant_positions)
-    setConceded(round.positions_conceded)
-    setSubAttempted(round.submissions_attempted)
-    setSubConceded(round.submissions_conceded)
-    reset({
-      date: round.date,
-      partner_name: round.partner_name,
-      partner_belt: round.partner_belt,
-      duration_minutes: round.duration_minutes,
-      outcome: round.outcome,
-      is_gi: String(round.is_gi) as any,
-      notes: round.notes,
-    })
-    setShowForm(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const cancelForm = () => {
-    setShowForm(false)
-    setEditingRound(null)
-    reset()
-    setDominant([]); setConceded([]); setSubAttempted([]); setSubConceded([])
-  }
-
-  const onSubmit = (data: SparringFormData) => {
-    mutation.mutate({
-      ...data,
-      dominant_positions: dominant,
-      positions_conceded: conceded,
-      submissions_attempted: subAttempted,
-      submissions_conceded: subConceded,
-      ...(sessionId && !editingRound ? { session: Number(sessionId) } : {}),
-    })
-  }
-
-  const rounds: SparringRound[] = data?.results || (Array.isArray(data) ? data : [])
+  const injuries: InjuryLog[] = Array.isArray(data) ? data : []
+  const active = injuries.filter(i => i.status !== 'resolved')
+  const resolved = injuries.filter(i => i.status === 'resolved')
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-mat-text-muted text-xs uppercase tracking-widest">Roll Tracker</p>
+        <p className="text-mat-text-muted text-xs uppercase tracking-widest">Health Tracker</p>
         <button
-          onClick={() => showForm ? cancelForm() : setShowForm(true)}
+          onClick={() => { setShowForm(v => !v); setEditingId(null) }}
           className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs"
         >
-          <Plus size={14} /> {showForm ? 'Cancel' : 'Log Round'}
+          <Plus size={14} /> {showForm ? 'Cancel' : 'Log Injury'}
         </button>
       </div>
 
-      {/* Stats bar */}
-      {stats && stats.total_rounds > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+      {injuries.length > 0 && (
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Total Rounds', value: stats.total_rounds },
-            { label: 'Win Rate', value: `${stats.win_rate}%`, color: stats.win_rate >= 50 ? 'text-mat-green-light' : 'text-mat-red-light' },
-            { label: 'Wins', value: stats.wins, color: 'text-mat-green-light' },
-            { label: 'Losses', value: stats.losses, color: 'text-mat-red-light' },
-          ].map(({ label, value, color = 'text-mat-gold' }) => (
+            { label: 'Active', value: injuries.filter(i => i.status === 'active').length, color: 'text-mat-red-light' },
+            { label: 'Recovering', value: injuries.filter(i => i.status === 'recovering').length, color: 'text-yellow-400' },
+            { label: 'Resolved', value: resolved.length, color: 'text-mat-green-light' },
+          ].map(({ label, value, color }) => (
             <div key={label} className="bg-mat-card border border-mat-border p-4 text-center">
               <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">{label}</p>
               <p className={`font-display text-3xl ${color}`}>{value}</p>
@@ -577,127 +366,42 @@ function SparringTab({ sessionId }: { sessionId: string | null }) {
         </div>
       )}
 
-      {/* Log Round Form */}
-      {showForm && (
-        <div className="bg-mat-card border border-mat-border p-6 space-y-5 animate-slide-up">
-          <h3 className="font-display text-xl tracking-wider text-mat-text uppercase flex items-center gap-2">
-            <Swords size={16} className="text-mat-red-light" />
-            {editingRound ? 'Edit Sparring Round' : 'Log Sparring Round'}
-          </h3>
-          {sessionId && !editingRound && (
-            <p className="text-mat-gold text-xs">This round will be linked to your session.</p>
+      {showForm && <InjuryForm onSave={d => createMutation.mutate(d)} onCancel={() => setShowForm(false)} isPending={createMutation.isPending} />}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 size={20} className="animate-spin text-mat-gold" /></div>
+      ) : injuries.length === 0 ? (
+        <div className="py-16 text-center space-y-2">
+          <HeartPulse size={32} className="text-mat-text-dim mx-auto" />
+          <p className="text-mat-text-muted text-sm">No injuries logged.</p>
+          <p className="text-mat-text-dim text-xs">Stay healthy out there — log anything that needs monitoring.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {active.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-mat-text-muted text-xs uppercase tracking-widest flex items-center gap-2">
+                <AlertTriangle size={12} className="text-yellow-400" /> Current
+              </p>
+              {active.map(injury => editingId === injury.id
+                ? <InjuryForm key={injury.id} initial={injury} onSave={d => updateMutation.mutate({ id: injury.id, data: d })} onCancel={() => setEditingId(null)} isPending={updateMutation.isPending} />
+                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={() => { if (confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
+              )}
+            </div>
           )}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="mat-label">Date</label>
-                <input {...register('date')} type="date" className="mat-input" />
-              </div>
-              <div>
-                <label className="mat-label">Partner Name</label>
-                <input {...register('partner_name')} className="mat-input" placeholder="Training partner" />
-                {errors.partner_name && <p className="text-mat-red-light text-xs mt-1">{errors.partner_name.message}</p>}
-              </div>
-              <div>
-                <label className="mat-label">Partner Belt</label>
-                <select {...register('partner_belt')} className="mat-input">
-                  {['unknown','white','blue','purple','brown','black'].map(b => (
-                    <option key={b} value={b}>{b.charAt(0).toUpperCase() + b.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mat-label">Duration (min)</label>
-                <input {...register('duration_minutes')} type="number" min="1" max="60" className="mat-input" />
-              </div>
+          {resolved.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-mat-text-muted text-xs uppercase tracking-widest flex items-center gap-2">
+                <CheckCircle2 size={12} className="text-mat-green-light" /> Resolved
+              </p>
+              {resolved.map(injury => editingId === injury.id
+                ? <InjuryForm key={injury.id} initial={injury} onSave={d => updateMutation.mutate({ id: injury.id, data: d })} onCancel={() => setEditingId(null)} isPending={updateMutation.isPending} />
+                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={() => { if (confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
+              )}
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="mat-label">Outcome</label>
-                <div className="flex gap-2">
-                  {(['win', 'loss', 'draw'] as const).map(o => (
-                    <label key={o} className="flex items-center gap-1.5 cursor-pointer">
-                      <input {...register('outcome')} type="radio" value={o} className="accent-mat-gold" />
-                      <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[o]}`}>{o}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="mat-label">Format</label>
-                <div className="flex gap-3">
-                  {[{v: true, l: 'Gi'}, {v: false, l: 'No-Gi'}].map(({v, l}) => (
-                    <label key={l} className="flex items-center gap-1.5 cursor-pointer">
-                      <input {...register('is_gi')} type="radio" value={v.toString()} className="accent-mat-gold" />
-                      <span className="text-mat-text-muted text-xs">{l}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              <MultiPicker label="Dominant Positions (I had)" options={POSITIONS} selected={dominant} onChange={setDominant} />
-              <MultiPicker label="Positions Conceded (They had)" options={POSITIONS} selected={conceded} onChange={setConceded} />
-              <MultiPicker
-                label="Submissions Attempted"
-                options={['Triangle', 'Armbar', 'Rear Naked Choke', 'Guillotine', 'Kimura', 'Omoplata', 'Leg Lock', "D'Arce", 'Bow and Arrow']}
-                selected={subAttempted}
-                onChange={setSubAttempted}
-              />
-              <MultiPicker
-                label="Submissions Conceded"
-                options={['Triangle', 'Armbar', 'Rear Naked Choke', 'Guillotine', 'Kimura', 'Omoplata', 'Leg Lock', "D'Arce", 'Bow and Arrow']}
-                selected={subConceded}
-                onChange={setSubConceded}
-              />
-            </div>
-
-            <div>
-              <label className="mat-label">Round Notes</label>
-              <textarea {...register('notes')} rows={2} className="mat-input resize-none" placeholder="What happened? What would you do differently?" />
-            </div>
-
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="btn-primary px-6 py-2.5 flex items-center gap-2"
-            >
-              {mutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : editingRound ? 'Save Changes' : 'Log Round'}
-            </button>
-          </form>
+          )}
         </div>
       )}
-
-      {/* Round list */}
-      <div className="bg-mat-card border border-mat-border">
-        <div className="px-5 py-4 border-b border-mat-border">
-          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Round History</h3>
-        </div>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 size={18} className="animate-spin text-mat-gold" />
-          </div>
-        ) : rounds.length === 0 ? (
-          <div className="py-12 text-center space-y-2">
-            <Swords size={28} className="text-mat-text-dim mx-auto" />
-            <p className="text-mat-text-muted text-sm">No rounds logged yet.</p>
-            <p className="text-mat-text-dim text-xs">Track your first roll to start building your sparring record.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-mat-border">
-            {rounds.map(r => (
-              <RoundRow
-                key={r.id}
-                round={r}
-                onEdit={() => startEdit(r)}
-                onDelete={() => { if (confirm('Delete round?')) deleteMutation.mutate(r.id) }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
@@ -706,22 +410,13 @@ function SparringTab({ sessionId }: { sessionId: string | null }) {
 
 const TABS = [
   { value: 'sessions', label: 'Sessions' },
-  { value: 'sparring', label: 'Sparring', tutorialId: 'tab-sparring' },
+  { value: 'injuries', label: 'Injuries' },
 ]
 
 export default function SessionsPage() {
   const searchParams = useSearchParams()
   const initialTab = searchParams.get('tab')
-  const sessionId = searchParams.get('session')
-
-  const [tab, setTab] = useState(
-    TABS.some(t => t.value === initialTab) ? initialTab! : 'sessions'
-  )
-
-  // If there's a session query param, switch to sparring tab
-  useEffect(() => {
-    if (sessionId) setTab('sparring')
-  }, [sessionId])
+  const [tab, setTab] = useState(TABS.some(t => t.value === initialTab) ? initialTab! : 'sessions')
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -737,18 +432,14 @@ export default function SessionsPage() {
         )}
       </div>
 
-      {/* Tab switcher */}
       <div className="flex border-b border-mat-border">
         {TABS.map(t => (
           <button
             key={t.value}
             onClick={() => setTab(t.value)}
-            data-tutorial={t.tutorialId}
             className={cn(
               'px-5 py-3 text-sm font-medium tracking-wide transition-colors border-b-2 -mb-px',
-              tab === t.value
-                ? 'text-mat-gold border-mat-gold'
-                : 'text-mat-text-muted border-transparent hover:text-mat-text'
+              tab === t.value ? 'text-mat-gold border-mat-gold' : 'text-mat-text-muted border-transparent hover:text-mat-text'
             )}
           >
             {t.label}
@@ -757,7 +448,7 @@ export default function SessionsPage() {
       </div>
 
       {tab === 'sessions' && <SessionsTab />}
-      {tab === 'sparring' && <SparringTab sessionId={sessionId} />}
+      {tab === 'injuries' && <InjuriesTab />}
     </div>
   )
 }

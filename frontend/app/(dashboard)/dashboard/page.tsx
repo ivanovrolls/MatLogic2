@@ -660,8 +660,8 @@ export default function DashboardPage() {
                 { href: '/sessions?tab=sparring', label: 'Add Sparring Round', icon: Swords, color: 'text-mat-red-light' },
                 { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
                 { href: '/planning', label: 'Set Weekly Plan', icon: TrendingUp, color: 'text-mat-green-light' },
-                { href: '/progress?tab=competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
-                { href: '/progress?tab=injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
+                { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
+                { href: '/sessions?tab=injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
               ].map(({ href, label, icon: Icon, color }) => (
                 <Link
                   key={href}

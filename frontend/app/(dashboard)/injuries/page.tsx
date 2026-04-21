@@ -5,6 +5,6 @@ import { useRouter } from 'next/navigation'
 
 export default function InjuriesRedirect() {
   const router = useRouter()
-  useEffect(() => { router.replace('/progress?tab=injuries') }, [router])
+  useEffect(() => { router.replace('/sessions?tab=injuries') }, [router])
   return null
 }
