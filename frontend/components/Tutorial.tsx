@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, ChevronRight, LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, HeartPulse, User, Zap, HelpCircle, Flame, Lightbulb,
+  TrendingUp, User, Zap, HelpCircle, Flame, Lightbulb,
 } from 'lucide-react'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
@@ -61,7 +61,7 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: 'Sessions',
-    body: 'Log full training sessions with duration, type, techniques used, and notes. Review your full history here.',
+    body: 'Log full training sessions with duration, type, and notes. Switch to the Sparring tab to track individual rounds and partners.',
     target: '[data-tutorial="nav-sessions"]',
     placement: 'right',
   },
@@ -80,31 +80,10 @@ const STEPS: Step[] = [
     placement: 'right',
   },
   {
-    icon: Swords,
-    title: 'Sparring',
-    body: 'Track individual sparring rounds, partners, and observations to refine your game.',
-    target: '[data-tutorial="nav-sparring"]',
-    placement: 'right',
-  },
-  {
-    icon: BarChart2,
-    title: 'Analytics',
-    body: 'Visualize training volume, technique usage, and progress trends over time.',
-    target: '[data-tutorial="nav-analytics"]',
-    placement: 'right',
-  },
-  {
-    icon: Trophy,
-    title: 'Competition',
-    body: 'Log tournament results, divisions, and outcomes. Keep a complete competitive record.',
-    target: '[data-tutorial="nav-competition"]',
-    placement: 'right',
-  },
-  {
-    icon: HeartPulse,
-    title: 'Injuries',
-    body: 'Track injuries and affected areas so you can train around them and monitor recovery.',
-    target: '[data-tutorial="nav-injuries"]',
+    icon: TrendingUp,
+    title: 'Progress',
+    body: 'Analytics, Competition, and Injuries — all in one place. See training trends, log tournament results, and track your health.',
+    target: '[data-tutorial="nav-progress"]',
     placement: 'right',
   },
   {

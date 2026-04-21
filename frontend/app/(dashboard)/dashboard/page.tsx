@@ -539,6 +539,31 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Getting Started — only shown when no sessions exist */}
+      {stats !== undefined && stats?.total_sessions === 0 && (
+        <div className="bg-mat-card border border-mat-gold/30 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 bg-mat-gold" />
+            <h2 className="font-display text-lg tracking-wider text-mat-text uppercase">Getting Started</h2>
+          </div>
+          <p className="text-mat-text-muted text-xs">Three steps to get the most out of MatLogic:</p>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {[
+              { step: '01', label: 'Log your first session', desc: 'Record a training session to start tracking your progress.', href: '/sessions/new', cta: 'Log Session' },
+              { step: '02', label: 'Build your Arsenal', desc: 'Save techniques you\'re drilling so you can track them over time.', href: '/techniques/new', cta: 'Add Technique' },
+              { step: '03', label: 'Set your weekly plan', desc: 'Define training goals for each day to build consistency.', href: '/planning', cta: 'Open Planner' },
+            ].map(({ step, label, desc, href, cta }) => (
+              <Link key={step} href={href} className="group border border-mat-border p-4 hover:border-mat-gold/50 transition-colors block">
+                <p className="font-display text-2xl text-mat-gold/30 group-hover:text-mat-gold/60 transition-colors mb-2">{step}</p>
+                <p className="text-mat-text text-sm font-medium mb-1">{label}</p>
+                <p className="text-mat-text-dim text-xs leading-relaxed mb-3">{desc}</p>
+                <span className="text-mat-gold text-xs group-hover:underline">{cta} →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-4 items-stretch">
 
@@ -632,11 +657,11 @@ export default function DashboardPage() {
             <div className="p-3 space-y-1.5">
               {[
                 { href: '/sessions/new', label: 'Log Training Session', icon: BookOpen, color: 'text-mat-gold' },
-                { href: '/sparring', label: 'Add Sparring Round', icon: Swords, color: 'text-mat-red-light' },
+                { href: '/sessions?tab=sparring', label: 'Add Sparring Round', icon: Swords, color: 'text-mat-red-light' },
                 { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
                 { href: '/planning', label: 'Set Weekly Plan', icon: TrendingUp, color: 'text-mat-green-light' },
-                { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
-                { href: '/injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
+                { href: '/progress?tab=competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
+                { href: '/progress?tab=injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
               ].map(({ href, label, icon: Icon, color }) => (
                 <Link
                   key={href}

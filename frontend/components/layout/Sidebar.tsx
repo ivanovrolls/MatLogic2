@@ -7,7 +7,7 @@ import { cn, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
-  Swords, BarChart2, Trophy, User, LogOut, ChevronRight, Shield, HeartPulse,
+  TrendingUp, User, LogOut, ChevronRight, Shield,
   Sun, Moon, HelpCircle,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
@@ -19,10 +19,7 @@ const navItems = [
   { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
   { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
-  { href: '/sparring', label: 'Sparring', icon: Swords, tutorialId: 'nav-sparring' },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
-  { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
-  { href: '/injuries', label: 'Injuries', icon: HeartPulse, tutorialId: 'nav-injuries' },
+  { href: '/progress', label: 'Progress', icon: TrendingUp, tutorialId: 'nav-progress' },
 ]
 
 export function Sidebar() {
