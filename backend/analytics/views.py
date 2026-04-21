@@ -201,6 +201,16 @@ def technique_analysis(request):
     })
 
 
+BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black']
+
+
+def _belt_idx(belt):
+    try:
+        return BELT_ORDER.index(belt or 'white')
+    except ValueError:
+        return 0
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def insights(request):
@@ -210,7 +220,7 @@ def insights(request):
     warnings = []
     highlights = []
 
-    # Training frequency
+    # ── Training frequency ────────────────────────────────────────────────────
     last_30 = user.training_sessions.filter(
         date__gte=date.today() - timedelta(days=30)
     ).count()
@@ -236,13 +246,29 @@ def insights(request):
             'detail': f'{last_30} sessions in the last 30 days. Excellent dedication.',
         })
 
-    # Sparring win rate
-    recent_rounds = user.sparring_rounds.filter(
-        date__gte=date.today() - timedelta(days=60)
-    )
-    total_rounds = recent_rounds.count()
-    if total_rounds >= 10:
-        win_rate = recent_rounds.filter(outcome='win').count() / total_rounds * 100
+    # ── Sparring analysis ─────────────────────────────────────────────────────
+    # Determine context: prefer equal/higher belt rounds for meaningful comparisons
+    user_belt_idx = _belt_idx(user.belt)
+    equal_or_higher = BELT_ORDER[user_belt_idx:]
+
+    all_rounds = list(user.sparring_rounds.all())
+    peer_rounds = [r for r in all_rounds if r.partner_belt in equal_or_higher]
+
+    # Use peer rounds if enough data, fall back to all rounds
+    if len(peer_rounds) >= 8:
+        analysis_rounds = peer_rounds
+        belt_context = f"against {user.belt} belt and above partners"
+    else:
+        analysis_rounds = all_rounds
+        belt_context = "across all sparring rounds"
+
+    total_analysis = len(analysis_rounds)
+    recent_rounds = [r for r in all_rounds if r.date >= date.today() - timedelta(days=60)]
+    total_recent = len(recent_rounds)
+
+    # Overall win rate (recent 60 days)
+    if total_recent >= 10:
+        win_rate = sum(1 for r in recent_rounds if r.outcome == 'win') / total_recent * 100
         if win_rate < 30:
             warnings.append({
                 'type': 'low_win_rate',
@@ -257,20 +283,101 @@ def insights(request):
                 'detail': 'You\'re performing well. Consider seeking out tougher training partners to accelerate growth.',
             })
 
-        # Most conceded submission
+    # ── Submission concession analysis ────────────────────────────────────────
+    if total_analysis >= 5:
         all_conceded = []
-        for r in recent_rounds:
+        for r in analysis_rounds:
             all_conceded.extend(r.submissions_conceded)
-        if all_conceded:
-            top_loss = Counter(all_conceded).most_common(1)[0]
-            insights_list.append({
-                'type': 'submission_weakness',
-                'title': f'Most common tap: {top_loss[0]}',
-                'detail': f'You\'ve been caught with {top_loss[0]} {top_loss[1]} time(s) recently. Drill the escape specifically.',
-                'action': f'Add "{top_loss[0]} escape" to your technique database and weekly plan.',
-            })
 
-    # Technique database gaps
+        if all_conceded:
+            conceded_counts = Counter(all_conceded)
+            # Warn about the top 1-2 most conceded submissions (min 3 occurrences)
+            shown_concession = 0
+            for sub, count in conceded_counts.most_common(3):
+                if count < 3 or shown_concession >= 2:
+                    break
+                rate = round(count / total_analysis * 100)
+                if rate >= 40:
+                    warnings.append({
+                        'type': 'submission_concession',
+                        'title': f'Defensive gap: {sub}',
+                        'detail': f'You\'ve tapped to {sub} {count} times — that\'s {rate}% of your rounds {belt_context}. This is a consistent vulnerability.',
+                        'severity': 'medium',
+                        'action': f'Drill {sub} defense and escapes. Add it to your technique database.',
+                    })
+                else:
+                    insights_list.append({
+                        'type': 'submission_concession',
+                        'title': f'Most conceded: {sub}',
+                        'detail': f'You\'ve tapped to {sub} {count} times ({rate}% of rounds {belt_context}). Worth shoring up.',
+                        'action': f'Drill {sub} defense. Add the escape to your technique database.',
+                    })
+                shown_concession += 1
+
+    # ── Offensive weapon analysis ─────────────────────────────────────────────
+    if total_analysis >= 5:
+        sub_stats = {}  # sub -> {'attempts': 0, 'win_rounds': 0}
+        for r in analysis_rounds:
+            for sub in r.submissions_attempted:
+                if sub not in sub_stats:
+                    sub_stats[sub] = {'attempts': 0, 'win_rounds': 0}
+                sub_stats[sub]['attempts'] += 1
+                if r.outcome == 'win':
+                    sub_stats[sub]['win_rounds'] += 1
+
+        # Find weapons: 4+ attempts, sort by win-rate-when-used
+        candidates = [
+            (sub, d['attempts'], round(d['win_rounds'] / d['attempts'] * 100))
+            for sub, d in sub_stats.items()
+            if d['attempts'] >= 4
+        ]
+        candidates.sort(key=lambda x: x[2], reverse=True)
+
+        if candidates:
+            best_sub, attempts, wr = candidates[0]
+            if wr >= 65:
+                highlights.append({
+                    'type': 'submission_weapon',
+                    'title': f'Your {best_sub} is a killer',
+                    'detail': f'You win {wr}% of rounds where you go for a {best_sub} ({attempts} attempts {belt_context}). This is your sharpest weapon — keep hunting it.',
+                })
+            elif wr >= 45:
+                insights_list.append({
+                    'type': 'submission_potential',
+                    'title': f'Developing weapon: {best_sub}',
+                    'detail': f'You attempt {best_sub} regularly ({attempts} times {belt_context}) with a {wr}% win rate when you use it. Refine the entries and setups.',
+                    'action': f'Drill {best_sub} setups from your most common entry positions.',
+                })
+
+        # Check for high-volume attempts with low win rate — may signal telegraphing
+        for sub, attempts, wr in candidates:
+            if attempts >= 6 and wr < 30:
+                insights_list.append({
+                    'type': 'submission_overuse',
+                    'title': f'{sub}: high attempts, low conversion',
+                    'detail': f'You\'ve gone for {sub} {attempts} times {belt_context} but only win {wr}% of those rounds. Partners may be reading it.',
+                    'action': f'Work on {sub} setups and combination attacks to disguise the attempt.',
+                })
+                break  # Only flag the worst one
+
+    # ── Positional vulnerability analysis ────────────────────────────────────
+    if total_analysis >= 8:
+        all_conceded_pos = []
+        for r in analysis_rounds:
+            all_conceded_pos.extend(r.positions_conceded)
+
+        if all_conceded_pos:
+            top_pos, top_pos_count = Counter(all_conceded_pos).most_common(1)[0]
+            pos_rate = round(top_pos_count / total_analysis * 100)
+            if pos_rate >= 35:
+                insights_list.append({
+                    'type': 'position_weakness',
+                    'title': f'Positional gap: {top_pos.replace("_", " ")}',
+                    'detail': f'Your partner ends up in {top_pos.replace("_", " ")} in {pos_rate}% of your rounds {belt_context}. This is your most conceded position.',
+                    'action': f'Focus a training block on preventing and escaping {top_pos.replace("_", " ")}.',
+                })
+
+    # ── Technique database gaps ───────────────────────────────────────────────
     techniques = user.techniques.filter(is_active=True)
     if techniques.count() < 10:
         insights_list.append({
@@ -280,7 +387,7 @@ def insights(request):
             'action': 'Add at least 3 techniques per position you train regularly.',
         })
 
-    # Planning usage
+    # ── Planning usage ────────────────────────────────────────────────────────
     has_plan = user.weekly_plans.filter(
         week_start__gte=date.today() - timedelta(days=7)
     ).exists()
