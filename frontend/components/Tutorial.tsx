@@ -19,7 +19,7 @@ interface Step {
 }
 
 const TOOLTIP_W = 288
-const TOOLTIP_H = 190
+const TOOLTIP_H = 220  // slightly generous so clamping keeps tooltip in viewport
 const GAP = 14
 
 const STEPS: Step[] = [
@@ -102,32 +102,37 @@ const STEPS: Step[] = [
   },
 ]
 
+interface TooltipPos {
+  top: number
+  left: number
+  arrowDir: ArrowDir
+}
+
 export function Tutorial() {
   const { isOpen, close } = useTutorialStore()
   const [step, setStep] = useState(0)
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties | null>(null)
-  const [arrowDir, setArrowDir] = useState<ArrowDir>('none')
+  const [pos, setPos] = useState<TooltipPos | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
 
   const currentStep = STEPS[step]
 
+  // Track mobile breakpoint
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Compute tooltip position (desktop only)
   const computePosition = useCallback(() => {
-    if (!isOpen || !currentStep.target || typeof window === 'undefined') {
-      setTooltipStyle(null)
-      setArrowDir('none')
-      return
-    }
-    if (window.innerWidth < 1024) {
-      setTooltipStyle(null)
-      setArrowDir('none')
+    if (!isOpen || !currentStep.target || typeof window === 'undefined' || window.innerWidth < 1024) {
+      setPos(null)
       return
     }
 
     const el = document.querySelector<HTMLElement>(currentStep.target)
-    if (!el) {
-      setTooltipStyle(null)
-      setArrowDir('none')
-      return
-    }
+    if (!el) { setPos(null); return }
 
     const rect = el.getBoundingClientRect()
     const vw = window.innerWidth
@@ -135,26 +140,19 @@ export function Tutorial() {
 
     if (currentStep.placement === 'right') {
       const left = rect.right + GAP
-      if (left + TOOLTIP_W > vw - 8) {
-        setTooltipStyle(null)
-        setArrowDir('none')
-        return
-      }
+      if (left + TOOLTIP_W > vw - 8) { setPos(null); return }
       const top = Math.max(8, Math.min(
         rect.top + rect.height / 2 - TOOLTIP_H / 2,
         vh - TOOLTIP_H - 8,
       ))
-      setTooltipStyle({ top, left, width: TOOLTIP_W })
-      setArrowDir('left')
+      setPos({ top, left, arrowDir: 'left' })
     } else if (currentStep.placement === 'bottom') {
       const left = Math.max(8, Math.min(rect.left, vw - TOOLTIP_W - 8))
       const topBelow = rect.bottom + GAP
       if (topBelow + TOOLTIP_H < vh - 8) {
-        setTooltipStyle({ top: topBelow, left, width: TOOLTIP_W })
-        setArrowDir('top')
+        setPos({ top: topBelow, left, arrowDir: 'top' })
       } else {
-        setTooltipStyle({ top: rect.top - TOOLTIP_H - GAP, left, width: TOOLTIP_W })
-        setArrowDir('none')
+        setPos({ top: Math.max(8, rect.top - TOOLTIP_H - GAP), left, arrowDir: 'none' })
       }
     }
   }, [isOpen, currentStep])
@@ -170,21 +168,31 @@ export function Tutorial() {
     if (!isOpen || !currentStep.target) return
     const el = document.querySelector<HTMLElement>(currentStep.target)
     if (!el) return
-    const prev = el.style.boxShadow
+    const prevShadow = el.style.boxShadow
     const prevTransition = el.style.transition
     el.style.transition = 'box-shadow 0.2s'
     el.style.boxShadow = '0 0 0 2px #d4af37, 0 0 14px 3px rgba(212,175,55,0.25)'
     return () => {
-      el.style.boxShadow = prev
+      el.style.boxShadow = prevShadow
       el.style.transition = prevTransition
     }
   }, [isOpen, step, currentStep.target])
+
+  // On mobile: scroll target element into view when step changes
+  useEffect(() => {
+    if (!isOpen || !isMobile || !currentStep.target) return
+    const el = document.querySelector<HTMLElement>(currentStep.target)
+    if (!el) return
+    const timer = setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [isOpen, step, isMobile, currentStep.target])
 
   if (!isOpen) return null
 
   const { icon: Icon, title, body } = currentStep
   const isLast = step === STEPS.length - 1
-  const isCentered = !tooltipStyle
 
   const handleNext = () => {
     if (isLast) { close(); setStep(0) }
@@ -192,7 +200,20 @@ export function Tutorial() {
   }
   const handleClose = () => { close(); setStep(0) }
 
-  const cardContent = (
+  const dots = (
+    <div className="flex gap-1">
+      {STEPS.map((_, i) => (
+        <button
+          key={i}
+          onClick={() => setStep(i)}
+          className={`w-1.5 h-1.5 transition-colors ${i === step ? 'bg-mat-gold' : 'bg-mat-border hover:bg-mat-text-dim'}`}
+          aria-label={`Go to step ${i + 1}`}
+        />
+      ))}
+    </div>
+  )
+
+  const cardInner = (arrowDir: ArrowDir = 'none') => (
     <>
       {arrowDir === 'left' && (
         <div
@@ -206,7 +227,6 @@ export function Tutorial() {
           style={{ borderTop: '1px solid rgba(212,175,55,0.3)', borderLeft: '1px solid rgba(212,175,55,0.3)' }}
         />
       )}
-
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-mat-gold/10 border border-mat-gold/30 flex items-center justify-center shrink-0">
@@ -214,28 +234,13 @@ export function Tutorial() {
           </div>
           <h3 className="font-display text-base tracking-wider text-mat-text uppercase">{title}</h3>
         </div>
-        <button
-          onClick={handleClose}
-          className="text-mat-text-dim hover:text-mat-text transition-colors shrink-0 mt-0.5"
-          aria-label="Close tutorial"
-        >
+        <button onClick={handleClose} className="text-mat-text-dim hover:text-mat-text transition-colors shrink-0 mt-0.5" aria-label="Close tutorial">
           <X size={14} />
         </button>
       </div>
-
       <p className="text-mat-text-muted text-xs leading-relaxed mb-4">{body}</p>
-
       <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          {STEPS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setStep(i)}
-              className={`w-1.5 h-1.5 transition-colors ${i === step ? 'bg-mat-gold' : 'bg-mat-border hover:bg-mat-text-dim'}`}
-              aria-label={`Go to step ${i + 1}`}
-            />
-          ))}
-        </div>
+        {dots}
         <button onClick={handleNext} className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs">
           {isLast ? 'Done' : 'Next'}
           {!isLast && <ChevronRight size={12} />}
@@ -244,26 +249,40 @@ export function Tutorial() {
     </>
   )
 
-  if (isCentered) {
+  // --- Mobile: fixed bottom sheet, scrolls target into view behind it ---
+  if (isMobile) {
     return (
-      <div className="fixed inset-0 z-[60] mat-overlay flex items-center justify-center p-4 animate-fade-in">
-        <div className="bg-mat-card border border-mat-gold/30 w-full max-w-sm p-5 animate-slide-up relative shadow-xl">
-          {cardContent}
-        </div>
+      <div
+        className="bg-mat-card border-t border-mat-gold/30 p-5 shadow-2xl animate-slide-up"
+        style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 70 }}
+      >
+        <div className="relative">{cardInner()}</div>
       </div>
     )
   }
 
+  // --- Desktop: positioned tooltip next to target element ---
+  if (pos) {
+    return (
+      <>
+        <div className="fixed inset-0 bg-black/20" style={{ zIndex: 65 }} onClick={handleClose} />
+        <div
+          className="bg-mat-card border border-mat-gold/30 p-5 shadow-xl animate-slide-up"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: TOOLTIP_W, zIndex: 70 }}
+        >
+          {/* relative wrapper so arrows can use absolute positioning */}
+          <div className="relative">{cardInner(pos.arrowDir)}</div>
+        </div>
+      </>
+    )
+  }
+
+  // --- Desktop fallback: centered modal (Welcome step, or if element not found) ---
   return (
-    <>
-      {/* Subtle backdrop blocks accidental page clicks without obscuring the view */}
-      <div className="fixed inset-0 bg-black/20 pointer-events-auto" style={{ zIndex: 65 }} onClick={handleClose} />
-      <div
-        className="fixed bg-mat-card border border-mat-gold/30 p-5 animate-slide-up relative shadow-xl"
-        style={{ ...tooltipStyle, zIndex: 70 }}
-      >
-        {cardContent}
+    <div className="fixed inset-0 z-[60] mat-overlay flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-mat-card border border-mat-gold/30 w-full max-w-sm p-5 shadow-xl animate-slide-up">
+        <div className="relative">{cardInner()}</div>
       </div>
-    </>
+    </div>
   )
 }
