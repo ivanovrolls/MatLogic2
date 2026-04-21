@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/authStore'
@@ -15,14 +15,14 @@ import { useThemeStore } from '@/stores/themeStore'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/sessions', label: 'Sessions', icon: BookOpen },
-  { href: '/techniques', label: 'Arsenal', icon: Database },
-  { href: '/planning', label: 'Planner', icon: CalendarDays },
-  { href: '/sparring', label: 'Sparring', icon: Swords },
-  { href: '/analytics', label: 'Analytics', icon: BarChart2 },
-  { href: '/competition', label: 'Competition', icon: Trophy },
-  { href: '/injuries', label: 'Injuries', icon: HeartPulse },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
+  { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
+  { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
+  { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
+  { href: '/sparring', label: 'Sparring', icon: Swords, tutorialId: 'nav-sparring' },
+  { href: '/analytics', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
+  { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
+  { href: '/injuries', label: 'Injuries', icon: HeartPulse, tutorialId: 'nav-injuries' },
 ]
 
 export function Header() {
@@ -39,6 +39,18 @@ export function Header() {
     router.push('/login')
     setOpen(false)
   }
+
+  // Allow Tutorial component to control menu open/close on mobile
+  useEffect(() => {
+    const handleOpen = () => setOpen(true)
+    const handleClose = () => setOpen(false)
+    window.addEventListener('tutorial:open-menu', handleOpen)
+    window.addEventListener('tutorial:close-menu', handleClose)
+    return () => {
+      window.removeEventListener('tutorial:open-menu', handleOpen)
+      window.removeEventListener('tutorial:close-menu', handleClose)
+    }
+  }, [])
 
   return (
     <>
@@ -59,12 +71,13 @@ export function Header() {
       {open && (
         <div className="lg:hidden fixed inset-0 z-20 mat-overlay pt-14 animate-fade-in">
           <nav className="px-4 py-6 space-y-1">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {navItems.map(({ href, label, icon: Icon, tutorialId }) => {
               const active = pathname === href
               return (
                 <Link
                   key={href}
                   href={href}
+                  data-tutorial={tutorialId}
                   onClick={() => setOpen(false)}
                   className={cn(
                     'flex items-center gap-4 px-4 py-3 text-sm transition-colors',
@@ -89,6 +102,7 @@ export function Header() {
             </button>
             <Link
               href="/profile"
+              data-tutorial="nav-profile"
               onClick={() => setOpen(false)}
               className={cn(
                 'flex items-center gap-4 px-4 py-3 text-sm border-l-2',

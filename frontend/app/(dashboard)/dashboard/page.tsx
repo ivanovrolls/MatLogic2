@@ -507,10 +507,6 @@ export default function DashboardPage() {
             {user?.display_belt} {user?.gym ? `· ${user.gym}` : ''}
           </p>
         </div>
-        <Link href="/sessions/new" className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-xs shrink-0">
-          <Plus size={14} />
-          Full Log
-        </Link>
       </div>
 
       {/* Quick Log */}
@@ -600,7 +596,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Training Calendar */}
-          <div className="shrink-0">
+          <div className="shrink-0" data-tutorial="calendar">
             <TrainingCalendar
               sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
               competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
@@ -612,7 +608,7 @@ export default function DashboardPage() {
         {/* Right 1/3 */}
         <div className="flex flex-col gap-4">
           {allInsights.length > 0 && (
-            <div className="bg-mat-card border border-mat-border shrink-0">
+            <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="insights">
               <div className="px-5 py-4 border-b border-mat-border">
                 <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
                   <Lightbulb size={15} className="text-mat-gold" />
