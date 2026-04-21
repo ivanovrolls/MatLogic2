@@ -5,13 +5,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, techniquesApi, templatesApi } from '@/lib/api'
+import { sessionsApi, techniquesApi, templatesApi, sparringApi } from '@/lib/api'
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown, LayoutList, Minus } from 'lucide-react'
+import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown, LayoutList, Minus, Swords } from 'lucide-react'
 import Link from 'next/link'
-import type { TechniqueMinimal, SessionTemplate, SessionBlock, BlockType } from '@/lib/types'
+import type { TechniqueMinimal, SessionTemplate, SessionBlock, BlockType, PartnerBelt, Outcome } from '@/lib/types'
 import { SESSION_TYPE_COLORS } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
@@ -122,6 +122,253 @@ function SessionBlockBuilder({
   )
 }
 
+// ── Sparring round helpers ────────────────────────────────────────────────────
+
+const BELTS: PartnerBelt[] = ['white', 'blue', 'purple', 'brown', 'black', 'unknown']
+const OUTCOMES: Outcome[] = ['win', 'loss', 'draw']
+const OUTCOME_LABEL: Record<Outcome, string> = { win: 'W', loss: 'L', draw: 'D' }
+const OUTCOME_CLS: Record<Outcome, string> = {
+  win: 'bg-mat-green-light text-mat-black',
+  loss: 'bg-mat-red-light text-mat-black',
+  draw: 'bg-mat-text-muted text-mat-black',
+}
+
+interface DraftRound {
+  id: string
+  partner_name: string
+  partner_belt: PartnerBelt
+  duration_minutes: number
+  outcome: Outcome
+  is_gi: boolean
+  submissions_attempted: string[]
+  submissions_conceded: string[]
+  notes: string
+}
+
+function MultiChipInput({
+  label,
+  values,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  values: string[]
+  onChange: (v: string[]) => void
+  placeholder?: string
+}) {
+  const [input, setInput] = useState('')
+  const add = () => {
+    const v = input.trim()
+    if (v && !values.includes(v)) onChange([...values, v])
+    setInput('')
+  }
+  return (
+    <div>
+      <label className="mat-label">{label}</label>
+      <div className="flex flex-wrap gap-1 mb-1.5">
+        {values.map(v => (
+          <span key={v} className="flex items-center gap-1 text-xs bg-mat-panel border border-mat-border px-2 py-0.5 text-mat-text">
+            {v}
+            <button type="button" onClick={() => onChange(values.filter(x => x !== v))} className="text-mat-text-dim hover:text-mat-red-light">
+              <X size={9} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          className="mat-input text-xs flex-1"
+          placeholder={placeholder || 'Type and press Enter'}
+        />
+        <button type="button" onClick={add} className="btn-secondary text-xs px-2 py-1 shrink-0">Add</button>
+      </div>
+    </div>
+  )
+}
+
+function RoundCard({
+  round,
+  onRemove,
+}: {
+  round: DraftRound
+  onRemove: () => void
+}) {
+  return (
+    <div className="flex items-center gap-3 bg-mat-panel border border-mat-border px-4 py-2.5 text-sm">
+      <span className={cn('text-xs font-bold px-1.5 py-0.5', OUTCOME_CLS[round.outcome])}>
+        {OUTCOME_LABEL[round.outcome]}
+      </span>
+      <span className="text-mat-text font-medium flex-1 truncate">{round.partner_name}</span>
+      <span className="text-mat-text-muted text-xs capitalize">{round.partner_belt}</span>
+      <span className="text-mat-text-dim text-xs">{round.duration_minutes}m</span>
+      <button type="button" onClick={onRemove} className="text-mat-text-dim hover:text-mat-red-light transition-colors shrink-0">
+        <X size={12} />
+      </button>
+    </div>
+  )
+}
+
+function AddRoundForm({
+  sessionDate,
+  isGiDefault,
+  onAdd,
+}: {
+  sessionDate: string
+  isGiDefault: boolean
+  onAdd: (round: DraftRound) => void
+}) {
+  const empty = (): DraftRound => ({
+    id: crypto.randomUUID(),
+    partner_name: '',
+    partner_belt: 'unknown',
+    duration_minutes: 5,
+    outcome: 'win',
+    is_gi: isGiDefault,
+    submissions_attempted: [],
+    submissions_conceded: [],
+    notes: '',
+  })
+  const [draft, setDraft] = useState<DraftRound>(empty)
+  const [showDetails, setShowDetails] = useState(false)
+
+  const patch = (p: Partial<DraftRound>) => setDraft(d => ({ ...d, ...p }))
+
+  const handleAdd = () => {
+    if (!draft.partner_name.trim()) return
+    onAdd(draft)
+    setDraft(empty())
+    setShowDetails(false)
+  }
+
+  return (
+    <div className="border border-mat-border p-4 space-y-3 bg-mat-panel">
+      {/* Row 1: outcome + partner */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 shrink-0">
+          {OUTCOMES.map(o => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => patch({ outcome: o })}
+              className={cn(
+                'w-8 h-9 text-xs font-bold transition-colors border',
+                draft.outcome === o
+                  ? OUTCOME_CLS[o] + ' border-transparent'
+                  : 'border-mat-border text-mat-text-muted hover:border-mat-gold hover:text-mat-gold'
+              )}
+            >
+              {OUTCOME_LABEL[o]}
+            </button>
+          ))}
+        </div>
+        <input
+          value={draft.partner_name}
+          onChange={e => patch({ partner_name: e.target.value })}
+          className="mat-input text-sm flex-1"
+          placeholder="Partner name"
+        />
+      </div>
+
+      {/* Row 2: belt + duration + gi toggle */}
+      <div className="flex items-center gap-2">
+        <select
+          value={draft.partner_belt}
+          onChange={e => patch({ partner_belt: e.target.value as PartnerBelt })}
+          className="mat-input text-sm flex-1 capitalize"
+        >
+          {BELTS.map(b => (
+            <option key={b} value={b}>{b === 'unknown' ? 'Unknown belt' : b.charAt(0).toUpperCase() + b.slice(1)}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => patch({ duration_minutes: Math.max(1, draft.duration_minutes - 1) })}
+            className="w-7 h-9 border border-mat-border text-mat-text-muted hover:text-mat-gold hover:border-mat-gold transition-colors flex items-center justify-center"
+          >
+            <Minus size={11} />
+          </button>
+          <input
+            type="number"
+            value={draft.duration_minutes}
+            onChange={e => patch({ duration_minutes: Math.max(1, Number(e.target.value)) })}
+            className="mat-input w-14 text-sm text-center"
+            min={1}
+          />
+          <button
+            type="button"
+            onClick={() => patch({ duration_minutes: draft.duration_minutes + 1 })}
+            className="w-7 h-9 border border-mat-border text-mat-text-muted hover:text-mat-gold hover:border-mat-gold transition-colors flex items-center justify-center"
+          >
+            <Plus size={11} />
+          </button>
+          <span className="text-mat-text-dim text-xs w-6">min</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => patch({ is_gi: !draft.is_gi })}
+          className={cn(
+            'text-xs px-3 py-2 border transition-colors shrink-0',
+            draft.is_gi
+              ? 'border-mat-gold text-mat-gold bg-mat-gold/10'
+              : 'border-mat-border text-mat-text-muted hover:border-mat-gold'
+          )}
+        >
+          {draft.is_gi ? 'Gi' : 'No-Gi'}
+        </button>
+      </div>
+
+      {/* Optional details */}
+      <button
+        type="button"
+        onClick={() => setShowDetails(v => !v)}
+        className="flex items-center gap-1 text-mat-text-dim hover:text-mat-text text-xs transition-colors"
+      >
+        <ChevronDown size={11} className={cn('transition-transform', showDetails ? 'rotate-180' : '')} />
+        {showDetails ? 'Hide details' : 'Add submissions & notes'}
+      </button>
+
+      {showDetails && (
+        <div className="space-y-3 pt-1 animate-slide-up">
+          <MultiChipInput
+            label="Submissions Attempted"
+            values={draft.submissions_attempted}
+            onChange={v => patch({ submissions_attempted: v })}
+            placeholder="e.g. Armbar, Triangle"
+          />
+          <MultiChipInput
+            label="Tapped To"
+            values={draft.submissions_conceded}
+            onChange={v => patch({ submissions_conceded: v })}
+            placeholder="e.g. Rear Naked Choke"
+          />
+          <div>
+            <label className="mat-label">Notes</label>
+            <input
+              value={draft.notes}
+              onChange={e => patch({ notes: e.target.value })}
+              className="mat-input text-sm"
+              placeholder="What happened in this round?"
+            />
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleAdd}
+        disabled={!draft.partner_name.trim()}
+        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40"
+      >
+        <Plus size={11} /> Add Round
+      </button>
+    </div>
+  )
+}
+
 const schema = z.object({
   date: z.string(),
   session_type: z.enum(['gi', 'nogi', 'open_mat', 'competition', 'drilling', 'wrestling', 'fundamentals']),
@@ -174,6 +421,7 @@ export default function NewSessionPage() {
   const [templateTitle, setTemplateTitle] = useState('')
   const [sessionMode, setSessionMode] = useState<'simple' | 'structured'>('simple')
   const [sessionBlocks, setSessionBlocks] = useState<SessionBlock[]>([])
+  const [draftRounds, setDraftRounds] = useState<DraftRound[]>([])
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -236,10 +484,35 @@ export default function NewSessionPage() {
 
   const mutation = useMutation({
     mutationFn: (data: object) => sessionsApi.create(data),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
+      const sessionId = res.data.id
+      const sessionDate = res.data.date
+      if (draftRounds.length > 0) {
+        await Promise.all(
+          draftRounds.map(r =>
+            sparringApi.create({
+              session: sessionId,
+              date: sessionDate,
+              partner_name: r.partner_name,
+              partner_belt: r.partner_belt,
+              duration_minutes: r.duration_minutes,
+              outcome: r.outcome,
+              is_gi: r.is_gi,
+              submissions_attempted: r.submissions_attempted,
+              submissions_conceded: r.submissions_conceded,
+              dominant_positions: [],
+              positions_conceded: [],
+              sweeps_completed: 0,
+              takedowns_completed: 0,
+              notes: r.notes,
+            })
+          )
+        )
+      }
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
+      queryClient.invalidateQueries({ queryKey: ['sparring'] })
       toast.success('Session logged.')
-      router.push(`/sessions/${res.data.id}`)
+      router.push(`/sessions/${sessionId}`)
     },
     onError: () => toast.error('Failed to save session.'),
   })
@@ -475,6 +748,33 @@ export default function NewSessionPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Sparring rounds */}
+        <div className="bg-mat-card border border-mat-border p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Swords size={14} className="text-mat-red-light" />
+            <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Sparring Rounds</h3>
+            {draftRounds.length > 0 && (
+              <span className="text-mat-text-dim text-xs ml-1">({draftRounds.length})</span>
+            )}
+          </div>
+          {draftRounds.length > 0 && (
+            <div className="space-y-1.5">
+              {draftRounds.map((r, i) => (
+                <RoundCard
+                  key={r.id}
+                  round={r}
+                  onRemove={() => setDraftRounds(prev => prev.filter((_, j) => j !== i))}
+                />
+              ))}
+            </div>
+          )}
+          <AddRoundForm
+            sessionDate={watch('date')}
+            isGiDefault={watchedType === 'gi'}
+            onAdd={r => setDraftRounds(prev => [...prev, r])}
+          />
         </div>
 
         {/* Save as template */}
