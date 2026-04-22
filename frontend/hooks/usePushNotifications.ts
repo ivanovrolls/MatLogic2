@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { notificationsApi } from '@/lib/api'
 
-function urlBase64ToUint8Array(base64: string): Uint8Array {
+function urlBase64ToUint8Array(base64: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4)
   const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/')
   const raw = window.atob(b64)
-  const result = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) result[i] = raw.charCodeAt(i)
-  return result
+  const buffer = new ArrayBuffer(raw.length)
+  const view = new Uint8Array(buffer)
+  for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i)
+  return buffer
 }
 
 export function usePushNotifications() {
