@@ -55,6 +55,7 @@ class SparringRound(models.Model):
     dominant_positions = models.JSONField(default=list, blank=True)
     positions_conceded = models.JSONField(default=list, blank=True)
     submissions_attempted = models.JSONField(default=list, blank=True)
+    submissions_hit = models.JSONField(default=list, blank=True)
     submissions_conceded = models.JSONField(default=list, blank=True)
     sweeps_completed = models.IntegerField(default=0)
     takedowns_completed = models.IntegerField(default=0)

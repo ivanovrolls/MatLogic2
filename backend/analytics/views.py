@@ -113,8 +113,8 @@ def sparring_stats(request):
     all_conceded_pos = []
 
     for r in rounds:
-        all_conceded.extend(r.submissions_conceded)
-        all_attempted.extend(r.submissions_attempted)
+        all_conceded.extend(_norm_sub(s) for s in r.submissions_conceded)
+        all_attempted.extend(_norm_sub(s) for s in r.submissions_attempted)
         all_dominant.extend(r.dominant_positions)
         all_conceded_pos.extend(r.positions_conceded)
 
@@ -204,6 +204,12 @@ def technique_analysis(request):
 BELT_ORDER = ['white', 'blue', 'purple', 'brown', 'black']
 
 
+def _norm_sub(name: str) -> str:
+    """Normalize a submission name: lowercase, strip apostrophes/special chars, collapse spaces."""
+    import re
+    return re.sub(r'\s+', ' ', re.sub(r"[^a-z0-9 ]", '', name.lower())).strip()
+
+
 def _belt_idx(belt):
     try:
         return BELT_ORDER.index(belt or 'white')
@@ -287,7 +293,7 @@ def insights(request):
     if total_analysis >= 5:
         all_conceded = []
         for r in analysis_rounds:
-            all_conceded.extend(r.submissions_conceded)
+            all_conceded.extend(_norm_sub(s) for s in r.submissions_conceded)
 
         if all_conceded:
             conceded_counts = Counter(all_conceded)
@@ -318,7 +324,7 @@ def insights(request):
     if total_analysis >= 5:
         sub_stats = {}  # sub -> {'attempts': 0, 'win_rounds': 0}
         for r in analysis_rounds:
-            for sub in r.submissions_attempted:
+            for sub in (_norm_sub(s) for s in r.submissions_attempted):
                 if sub not in sub_stats:
                     sub_stats[sub] = {'attempts': 0, 'win_rounds': 0}
                 sub_stats[sub]['attempts'] += 1

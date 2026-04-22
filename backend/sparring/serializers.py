@@ -14,7 +14,7 @@ class SparringRoundSerializer(serializers.ModelSerializer):
             'partner_belt', 'partner_belt_display', 'duration_minutes',
             'outcome', 'outcome_display', 'is_gi',
             'dominant_positions', 'positions_conceded',
-            'submissions_attempted', 'submissions_conceded',
+            'submissions_attempted', 'submissions_hit', 'submissions_conceded',
             'sweeps_completed', 'takedowns_completed',
             'notes', 'created_at', 'updated_at'
         ]

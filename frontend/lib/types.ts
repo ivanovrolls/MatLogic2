@@ -141,6 +141,7 @@ export interface SparringRound {
   dominant_positions: string[]
   positions_conceded: string[]
   submissions_attempted: string[]
+  submissions_hit: string[]
   submissions_conceded: string[]
   sweeps_completed: number
   takedowns_completed: number

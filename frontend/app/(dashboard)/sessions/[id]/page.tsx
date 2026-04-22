@@ -33,7 +33,7 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
   const [expanded, setExpanded] = useState(false)
 
   const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
-  const hasSubs = r.submissions_attempted.length > 0 || r.submissions_conceded.length > 0
+  const hasSubs = r.submissions_attempted.length > 0 || r.submissions_hit.length > 0 || r.submissions_conceded.length > 0
   const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
 
   return (
@@ -101,9 +101,21 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
             <div className="grid grid-cols-2 gap-3">
               {r.submissions_attempted.length > 0 && (
                 <div>
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Submissions Attempted</p>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Attempted</p>
                   <div className="flex flex-wrap gap-1">
                     {r.submissions_attempted.map(s => (
+                      <span key={s} className="text-xs bg-mat-panel border border-mat-text-dim/30 text-mat-text-muted px-2 py-0.5">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {r.submissions_hit.length > 0 && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Submissions Hit</p>
+                  <div className="flex flex-wrap gap-1">
+                    {r.submissions_hit.map(s => (
                       <span key={s} className="text-xs bg-mat-panel border border-mat-green-light/30 text-mat-green-light px-2 py-0.5">
                         {s}
                       </span>

@@ -9,7 +9,7 @@ import { sessionsApi, techniquesApi, templatesApi, sparringApi } from '@/lib/api
 import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
-import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown, LayoutList, Minus, Swords } from 'lucide-react'
+import { ChevronLeft, Loader2, Plus, X, BookTemplate, ChevronDown, LayoutList, Minus, Swords, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import type { TechniqueMinimal, SessionTemplate, SessionBlock, BlockType, PartnerBelt, Outcome } from '@/lib/types'
 import { SESSION_TYPE_COLORS } from '@/lib/utils'
@@ -141,6 +141,7 @@ interface DraftRound {
   outcome: Outcome
   is_gi: boolean
   submissions_attempted: string[]
+  submissions_hit: string[]
   submissions_conceded: string[]
   notes: string
 }
@@ -189,58 +190,32 @@ function MultiChipInput({
   )
 }
 
-function RoundCard({
-  round,
-  onRemove,
-}: {
-  round: DraftRound
-  onRemove: () => void
-}) {
-  return (
-    <div className="flex items-center gap-3 bg-mat-panel border border-mat-border px-4 py-2.5 text-sm">
-      <span className={cn('text-xs font-bold px-1.5 py-0.5', OUTCOME_CLS[round.outcome])}>
-        {OUTCOME_LABEL[round.outcome]}
-      </span>
-      <span className="text-mat-text font-medium flex-1 truncate">{round.partner_name}</span>
-      <span className="text-mat-text-muted text-xs capitalize">{round.partner_belt}</span>
-      <span className="text-mat-text-dim text-xs">{round.duration_minutes}m</span>
-      <button type="button" onClick={onRemove} className="text-mat-text-dim hover:text-mat-red-light transition-colors shrink-0">
-        <X size={12} />
-      </button>
-    </div>
-  )
-}
-
-function AddRoundForm({
-  sessionDate,
+function RoundForm({
+  initial,
   isGiDefault,
-  onAdd,
+  onSave,
+  onCancel,
+  saveLabel,
 }: {
-  sessionDate: string
+  initial: DraftRound
   isGiDefault: boolean
-  onAdd: (round: DraftRound) => void
+  onSave: (round: DraftRound) => void
+  onCancel?: () => void
+  saveLabel: string
 }) {
-  const empty = (): DraftRound => ({
-    id: crypto.randomUUID(),
-    partner_name: '',
-    partner_belt: 'unknown',
-    duration_minutes: 5,
-    outcome: 'win',
-    is_gi: isGiDefault,
-    submissions_attempted: [],
-    submissions_conceded: [],
-    notes: '',
-  })
-  const [draft, setDraft] = useState<DraftRound>(empty)
-  const [showDetails, setShowDetails] = useState(false)
+  const [draft, setDraft] = useState<DraftRound>(initial)
+  const [showDetails, setShowDetails] = useState(
+    initial.submissions_attempted.length > 0 ||
+    initial.submissions_hit.length > 0 ||
+    initial.submissions_conceded.length > 0 ||
+    !!initial.notes
+  )
 
   const patch = (p: Partial<DraftRound>) => setDraft(d => ({ ...d, ...p }))
 
-  const handleAdd = () => {
+  const handleSave = () => {
     if (!draft.partner_name.trim()) return
-    onAdd(draft)
-    setDraft(empty())
-    setShowDetails(false)
+    onSave(draft)
   }
 
   return (
@@ -340,10 +315,16 @@ function AddRoundForm({
             placeholder="e.g. Armbar, Triangle"
           />
           <MultiChipInput
+            label="Submissions Hit"
+            values={draft.submissions_hit}
+            onChange={v => patch({ submissions_hit: v })}
+            placeholder="e.g. Rear Naked Choke"
+          />
+          <MultiChipInput
             label="Tapped To"
             values={draft.submissions_conceded}
             onChange={v => patch({ submissions_conceded: v })}
-            placeholder="e.g. Rear Naked Choke"
+            placeholder="e.g. Guillotine"
           />
           <div>
             <label className="mat-label">Notes</label>
@@ -357,13 +338,65 @@ function AddRoundForm({
         </div>
       )}
 
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!draft.partner_name.trim()}
+          className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40"
+        >
+          <Plus size={11} /> {saveLabel}
+        </button>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="text-mat-text-dim hover:text-mat-text text-xs transition-colors">
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RoundCard({
+  round,
+  onEdit,
+  onRemove,
+}: {
+  round: DraftRound
+  onEdit: (updated: DraftRound) => void
+  onRemove: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+
+  if (editing) {
+    return (
+      <RoundForm
+        initial={round}
+        isGiDefault={round.is_gi}
+        saveLabel="Save"
+        onSave={updated => { onEdit(updated); setEditing(false) }}
+        onCancel={() => setEditing(false)}
+      />
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-3 bg-mat-panel border border-mat-border px-4 py-2.5 text-sm group">
+      <span className={cn('text-xs font-bold px-1.5 py-0.5 shrink-0', OUTCOME_CLS[round.outcome])}>
+        {OUTCOME_LABEL[round.outcome]}
+      </span>
+      <span className="text-mat-text font-medium flex-1 truncate">{round.partner_name}</span>
+      <span className="text-mat-text-muted text-xs capitalize">{round.partner_belt}</span>
+      <span className="text-mat-text-dim text-xs">{round.duration_minutes}m</span>
       <button
         type="button"
-        onClick={handleAdd}
-        disabled={!draft.partner_name.trim()}
-        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-40"
+        onClick={() => setEditing(true)}
+        className="text-mat-text-dim hover:text-mat-gold transition-colors shrink-0 opacity-0 group-hover:opacity-100 p-1"
       >
-        <Plus size={11} /> Add Round
+        <Pencil size={11} />
+      </button>
+      <button type="button" onClick={onRemove} className="text-mat-text-dim hover:text-mat-red-light transition-colors shrink-0">
+        <X size={12} />
       </button>
     </div>
   )
@@ -499,6 +532,7 @@ export default function NewSessionPage() {
               outcome: r.outcome,
               is_gi: r.is_gi,
               submissions_attempted: r.submissions_attempted,
+              submissions_hit: r.submissions_hit,
               submissions_conceded: r.submissions_conceded,
               dominant_positions: [],
               positions_conceded: [],
@@ -765,15 +799,28 @@ export default function NewSessionPage() {
                 <RoundCard
                   key={r.id}
                   round={r}
+                  onEdit={updated => setDraftRounds(prev => prev.map((x, j) => j === i ? updated : x))}
                   onRemove={() => setDraftRounds(prev => prev.filter((_, j) => j !== i))}
                 />
               ))}
             </div>
           )}
-          <AddRoundForm
-            sessionDate={watch('date')}
+          <RoundForm
+            initial={{
+              id: '',
+              partner_name: '',
+              partner_belt: 'unknown',
+              duration_minutes: 5,
+              outcome: 'win',
+              is_gi: watchedType === 'gi',
+              submissions_attempted: [],
+              submissions_hit: [],
+              submissions_conceded: [],
+              notes: '',
+            }}
             isGiDefault={watchedType === 'gi'}
-            onAdd={r => setDraftRounds(prev => [...prev, r])}
+            saveLabel="Add Round"
+            onSave={r => setDraftRounds(prev => [...prev, { ...r, id: crypto.randomUUID() }])}
           />
         </div>
 
