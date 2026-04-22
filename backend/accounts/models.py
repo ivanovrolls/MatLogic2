@@ -29,7 +29,7 @@ class User(AbstractUser):
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
     height_cm = models.FloatField(null=True, blank=True, help_text='Height in cm')
     weight_kg = models.FloatField(null=True, blank=True, help_text='Weight in kg')
-    is_public = models.BooleanField(default=False, help_text='Allow others to view your profile')
+    is_public = models.BooleanField(default=True, help_text='Show in Dojo leaderboard and allow other athletes to view your profile')
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

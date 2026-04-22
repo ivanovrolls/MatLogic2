@@ -7,7 +7,7 @@ import { cn, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, LogOut, ChevronRight, Shield,
+  BarChart2, Trophy, User, LogOut, ChevronRight, Swords,
   Sun, Moon, HelpCircle,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
@@ -16,12 +16,12 @@ import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
+  { href: '/dojo', label: 'Dojo', icon: Swords, tutorialId: 'nav-dojo' },
   { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
   { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
   { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
-  { href: '/dojo', label: 'Dojo', icon: Shield, tutorialId: 'nav-dojo' },
 ]
 
 export function Sidebar() {
@@ -56,7 +56,7 @@ export function Sidebar() {
               : user.username.slice(0, 2).toUpperCase()
             }
           </div>
-          <div className="overflow-hidden">
+          <div className="min-w-0 flex-1">
             <p className="text-mat-text text-xs font-semibold truncate">{user.username}</p>
             <p className="text-mat-text-muted text-xs capitalize truncate">{user.belt} belt</p>
           </div>
