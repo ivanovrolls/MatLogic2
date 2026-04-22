@@ -798,6 +798,14 @@ export default function DashboardPage() {
         {/* Left 2/3 */}
         <div className="lg:col-span-2 flex flex-col gap-4">
 
+          {/* Training Calendar */}
+          <div className="shrink-0" data-tutorial="calendar">
+            <TrainingCalendar
+              sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
+              competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
+            />
+          </div>
+
           {/* Recent Sessions */}
           <div className="flex-1 min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
             <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between shrink-0">
@@ -846,14 +854,6 @@ export default function DashboardPage() {
                 </Link>
               ))}
             </div>
-          </div>
-
-          {/* Training Calendar */}
-          <div className="shrink-0" data-tutorial="calendar">
-            <TrainingCalendar
-              sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
-              competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
-            />
           </div>
 
         </div>
