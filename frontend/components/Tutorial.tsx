@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, ChevronRight, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, Zap, HelpCircle, Flame, Lightbulb,
+  BarChart2, Trophy, User, Zap, HelpCircle, Flame, Lightbulb, Swords, Users,
 } from 'lucide-react'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
@@ -94,9 +94,23 @@ const STEPS: Step[] = [
     placement: 'right',
   },
   {
+    icon: Users,
+    title: 'The Dojo',
+    body: 'Your gym\'s leaderboard. Every public member from your gym appears here ranked by mat time, sessions, win rate, or streak. Rivals are auto-detected from your sparring partners.',
+    target: '[data-tutorial="nav-dojo"]',
+    placement: 'right',
+  },
+  {
+    icon: Swords,
+    title: 'Challenges',
+    body: 'Challenge gym mates to head-to-head competitions: most sessions, hours on the mat, or highest win rate over 3–30 days. Accept or decline incoming challenges right here on the dashboard.',
+    target: '[data-tutorial="challenges"]',
+    placement: 'bottom',
+  },
+  {
     icon: User,
     title: 'Profile',
-    body: 'Update your belt rank, body metrics, and account settings. Accurate metrics enable calorie estimates.',
+    body: 'Update your belt rank, body metrics, and account settings. Toggle between metric and imperial, and opt in to the Dojo leaderboard to appear to your gym mates.',
     target: '[data-tutorial="nav-profile"]',
     placement: 'right',
   },

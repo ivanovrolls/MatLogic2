@@ -860,6 +860,51 @@ export default function DashboardPage() {
 
         {/* Right 1/3 */}
         <div className="flex flex-col gap-4">
+          {/* Challenges widget */}
+          {challengesData && (() => {
+            const { pending_received, pending_sent, active, completed } = challengesData
+            const total = pending_received.length + pending_sent.length + active.length + completed.length
+            return (
+              <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="challenges">
+                <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+                  <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                    <Swords size={15} className="text-mat-gold" />
+                    Challenges
+                    {pending_received.length > 0 && (
+                      <span className="bg-mat-gold text-mat-black text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        {pending_received.length}
+                      </span>
+                    )}
+                  </h2>
+                  <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs transition-colors">
+                    Dojo →
+                  </Link>
+                </div>
+                {total === 0 ? (
+                  <div className="px-5 py-5 text-center">
+                    <p className="text-mat-text-dim text-xs">Challenge a gym mate from the Dojo page.</p>
+                  </div>
+                ) : (
+                  <div className="p-4 space-y-3">
+                    {pending_received.map(c => (
+                      <ChallengeCard
+                        key={c.id}
+                        challenge={c}
+                        onAccept={() => respondMutation.mutate({ id: c.id, action: 'accept' })}
+                        onDecline={() => respondMutation.mutate({ id: c.id, action: 'decline' })}
+                        accepting={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'accept'}
+                        declining={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'decline'}
+                      />
+                    ))}
+                    {active.map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                    {pending_sent.map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                    {completed.slice(0, 2).map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
           <div className="bg-mat-card border border-mat-border shrink-0">
             <div className="px-5 py-4 border-b border-mat-border">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text">
@@ -899,51 +944,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-
-          {/* Challenges widget */}
-          {challengesData && (() => {
-            const { pending_received, pending_sent, active, completed } = challengesData
-            const total = pending_received.length + pending_sent.length + active.length + completed.length
-            return (
-              <div className="bg-mat-card border border-mat-border shrink-0">
-                <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
-                  <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                    <Swords size={15} className="text-mat-gold" />
-                    Challenges
-                    {pending_received.length > 0 && (
-                      <span className="bg-mat-gold text-mat-black text-xs font-bold px-1.5 py-0.5 rounded-full">
-                        {pending_received.length}
-                      </span>
-                    )}
-                  </h2>
-                  <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs transition-colors">
-                    Dojo →
-                  </Link>
-                </div>
-                {total === 0 ? (
-                  <div className="px-5 py-5 text-center">
-                    <p className="text-mat-text-dim text-xs">Challenge a gym mate from the Dojo page.</p>
-                  </div>
-                ) : (
-                  <div className="p-4 space-y-3">
-                    {pending_received.map(c => (
-                      <ChallengeCard
-                        key={c.id}
-                        challenge={c}
-                        onAccept={() => respondMutation.mutate({ id: c.id, action: 'accept' })}
-                        onDecline={() => respondMutation.mutate({ id: c.id, action: 'decline' })}
-                        accepting={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'accept'}
-                        declining={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'decline'}
-                      />
-                    ))}
-                    {active.map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                    {pending_sent.map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                    {completed.slice(0, 2).map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
 
           {allInsights.length > 0 && (
             <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="insights">
