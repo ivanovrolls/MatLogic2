@@ -105,6 +105,21 @@ def _resolve_challenge(challenge):
     challenge.winner = winner
     challenge.status = 'completed'
     challenge.save(update_fields=['winner', 'status'])
+
+    from notifications.push import send_push
+    type_label = CHALLENGE_TYPE_LABELS.get(challenge.challenge_type, 'challenge')
+    if winner:
+        loser = challenge.challenged if winner == challenge.challenger else challenge.challenger
+        send_push(winner, 'Challenge Complete — Victory!',
+                  f'You won the {type_label} challenge!')
+        send_push(loser, 'Challenge Complete',
+                  f'The {type_label} challenge has ended. Better luck next time.')
+    else:
+        send_push(challenge.challenger, 'Challenge Complete — Draw!',
+                  f'The {type_label} challenge ended in a draw.')
+        send_push(challenge.challenged, 'Challenge Complete — Draw!',
+                  f'The {type_label} challenge ended in a draw.')
+
     return challenge
 
 
@@ -325,6 +340,15 @@ def send_challenge(request, username):
         duration_days=duration_days,
         message=message,
     )
+
+    from notifications.push import send_push
+    type_label = CHALLENGE_TYPE_LABELS.get(challenge_type, challenge_type)
+    send_push(
+        target,
+        f'{request.user.username} challenged you!',
+        f'Compete in {type_label} over {duration_days} days. Accept from the dashboard.',
+    )
+
     return Response(_serialize_challenge(challenge, request.user), status=status.HTTP_201_CREATED)
 
 
@@ -337,15 +361,29 @@ def respond_challenge(request, challenge_id):
         return Response({'detail': 'Challenge not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     action = request.data.get('action')
+    from notifications.push import send_push
+    type_label = CHALLENGE_TYPE_LABELS.get(challenge.challenge_type, 'challenge')
+
     if action == 'accept':
         now = timezone.now()
         challenge.status = 'active'
         challenge.starts_at = now
         challenge.ends_at = now + timedelta(days=challenge.duration_days)
         challenge.save()
+        send_push(
+            challenge.challenger,
+            f'{request.user.username} accepted your challenge!',
+            f"The {type_label} contest has started. {challenge.duration_days} days on the clock.",
+        )
     elif action == 'decline':
         challenge.status = 'declined'
         challenge.save()
+        send_push(
+            challenge.challenger,
+            f'{request.user.username} declined your challenge',
+            'Head to the Dojo to challenge someone else.',
+            '/dojo',
+        )
     else:
         return Response({'detail': 'action must be accept or decline.'}, status=status.HTTP_400_BAD_REQUEST)
 

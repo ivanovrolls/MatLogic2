@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'analytics',
     'injuries',
     'social',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -137,3 +138,9 @@ CORS_ALLOWED_ORIGINS = config(
     default='http://localhost:3000'
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# Web Push (VAPID)
+# Generate keys with: python manage.py generate_vapid_keys
+VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='').replace('\\n', '\n')
+VAPID_PUBLIC_KEY = config('VAPID_PUBLIC_KEY', default='')
+VAPID_CLAIMS_EMAIL = config('VAPID_CLAIMS_EMAIL', default='admin@matlogic.app')

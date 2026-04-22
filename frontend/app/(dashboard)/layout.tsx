@@ -7,6 +7,7 @@ import { authApi } from '@/lib/api'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { Tutorial } from '@/components/Tutorial'
+import { PushPrompt } from '@/components/PushPrompt'
 import { useTutorialStore } from '@/stores/tutorialStore'
 import { Loader2, User } from 'lucide-react'
 
@@ -191,6 +192,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return
     }
     fetchProfile()
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
+    }
   }, [isAuthenticated, router, fetchProfile])
 
   const needsBodyMetrics = user && (!user.gender || user.height_cm == null || user.weight_kg == null)
@@ -214,6 +218,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
       {needsBodyMetrics && <ProfileSetupModal />}
       <Tutorial />
+      <PushPrompt />
     </div>
   )
 }

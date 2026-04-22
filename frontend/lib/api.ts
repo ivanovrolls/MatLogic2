@@ -182,6 +182,12 @@ export const analyticsApi = {
   insights: () => api.get('/analytics/insights/'),
 }
 
+// ---- Notifications ----
+export const notificationsApi = {
+  subscribe: (data: object) => api.post('/notifications/subscribe/', data),
+  unsubscribe: (endpoint: string) => api.post('/notifications/unsubscribe/', { endpoint }),
+}
+
 // ---- Social ----
 export const socialApi = {
   dojo: () => api.get('/social/dojo/'),
