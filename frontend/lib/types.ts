@@ -154,8 +154,20 @@ export interface SparringRound {
 export interface DrillItem {
   technique_id: number
   technique_name: string
-  sets: number
   reps: number
+}
+
+export interface WeeklyPlanTemplate {
+  id: number
+  title: string
+  plan_title: string
+  goals: string
+  sessions_planned: number
+  focus_techniques: TechniqueMinimal[]
+  drill_mode: 'weekly' | 'daily'
+  weekly_drills: DrillItem[]
+  created_at: string
+  updated_at: string
 }
 
 export interface ChecklistItem {

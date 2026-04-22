@@ -122,6 +122,8 @@ export const planningApi = {
   update: (id: number, data: object) => api.patch(`/planning/${id}/`, data),
   delete: (id: number) => api.delete(`/planning/${id}/`),
   autoGenerate: () => api.post('/planning/auto_generate/'),
+  saveAsTemplate: (planId: number, data: object) =>
+    api.post(`/planning/${planId}/save_as_template/`, data),
   generateChecklist: (planId: number, data: object) =>
     api.post(`/planning/${planId}/generate_checklist/`, data),
   // Checklists
@@ -132,6 +134,9 @@ export const planningApi = {
   deleteChecklist: (id: number) => api.delete(`/planning/checklists/${id}/`),
   toggleChecklistItem: (id: number, itemId: string) =>
     api.patch(`/planning/checklists/${id}/toggle_item/`, { item_id: itemId }),
+  // Plan templates
+  listTemplates: () => api.get('/planning/templates/'),
+  deleteTemplate: (id: number) => api.delete(`/planning/templates/${id}/`),
 }
 
 // ---- Competition ----

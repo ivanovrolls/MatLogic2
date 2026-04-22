@@ -1,8 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import WeeklyPlanViewSet, SessionChecklistViewSet
+from .views import WeeklyPlanViewSet, SessionChecklistViewSet, WeeklyPlanTemplateViewSet
 
 router = DefaultRouter()
+router.register(r'templates', WeeklyPlanTemplateViewSet, basename='plan-template')
 router.register(r'checklists', SessionChecklistViewSet, basename='checklist')
 router.register(r'', WeeklyPlanViewSet, basename='weekly-plan')
 

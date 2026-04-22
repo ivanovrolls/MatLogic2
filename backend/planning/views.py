@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
-from .models import WeeklyPlan, SessionChecklist
-from .serializers import WeeklyPlanSerializer, SessionChecklistSerializer
+from .models import WeeklyPlan, SessionChecklist, WeeklyPlanTemplate
+from .serializers import WeeklyPlanSerializer, SessionChecklistSerializer, WeeklyPlanTemplateSerializer
 
 
 class WeeklyPlanViewSet(viewsets.ModelViewSet):
@@ -76,8 +76,7 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
                 weekly_drills.append({
                     'technique_id': matching.id if matching else 0,
                     'technique_name': drill_name,
-                    'sets': 3,
-                    'reps': 5,
+                    'reps': 20,
                 })
                 goals_parts.append(f"Shore up {sub} defense")
 
@@ -110,17 +109,16 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
                 weekly_drills.append({
                     'technique_id': t.id,
                     'technique_name': t.name,
-                    'sets': 3,
-                    'reps': 10,
+                    'reps': 20,
                 })
                 focus_technique_ids.append(t.id)
             goals_parts.append("Continue drilling core techniques")
 
         if not weekly_drills:
             weekly_drills = [
-                {'technique_id': 0, 'technique_name': 'Armbar defense', 'sets': 3, 'reps': 5},
-                {'technique_id': 0, 'technique_name': 'Back escape', 'sets': 3, 'reps': 5},
-                {'technique_id': 0, 'technique_name': 'Mount escape', 'sets': 3, 'reps': 5},
+                {'technique_id': 0, 'technique_name': 'Armbar defense', 'reps': 20},
+                {'technique_id': 0, 'technique_name': 'Back escape', 'reps': 20},
+                {'technique_id': 0, 'technique_name': 'Mount escape', 'reps': 20},
             ]
             goals_parts.append("Work on fundamental defenses")
 
@@ -169,6 +167,39 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
             items=items
         )
         return Response(SessionChecklistSerializer(checklist).data)
+
+
+    @action(detail=True, methods=['post'])
+    def save_as_template(self, request, pk=None):
+        plan = self.get_object()
+        title = request.data.get('title') or f"Template: {plan.title or 'Weekly Plan'}"
+        template = WeeklyPlanTemplate.objects.create(
+            user=request.user,
+            title=title,
+            plan_title=plan.title,
+            goals=plan.goals,
+            sessions_planned=plan.sessions_planned,
+            drill_mode=plan.drill_mode,
+            weekly_drills=plan.weekly_drills,
+        )
+        template.focus_techniques.set(plan.focus_techniques.all())
+        return Response(
+            WeeklyPlanTemplateSerializer(template, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
+
+
+class WeeklyPlanTemplateViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = WeeklyPlanTemplateSerializer
+
+    def get_queryset(self):
+        return WeeklyPlanTemplate.objects.filter(
+            user=self.request.user
+        ).prefetch_related('focus_techniques')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class SessionChecklistViewSet(viewsets.ModelViewSet):

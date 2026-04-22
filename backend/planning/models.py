@@ -35,6 +35,36 @@ class WeeklyPlan(models.Model):
         return f"{self.user.username} - Week of {self.week_start}"
 
 
+class WeeklyPlanTemplate(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='plan_templates'
+    )
+    title = models.CharField(max_length=200, help_text='Template name')
+    plan_title = models.CharField(max_length=200, blank=True)
+    goals = models.TextField(blank=True)
+    sessions_planned = models.PositiveIntegerField(default=3)
+    focus_techniques = models.ManyToManyField(
+        'techniques.Technique',
+        blank=True,
+    )
+    drill_mode = models.CharField(
+        max_length=10,
+        choices=[('weekly', 'Weekly'), ('daily', 'Daily')],
+        default='weekly'
+    )
+    weekly_drills = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} — {self.title}"
+
+
 class SessionChecklist(models.Model):
     plan = models.ForeignKey(
         WeeklyPlan,

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WeeklyPlan, SessionChecklist
+from .models import WeeklyPlan, SessionChecklist, WeeklyPlanTemplate
 from techniques.serializers import TechniqueMinimalSerializer
 from techniques.models import Technique
 
@@ -43,6 +43,40 @@ class WeeklyPlanSerializer(serializers.ModelSerializer):
         plan = super().create(validated_data)
         plan.focus_techniques.set(techniques)
         return plan
+
+    def update(self, instance, validated_data):
+        techniques = validated_data.pop('focus_techniques', None)
+        instance = super().update(instance, validated_data)
+        if techniques is not None:
+            instance.focus_techniques.set(techniques)
+        return instance
+
+
+class WeeklyPlanTemplateSerializer(serializers.ModelSerializer):
+    focus_techniques = TechniqueMinimalSerializer(many=True, read_only=True)
+    focus_technique_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        write_only=True,
+        source='focus_techniques',
+        queryset=Technique.objects.all(),
+        required=False
+    )
+
+    class Meta:
+        model = WeeklyPlanTemplate
+        fields = [
+            'id', 'title', 'plan_title', 'goals', 'sessions_planned',
+            'focus_techniques', 'focus_technique_ids',
+            'drill_mode', 'weekly_drills', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        techniques = validated_data.pop('focus_techniques', [])
+        validated_data['user'] = self.context['request'].user
+        tmpl = super().create(validated_data)
+        tmpl.focus_techniques.set(techniques)
+        return tmpl
 
     def update(self, instance, validated_data):
         techniques = validated_data.pop('focus_techniques', None)

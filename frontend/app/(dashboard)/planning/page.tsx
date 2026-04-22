@@ -9,10 +9,10 @@ import { format, parseISO, isThisWeek, isPast, addDays } from 'date-fns'
 import {
   Plus, CalendarDays, CheckCircle2, Circle, Loader2,
   Target, ChevronDown, Trophy, Pencil, Trash2, X, Dumbbell,
-  Sparkles, HelpCircle,
+  Sparkles, HelpCircle, BookMarked,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { WeeklyPlan, TechniqueMinimal, ChecklistItem, DrillItem } from '@/lib/types'
+import type { WeeklyPlan, WeeklyPlanTemplate, TechniqueMinimal, ChecklistItem, DrillItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -75,8 +75,7 @@ function DrillPicker({
   onAdd: (drill: DrillItem) => void
 }) {
   const [search, setSearch] = useState('')
-  const [sets, setSets] = useState(3)
-  const [reps, setReps] = useState(10)
+  const [reps, setReps] = useState(20)
   const [picked, setPicked] = useState<TechniqueMinimal | null>(null)
 
   const filtered = allTechniques.filter(t =>
@@ -85,11 +84,10 @@ function DrillPicker({
 
   const add = () => {
     if (!picked) return
-    onAdd({ technique_id: picked.id, technique_name: picked.name, sets, reps })
+    onAdd({ technique_id: picked.id, technique_name: picked.name, reps })
     setPicked(null)
     setSearch('')
-    setSets(3)
-    setReps(10)
+    setReps(20)
   }
 
   return (
@@ -118,20 +116,12 @@ function DrillPicker({
         )}
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <label className="text-mat-text-muted text-xs">Sets</label>
-          <input
-            type="number" min={1} max={99} value={sets}
-            onChange={e => setSets(Number(e.target.value))}
-            className="mat-input w-16 text-xs text-center"
-          />
-        </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <label className="text-mat-text-muted text-xs">Reps</label>
           <input
             type="number" min={1} max={999} value={reps}
             onChange={e => setReps(Number(e.target.value))}
-            className="mat-input w-16 text-xs text-center"
+            className="mat-input w-20 text-xs text-center"
           />
         </div>
         <button
@@ -157,7 +147,7 @@ function DrillList({ drills, onRemove }: { drills: DrillItem[]; onRemove?: (i: n
         <div key={i} className="flex items-center justify-between bg-mat-panel border border-mat-border px-3 py-1.5">
           <span className="text-mat-text text-xs">{d.technique_name}</span>
           <div className="flex items-center gap-3">
-            <span className="text-mat-gold text-xs font-bold">{d.sets}×{d.reps}</span>
+            <span className="text-mat-gold text-xs font-bold">{d.reps} reps</span>
             {onRemove && (
               <button type="button" onClick={() => onRemove(i)} className="text-mat-text-dim hover:text-mat-red-light">
                 <X size={10} />
@@ -206,8 +196,8 @@ function ChecklistWidget({ checklist, onToggle }: {
             <span className={cn('text-sm transition-colors flex-1', item.completed ? 'text-mat-text-dim line-through' : 'text-mat-text-muted group-hover:text-mat-text')}>
               {item.text}
             </span>
-            {(item.sets && item.reps) ? (
-              <span className="text-mat-gold text-xs font-bold shrink-0">{item.sets}×{item.reps}</span>
+            {item.reps ? (
+              <span className="text-mat-gold text-xs font-bold shrink-0">{item.reps} reps</span>
             ) : null}
           </button>
         ))}
@@ -312,11 +302,18 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
         id: `${d.technique_id}-${i}-${Date.now()}`,
         technique_id: d.technique_id,
         text: `Drill: ${d.technique_name}`,
-        sets: d.sets,
         reps: d.reps,
         completed: false,
       })),
     })
+  }
+
+  const saveAsTemplate = () => {
+    const name = window.prompt('Template name:', plan.title || 'My Plan Template')
+    if (!name?.trim()) return
+    planningApi.saveAsTemplate(plan.id, { title: name.trim() })
+      .then(() => toast.success('Saved as template.'))
+      .catch(() => toast.error('Failed to save template.'))
   }
 
   const filteredTechs = allTechniques.filter(t =>
@@ -350,6 +347,11 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
           </div>
         </button>
         <div className="flex items-center gap-1 shrink-0 ml-3">
+          {!editing && (
+            <button onClick={saveAsTemplate} title="Save as template" className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors">
+              <BookMarked size={13} />
+            </button>
+          )}
           <button onClick={() => editing ? setEditing(false) : startEdit()} className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors">
             {editing ? <X size={13} /> : <Pencil size={13} />}
           </button>
@@ -563,9 +565,13 @@ function GenerateChecklistButton({ plan }: { plan: WeeklyPlan }) {
 
 export default function PlanningPage() {
   const [showNewPlan, setShowNewPlan] = useState(false)
+  const [newPlanTitle, setNewPlanTitle] = useState('')
+  const [newPlanGoals, setNewPlanGoals] = useState('')
+  const [newPlanSessions, setNewPlanSessions] = useState(3)
   const [selectedTechs, setSelectedTechs] = useState<TechniqueMinimal[]>([])
   const [techSearch, setTechSearch] = useState('')
   const [pastOpen, setPastOpen] = useState(false)
+  const [templatesOpen, setTemplatesOpen] = useState(false)
   const [weekStartInput, setWeekStartInput] = useState(format(getWeekStart(), 'yyyy-MM-dd'))
   const [drillMode, setDrillMode] = useState<'weekly' | 'daily'>('weekly')
   const [weeklyDrills, setWeeklyDrills] = useState<DrillItem[]>([])
@@ -588,6 +594,33 @@ export default function PlanningPage() {
     queryKey: ['plans'],
     queryFn: () => planningApi.list().then(r => r.data?.results || r.data),
   })
+
+  const { data: templatesData } = useQuery({
+    queryKey: ['plan-templates'],
+    queryFn: () => planningApi.listTemplates().then(r => r.data?.results || r.data),
+  })
+
+  const templates: WeeklyPlanTemplate[] = Array.isArray(templatesData) ? templatesData : []
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: (id: number) => planningApi.deleteTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-templates'] })
+      toast.success('Template deleted.')
+    },
+  })
+
+  const applyTemplate = (tmpl: WeeklyPlanTemplate) => {
+    setNewPlanTitle(tmpl.plan_title)
+    setNewPlanGoals(tmpl.goals)
+    setNewPlanSessions(tmpl.sessions_planned)
+    setSelectedTechs(tmpl.focus_techniques)
+    setDrillMode(tmpl.drill_mode)
+    setWeeklyDrills(tmpl.weekly_drills || [])
+    setDailyDrills({})
+    setShowNewPlan(true)
+    setTemplatesOpen(false)
+  }
 
   const { data: techniques } = useQuery({
     queryKey: ['techniques', 'all'],
@@ -615,7 +648,6 @@ export default function PlanningPage() {
               id: `${d.technique_id}-${i}-${Date.now()}`,
               technique_id: d.technique_id,
               text: `Drill: ${d.technique_name}`,
-              sets: d.sets,
               reps: d.reps,
               completed: false,
             })),
@@ -626,6 +658,9 @@ export default function PlanningPage() {
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       toast.success('Weekly plan created.')
       setShowNewPlan(false)
+      setNewPlanTitle('')
+      setNewPlanGoals('')
+      setNewPlanSessions(3)
       setSelectedTechs([])
       setWeeklyDrills([])
       setDailyDrills({})
@@ -650,15 +685,11 @@ export default function PlanningPage() {
   const pastPlans = plansArray.filter(p => isPastWeek(p.week_start))
 
   const handleCreate = () => {
-    const titleEl = document.getElementById('plan_title') as HTMLInputElement
-    const goalsEl = document.getElementById('plan_goals') as HTMLTextAreaElement
-    const sessionsEl = document.getElementById('sessions_planned') as HTMLInputElement
-
     createMutation.mutate({
       week_start: weekStartInput,
-      sessions_planned: Number(sessionsEl.value),
-      title: titleEl.value,
-      goals: goalsEl.value,
+      sessions_planned: newPlanSessions,
+      title: newPlanTitle,
+      goals: newPlanGoals,
       focus_technique_ids: selectedTechs.map(t => t.id),
       drill_mode: drillMode,
       weekly_drills: drillMode === 'weekly' ? weeklyDrills : [],
@@ -700,6 +731,53 @@ export default function PlanningPage() {
         </div>
       </div>
 
+      {/* ── Plan Templates ── */}
+      {templates.length > 0 && (
+        <div className="bg-mat-card border border-mat-border">
+          <button
+            onClick={() => setTemplatesOpen(o => !o)}
+            className="w-full px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors group"
+          >
+            <div className="flex items-center gap-2">
+              <BookMarked size={14} className="text-mat-gold" />
+              <span className="text-mat-text-muted text-xs uppercase tracking-widest">Plan Templates</span>
+              <span className="text-mat-text-dim text-xs">({templates.length})</span>
+            </div>
+            <ChevronDown size={13} className={cn('text-mat-text-dim group-hover:text-mat-gold transition-transform', templatesOpen ? 'rotate-180' : '')} />
+          </button>
+          {templatesOpen && (
+            <div className="border-t border-mat-border divide-y divide-mat-border">
+              {templates.map(tmpl => (
+                <div key={tmpl.id} className="px-5 py-3 flex items-center justify-between group hover:bg-mat-darker transition-colors">
+                  <div>
+                    <p className="text-mat-text text-sm font-medium">{tmpl.title}</p>
+                    <p className="text-mat-text-muted text-xs mt-0.5">
+                      {tmpl.sessions_planned} sessions
+                      {tmpl.focus_techniques.length > 0 && ` · ${tmpl.focus_techniques.length} technique${tmpl.focus_techniques.length !== 1 ? 's' : ''}`}
+                      {tmpl.weekly_drills.length > 0 && ` · ${tmpl.weekly_drills.length} drill${tmpl.weekly_drills.length !== 1 ? 's' : ''}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => applyTemplate(tmpl)}
+                      className="btn-secondary text-xs px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Use
+                    </button>
+                    <button
+                      onClick={() => { if (confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
+                      className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── New Plan Form ── */}
       {showNewPlan && (
         <div className="bg-mat-card border border-mat-border p-6 space-y-5 animate-slide-up">
@@ -714,16 +792,16 @@ export default function PlanningPage() {
             </div>
             <div>
               <label className="mat-label">Sessions Planned</label>
-              <input type="number" id="sessions_planned" defaultValue={3} min={1} max={14} className="mat-input" />
+              <input type="number" value={newPlanSessions} onChange={e => setNewPlanSessions(Number(e.target.value))} min={1} max={14} className="mat-input" />
             </div>
           </div>
           <div>
             <label className="mat-label">Title (optional)</label>
-            <input id="plan_title" className="mat-input" placeholder="e.g. Guard Passing Week" />
+            <input value={newPlanTitle} onChange={e => setNewPlanTitle(e.target.value)} className="mat-input" placeholder="e.g. Guard Passing Week" />
           </div>
           <div>
             <label className="mat-label">Goals</label>
-            <textarea id="plan_goals" rows={2} className="mat-input resize-none" placeholder="What do you want to achieve this week?" />
+            <textarea value={newPlanGoals} onChange={e => setNewPlanGoals(e.target.value)} rows={2} className="mat-input resize-none" placeholder="What do you want to achieve this week?" />
           </div>
 
           {/* Focus techniques */}
