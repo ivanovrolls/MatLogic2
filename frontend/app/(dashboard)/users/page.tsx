@@ -1,86 +1,52 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { socialApi } from '@/lib/api'
 import { PublicUser } from '@/lib/types'
 import { BELT_COLORS } from '@/lib/utils'
-import { Search, UserPlus, UserMinus, Loader2 } from 'lucide-react'
+import { Search, Loader2, MapPin } from 'lucide-react'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
-import { useAuthStore } from '@/stores/authStore'
 
 function UserCard({ user }: { user: PublicUser }) {
-  const qc = useQueryClient()
-  const { user: me } = useAuthStore()
-  const isMe = me?.username === user.username
-
-  const followMutation = useMutation({
-    mutationFn: () => socialApi.follow(user.username),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['user-search'] })
-      toast.success(`Following ${user.username}`)
-    },
-    onError: () => toast.error('Failed to follow.'),
-  })
-
-  const unfollowMutation = useMutation({
-    mutationFn: () => socialApi.unfollow(user.username),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['user-search'] })
-      toast.success(`Unfollowed ${user.username}`)
-    },
-    onError: () => toast.error('Failed to unfollow.'),
-  })
-
-  const beltColor = BELT_COLORS[user.belt as keyof typeof BELT_COLORS] || ''
-  const textColor = beltColor.split(' ').find((c: string) => c.startsWith('text-')) || 'text-mat-text-muted'
+  const beltCls = BELT_COLORS[user.belt as keyof typeof BELT_COLORS] || ''
+  const textColor = beltCls.split(' ').find((c: string) => c.startsWith('text-')) || 'text-mat-text-muted'
+  const bgColor = beltCls.split(' ').find((c: string) => c.startsWith('bg-')) || 'bg-gray-600'
 
   return (
-    <div className="bg-mat-card border border-mat-border p-4 flex items-start gap-4">
-      <Link href={`/users/${user.username}`} className="shrink-0">
-        <div className="w-12 h-12 bg-mat-muted border border-mat-border flex items-center justify-center hover:border-mat-gold/50 transition-colors">
-          {user.avatar
-            ? <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
-            : <span className="text-mat-gold font-bold">{user.username.slice(0, 2).toUpperCase()}</span>
-          }
-        </div>
-      </Link>
+    <Link
+      href={`/users/${user.username}`}
+      className="bg-mat-card border border-mat-border p-4 flex items-start gap-4 hover:border-mat-gold/40 transition-colors group"
+    >
+      <div className="w-12 h-12 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
+        {user.avatar
+          ? <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
+          : <span className="text-mat-gold font-bold">{user.username.slice(0, 2).toUpperCase()}</span>
+        }
+      </div>
 
       <div className="flex-1 min-w-0">
-        <Link href={`/users/${user.username}`} className="hover:text-mat-gold transition-colors">
-          <p className="font-display text-mat-text uppercase tracking-wider">{user.username}</p>
-        </Link>
-        <p className={`text-xs mt-0.5 ${textColor}`}>{user.display_belt}</p>
-        {user.gym && <p className="text-mat-text-muted text-xs">{user.gym}</p>}
-        <div className="flex items-center gap-4 mt-2">
+        <div className="flex items-center gap-2">
+          <p className="font-display text-mat-text uppercase tracking-wider group-hover:text-mat-gold transition-colors">
+            {user.username}
+          </p>
+          <div className={`h-1.5 w-8 rounded-sm ${bgColor}`} />
+          <span className={`text-xs ${textColor}`}>{user.belt}</span>
+        </div>
+        {user.gym && (
+          <p className="text-mat-text-muted text-xs flex items-center gap-1 mt-0.5">
+            <MapPin size={9} /> {user.gym}
+          </p>
+        )}
+        <div className="flex items-center gap-4 mt-1.5">
           <span className="text-mat-text-dim text-xs">{user.total_sessions} sessions</span>
-          <span className="text-mat-text-dim text-xs">{user.follower_count} followers</span>
+          <span className="text-mat-text-dim text-xs">{user.total_rounds} rounds</span>
           {user.win_rate !== null && (
             <span className="text-mat-text-dim text-xs">{user.win_rate}% win rate</span>
           )}
         </div>
       </div>
-
-      {!isMe && (
-        <button
-          onClick={() => user.is_following ? unfollowMutation.mutate() : followMutation.mutate()}
-          disabled={followMutation.isPending || unfollowMutation.isPending}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border transition-colors shrink-0 ${
-            user.is_following
-              ? 'border-mat-border text-mat-text-muted hover:border-red-500 hover:text-red-400'
-              : 'border-mat-gold text-mat-gold hover:bg-mat-gold hover:text-mat-black'
-          }`}
-        >
-          {followMutation.isPending || unfollowMutation.isPending
-            ? <Loader2 size={11} className="animate-spin" />
-            : user.is_following
-              ? <><UserMinus size={11} /> Unfollow</>
-              : <><UserPlus size={11} /> Follow</>
-          }
-        </button>
-      )}
-    </div>
+    </Link>
   )
 }
 
@@ -116,13 +82,9 @@ export default function UsersPage() {
       </div>
 
       {q.trim().length >= 2 && results !== undefined && (
-        results.length === 0 ? (
-          <p className="text-mat-text-muted text-sm text-center py-8">No public profiles found for &quot;{q}&quot;</p>
-        ) : (
-          <div className="space-y-2">
-            {results.map(u => <UserCard key={u.id} user={u} />)}
-          </div>
-        )
+        results.length === 0
+          ? <p className="text-mat-text-muted text-sm text-center py-8">No public profiles found for &quot;{q}&quot;</p>
+          : <div className="space-y-2">{results.map(u => <UserCard key={u.id} user={u} />)}</div>
       )}
 
       {q.trim().length < 2 && (
