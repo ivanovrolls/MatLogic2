@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, analyticsApi, competitionApi, planningApi } from '@/lib/api'
+import { sessionsApi, analyticsApi, competitionApi, planningApi, socialApi } from '@/lib/api'
+import { FeedSession } from '@/lib/types'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
@@ -15,7 +16,7 @@ import {
 import {
   BookOpen, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
   Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
-  Zap, ChevronDown,
+  Zap, ChevronDown, Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -504,6 +505,11 @@ export default function DashboardPage() {
     queryFn: () => analyticsApi.insights().then(r => r.data),
   })
 
+  const { data: feed } = useQuery<FeedSession[]>({
+    queryKey: ['social', 'feed'],
+    queryFn: () => socialApi.feed().then(r => r.data),
+  })
+
   const allInsights = [
     ...(insights?.warnings || []).map((i: any) => ({ ...i, _kind: 'warning' })),
     ...(insights?.highlights || []).map((i: any) => ({ ...i, _kind: 'highlight' })),
@@ -706,6 +712,65 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* Activity Feed */}
+      {feed !== undefined && (
+        <div className="bg-mat-card border border-mat-border">
+          <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+            <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+              <Users size={15} className="text-mat-gold" />
+              Activity Feed
+            </h2>
+            <Link href="/users" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
+              Find Athletes <ChevronRight size={12} />
+            </Link>
+          </div>
+          {feed.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-mat-text-dim text-sm mb-3">Follow other athletes to see their training here.</p>
+              <Link href="/users" className="btn-secondary text-xs px-4 py-2 inline-flex items-center gap-1.5">
+                <Users size={12} /> Find Athletes
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-mat-border">
+              {feed.slice(0, 10).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/users/${item.user.username}`}
+                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-mat-darker transition-colors group"
+                >
+                  <div className="w-8 h-8 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
+                    {item.user.avatar
+                      ? <img src={item.user.avatar} alt={item.user.username} className="w-full h-full object-cover" />
+                      : <span className="text-mat-gold font-bold text-xs">{item.user.username.slice(0, 2).toUpperCase()}</span>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-mat-text text-sm font-medium">{item.user.username}</span>
+                      <span className="text-mat-text-dim text-xs">logged a</span>
+                      <span className="text-xs font-bold uppercase text-mat-gold">
+                        {item.session_type_display}
+                      </span>
+                      {item.title && <span className="text-mat-text-muted text-xs truncate">· {item.title}</span>}
+                    </div>
+                    <p className="text-mat-text-dim text-xs mt-0.5">
+                      {formatDate(item.date)} · {formatDuration(item.duration)}
+                      {item.round_count > 0 && ` · ${item.round_count} rounds`}
+                    </p>
+                  </div>
+                  {item.performance_rating && (
+                    <span className={`font-display text-lg shrink-0 ${getRatingColor(item.performance_rating)}`}>
+                      {item.performance_rating}/5
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

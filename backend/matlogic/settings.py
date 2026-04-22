@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'competition',
     'analytics',
     'injuries',
+    'social',
 ]
 
 MIDDLEWARE = [

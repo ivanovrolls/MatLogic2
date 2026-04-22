@@ -182,4 +182,15 @@ export const analyticsApi = {
   insights: () => api.get('/analytics/insights/'),
 }
 
+// ---- Social ----
+export const socialApi = {
+  feed: () => api.get('/social/feed/'),
+  search: (q: string) => api.get('/social/search/', { params: { q } }),
+  getProfile: (username: string) => api.get(`/social/users/${username}/`),
+  follow: (username: string) => api.post(`/social/users/${username}/follow/`),
+  unfollow: (username: string) => api.delete(`/social/users/${username}/unfollow/`),
+  followers: (username: string) => api.get(`/social/users/${username}/followers/`),
+  following: (username: string) => api.get(`/social/users/${username}/following/`),
+}
+
 export default api
