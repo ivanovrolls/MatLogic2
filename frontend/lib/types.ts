@@ -332,38 +332,46 @@ export interface PublicUser {
   gym: string
   bio: string
   avatar: string | null
-  follower_count: number
-  following_count: number
-  is_following: boolean
   total_sessions: number
   total_rounds: number
   win_rate: number | null
 }
 
-export interface FollowUser {
+export interface DojoMember {
   id: number
   username: string
   belt: Belt
   stripes: number
-  gym: string
-  avatar: string | null
   display_belt: string
+  avatar: string | null
+  sessions_week: number
+  hours_month: number
+  streak: number
+  win_rate: number | null
+  is_me: boolean
 }
 
-export interface FeedSession {
+export interface DojoRoom {
+  gym: string
+  members: DojoMember[]
+}
+
+export interface RivalUser {
   id: number
-  date: string
-  session_type_display: string
-  duration: number
-  title: string
-  performance_rating: number | null
-  round_count: number
-  user: {
-    id: number
-    username: string
-    belt: Belt
-    avatar: string | null
-  }
+  username: string
+  belt: Belt
+  stripes: number
+  display_belt: string
+  avatar: string | null
+}
+
+export interface Rival {
+  user: RivalUser
+  wins: number
+  losses: number
+  draws: number
+  total: number
+  win_rate: number | null
 }
 
 // ---- Pagination ----

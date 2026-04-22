@@ -1,37 +1,21 @@
 'use client'
 
 import { useForm } from 'react-hook-form'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { authApi, socialApi } from '@/lib/api'
+import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
-import { FollowUser } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { Loader2, Star, Camera, Users, Globe, Lock, Search } from 'lucide-react'
+import { Loader2, Star, Camera, Globe, Lock, Shield } from 'lucide-react'
 import { BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
-  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null)
-
-  const { data: followersData } = useQuery<FollowUser[]>({
-    queryKey: ['followers', user?.username],
-    queryFn: () => socialApi.followers(user!.username).then(r => r.data),
-    enabled: !!user,
-  })
-
-  const { data: followingData } = useQuery<FollowUser[]>({
-    queryKey: ['following', user?.username],
-    queryFn: () => socialApi.following(user!.username).then(r => r.data),
-    enabled: !!user,
-  })
 
   const avatarMutation = useMutation({
     mutationFn: (file: File) => authApi.uploadAvatar(file),
@@ -120,28 +104,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Social counts */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => setFollowModal('followers')}
-          className="bg-mat-card border border-mat-border p-4 text-center hover:border-mat-gold/40 transition-colors"
-        >
-          <p className="font-display text-3xl text-mat-gold">
-            {followersData?.length ?? '—'}
-          </p>
-          <p className="text-mat-text-muted text-xs uppercase tracking-widest mt-1">Followers</p>
-        </button>
-        <button
-          onClick={() => setFollowModal('following')}
-          className="bg-mat-card border border-mat-border p-4 text-center hover:border-mat-gold/40 transition-colors"
-        >
-          <p className="font-display text-3xl text-mat-gold">
-            {followingData?.length ?? '—'}
-          </p>
-          <p className="text-mat-text-muted text-xs uppercase tracking-widest mt-1">Following</p>
-        </button>
-      </div>
-
       {/* Stats overview */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-mat-card border border-mat-border p-4 text-center">
@@ -154,7 +116,7 @@ export default function ProfilePage() {
         </div>
         <div className="bg-mat-card border border-mat-border p-4 text-center">
           <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Belt</p>
-          <p className={`font-display text-xl capitalize pt-1 ${BELT_COLORS[user.belt]?.includes('text') ? BELT_COLORS[user.belt].split(' ').find(c => c.startsWith('text-')) : 'text-mat-gold'}`}>
+          <p className={`font-display text-xl capitalize pt-1 ${BELT_COLORS[user.belt]?.split(' ').find(c => c.startsWith('text-')) || 'text-mat-gold'}`}>
             {user.belt}
           </p>
         </div>
@@ -249,8 +211,9 @@ export default function ProfilePage() {
             <textarea {...register('bio')} rows={3} className="mat-input resize-none" placeholder="Tell us about your BJJ journey..." />
           </div>
 
+          {/* Dojo visibility */}
           <div className="border-t border-mat-border pt-5">
-            <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Privacy</p>
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Dojo</p>
             <label className="flex items-start gap-3 cursor-pointer group">
               <input
                 {...register('is_public')}
@@ -260,13 +223,21 @@ export default function ProfilePage() {
               <div>
                 <div className="flex items-center gap-1.5 text-sm text-mat-text group-hover:text-mat-gold transition-colors">
                   {user.is_public ? <Globe size={13} /> : <Lock size={13} />}
-                  Public Profile
+                  Show in Dojo
                 </div>
                 <p className="text-mat-text-dim text-xs mt-0.5 leading-relaxed">
-                  Let other athletes find and follow you. Your sessions stay private — only your stats, belt, and bio are visible.
+                  Appear on your gym&apos;s leaderboard and let training partners find your rival stats. Your individual sessions are never shown.
                 </p>
               </div>
             </label>
+            {user.is_public && user.gym && (
+              <Link
+                href="/dojo"
+                className="flex items-center gap-1.5 mt-3 text-mat-gold/70 hover:text-mat-gold text-xs transition-colors"
+              >
+                <Shield size={11} /> View {user.gym} Dojo →
+              </Link>
+            )}
           </div>
 
           <button
@@ -280,63 +251,6 @@ export default function ProfilePage() {
           </button>
         </div>
       </form>
-
-      {/* Find people link */}
-      <Link
-        href="/users"
-        className="flex items-center gap-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors"
-      >
-        <Search size={13} />
-        Find athletes to follow
-      </Link>
-
-      {/* Follow/Following modal */}
-      {followModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-mat-black/70"
-          onClick={() => setFollowModal(null)}
-        >
-          <div
-            className="bg-mat-card border border-mat-border w-full max-w-sm mx-4"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-mat-border">
-              <span className="font-display text-mat-text text-lg uppercase tracking-wider">
-                {followModal === 'followers' ? 'Followers' : 'Following'}
-              </span>
-              <button onClick={() => setFollowModal(null)} className="text-mat-text-muted hover:text-mat-text text-lg leading-none">×</button>
-            </div>
-            {(() => {
-              const list = followModal === 'followers' ? followersData : followingData
-              if (!list) return <div className="flex justify-center py-8"><Loader2 size={18} className="animate-spin text-mat-gold" /></div>
-              if (list.length === 0) return <p className="text-mat-text-muted text-sm text-center py-8">Nobody here yet</p>
-              return (
-                <ul className="divide-y divide-mat-border max-h-80 overflow-y-auto">
-                  {list.map((u: FollowUser) => (
-                    <li
-                      key={u.id}
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-mat-muted cursor-pointer"
-                      onClick={() => { setFollowModal(null); router.push(`/users/${u.username}`) }}
-                    >
-                      <div className="w-9 h-9 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
-                        {u.avatar
-                          ? <img src={u.avatar} alt={u.username} className="w-full h-full object-cover" />
-                          : <span className="text-mat-gold font-bold text-sm">{u.username.slice(0, 2).toUpperCase()}</span>
-                        }
-                      </div>
-                      <div>
-                        <p className="text-mat-text text-sm font-medium">{u.username}</p>
-                        <p className="text-mat-text-muted text-xs">{u.display_belt}</p>
-                      </div>
-                      <Users size={12} className="text-mat-text-dim ml-auto" />
-                    </li>
-                  ))}
-                </ul>
-              )
-            })()}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

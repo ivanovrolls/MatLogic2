@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   BarChart2, Trophy, User, LogOut, ChevronRight, Shield,
-  Sun, Moon, HelpCircle, Users,
+  Sun, Moon, HelpCircle,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -21,7 +21,7 @@ const navItems = [
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
   { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
-  { href: '/users', label: 'Community', icon: Users, tutorialId: 'nav-community' },
+  { href: '/dojo', label: 'Dojo', icon: Shield, tutorialId: 'nav-dojo' },
 ]
 
 export function Sidebar() {
