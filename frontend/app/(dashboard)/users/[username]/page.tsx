@@ -1,15 +1,46 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { socialApi } from '@/lib/api'
-import { PublicUser } from '@/lib/types'
+import { PublicUser, ChallengeType } from '@/lib/types'
+import { useAuthStore } from '@/stores/authStore'
 import { BELT_COLORS } from '@/lib/utils'
-import { Loader2, ChevronLeft, MapPin } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { Loader2, ChevronLeft, MapPin, Swords, X } from 'lucide-react'
+
+const CHALLENGE_TYPES: { key: ChallengeType; label: string; desc: string }[] = [
+  { key: 'sessions', label: 'Sessions', desc: 'Who logs more training sessions' },
+  { key: 'hours', label: 'Mat Hours', desc: 'Who spends more time on the mat' },
+  { key: 'win_rate', label: 'Win Rate', desc: 'Higher sparring win rate (min 3 rounds)' },
+]
+const DURATIONS = [{ days: 3, label: '3d' }, { days: 7, label: '1wk' }, { days: 14, label: '2wk' }, { days: 30, label: '1mo' }]
 
 export default function PublicProfilePage() {
   const { username } = useParams<{ username: string }>()
   const router = useRouter()
+  const { user: me } = useAuthStore()
+  const qc = useQueryClient()
+  const [showChallenge, setShowChallenge] = useState(false)
+  const [challengeType, setChallengeType] = useState<ChallengeType>('sessions')
+  const [duration, setDuration] = useState(7)
+  const [message, setMessage] = useState('')
+
+  const challengeMutation = useMutation({
+    mutationFn: () => socialApi.sendChallenge(username, {
+      challenge_type: challengeType,
+      duration_days: duration,
+      message: message.trim(),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['challenges'] })
+      toast.success(`Challenge sent to ${username}!`)
+      setShowChallenge(false)
+      setMessage('')
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.detail || 'Failed to send.'),
+  })
 
   const { data: profile, isLoading, error } = useQuery<PublicUser>({
     queryKey: ['public-profile', username],
@@ -59,7 +90,17 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3">
             <h1 className="font-display text-2xl text-mat-text uppercase tracking-wider">{profile.username}</h1>
+            {me && me.username !== profile.username && (
+              <button
+                onClick={() => setShowChallenge(s => !s)}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-mat-gold text-mat-gold text-xs hover:bg-mat-gold hover:text-mat-black transition-colors shrink-0"
+              >
+                <Swords size={11} /> Challenge
+              </button>
+            )}
+          </div>
 
             {/* Belt strip */}
             <div className="flex items-center gap-2 mt-1.5">
@@ -81,6 +122,77 @@ export default function PublicProfilePage() {
           </p>
         )}
       </div>
+
+      {/* Inline challenge form */}
+      {showChallenge && me && (
+        <div className="bg-mat-card border border-mat-gold/40 p-5 space-y-4 animate-slide-up">
+          <div className="flex items-center justify-between">
+            <p className="font-display text-mat-text uppercase tracking-wider flex items-center gap-2">
+              <Swords size={14} className="text-mat-gold" /> Challenge {profile.username}
+            </p>
+            <button onClick={() => setShowChallenge(false)} className="text-mat-text-muted hover:text-mat-text">
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest">Type</p>
+            <div className="grid grid-cols-3 gap-2">
+              {CHALLENGE_TYPES.map(ct => (
+                <button
+                  key={ct.key}
+                  onClick={() => setChallengeType(ct.key)}
+                  className={`py-2 px-3 text-xs border transition-colors ${
+                    challengeType === ct.key
+                      ? 'border-mat-gold bg-mat-gold/10 text-mat-gold'
+                      : 'border-mat-border text-mat-text-muted hover:border-mat-gold/40'
+                  }`}
+                >
+                  {ct.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest">Duration</p>
+            <div className="flex gap-2">
+              {DURATIONS.map(d => (
+                <button
+                  key={d.days}
+                  onClick={() => setDuration(d.days)}
+                  className={`flex-1 py-2 text-xs border transition-colors ${
+                    duration === d.days
+                      ? 'border-mat-gold bg-mat-gold/10 text-mat-gold'
+                      : 'border-mat-border text-mat-text-muted hover:border-mat-gold/40'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <input
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            className="mat-input w-full"
+            placeholder="Add some trash talk (optional)"
+            maxLength={200}
+          />
+
+          <button
+            onClick={() => challengeMutation.mutate()}
+            disabled={challengeMutation.isPending}
+            className="btn-primary w-full py-2.5 flex items-center justify-center gap-2"
+          >
+            {challengeMutation.isPending
+              ? <><Loader2 size={13} className="animate-spin" /> Sending…</>
+              : <><Swords size={13} /> Send Challenge</>
+            }
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">

@@ -188,6 +188,11 @@ export const socialApi = {
   rivals: () => api.get('/social/rivals/'),
   search: (q: string) => api.get('/social/search/', { params: { q } }),
   getProfile: (username: string) => api.get(`/social/users/${username}/`),
+  sendChallenge: (username: string, data: object) =>
+    api.post(`/social/users/${username}/challenge/`, data),
+  respondChallenge: (id: number, action: 'accept' | 'decline') =>
+    api.post(`/social/challenges/${id}/respond/`, { action }),
+  myChallenges: () => api.get('/social/challenges/'),
 }
 
 export default api

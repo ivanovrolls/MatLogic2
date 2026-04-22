@@ -2,17 +2,31 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from .models import Challenge
 from .serializers import PublicUserSerializer
 
 User = get_user_model()
 
+CHALLENGE_TYPE_LABELS = {
+    'sessions': 'Training Sessions',
+    'hours': 'Mat Hours',
+    'win_rate': 'Win Rate',
+}
+CHALLENGE_UNITS = {
+    'sessions': ' sessions',
+    'hours': 'h',
+    'win_rate': '%',
+}
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def _compute_streaks(member_ids):
-    """Return {user_id: streak_days} in a single query."""
     from training.models import TrainingSession
     today = date.today()
     rows = (
@@ -39,6 +53,114 @@ def _compute_streaks(member_ids):
     return result
 
 
+def _challenge_stat(challenge, user):
+    """Return the current metric value for a user in a challenge. Returns None if insufficient data."""
+    from training.models import TrainingSession
+    from sparring.models import SparringRound
+    start = challenge.starts_at.date()
+    today = date.today()
+
+    if challenge.challenge_type == 'sessions':
+        val = TrainingSession.objects.filter(user=user, date__gte=start, date__lte=today).count()
+        return val
+
+    if challenge.challenge_type == 'hours':
+        mins = (
+            TrainingSession.objects
+            .filter(user=user, date__gte=start, date__lte=today)
+            .aggregate(t=Sum('duration'))['t'] or 0
+        )
+        return round(mins / 60, 1)
+
+    if challenge.challenge_type == 'win_rate':
+        rounds = SparringRound.objects.filter(user=user, date__gte=start, date__lte=today)
+        total = rounds.count()
+        if total < 3:
+            return None  # insufficient rounds
+        wins = rounds.filter(outcome='win').count()
+        return round(wins / total * 100)
+
+    return 0
+
+
+def _resolve_challenge(challenge):
+    """Compute and save the winner for a completed challenge."""
+    my_val = _challenge_stat(challenge, challenge.challenger)
+    their_val = _challenge_stat(challenge, challenge.challenged)
+
+    # win_rate requires min 3 rounds; treat None as loss
+    if my_val is None and their_val is None:
+        winner = None  # draw — no data
+    elif my_val is None:
+        winner = challenge.challenged
+    elif their_val is None:
+        winner = challenge.challenger
+    elif my_val > their_val:
+        winner = challenge.challenger
+    elif their_val > my_val:
+        winner = challenge.challenged
+    else:
+        winner = None  # exact tie
+
+    challenge.winner = winner
+    challenge.status = 'completed'
+    challenge.save(update_fields=['winner', 'status'])
+    return challenge
+
+
+def _mini_user(u):
+    return {
+        'id': u.id,
+        'username': u.username,
+        'belt': u.belt,
+        'stripes': u.stripes,
+        'display_belt': u.display_belt,
+        'avatar': u.avatar.url if u.avatar else None,
+    }
+
+
+def _serialize_challenge(c, viewer):
+    """Serialize a challenge from the viewer's perspective."""
+    is_challenger = c.challenger_id == viewer.id
+    opponent = c.challenged if is_challenger else c.challenger
+    base = {
+        'id': c.id,
+        'challenge_type': c.challenge_type,
+        'challenge_type_display': CHALLENGE_TYPE_LABELS.get(c.challenge_type, c.challenge_type),
+        'unit': CHALLENGE_UNITS.get(c.challenge_type, ''),
+        'duration_days': c.duration_days,
+        'message': c.message,
+        'status': c.status,
+        'is_challenger': is_challenger,
+        'opponent': _mini_user(opponent),
+        'challenger': _mini_user(c.challenger),
+        'challenged': _mini_user(c.challenged),
+        'created_at': c.created_at.isoformat(),
+    }
+
+    if c.status in ('active', 'completed'):
+        my_val = _challenge_stat(c, viewer)
+        their_val = _challenge_stat(c, opponent)
+        base['my_value'] = my_val
+        base['their_value'] = their_val
+        base['ends_at'] = c.ends_at.isoformat() if c.ends_at else None
+        if c.ends_at:
+            delta = c.ends_at.date() - date.today()
+            base['days_left'] = max(0, delta.days)
+        if my_val is not None and their_val is not None:
+            base['leading'] = my_val >= their_val
+        else:
+            base['leading'] = my_val is not None
+
+    if c.status == 'completed':
+        base['winner'] = _mini_user(c.winner) if c.winner else None
+        base['won'] = c.winner_id == viewer.id if c.winner else None
+
+    return base
+
+
+# ─── Dojo / Gym Room ──────────────────────────────────────────────────────────
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def gym_room(request):
@@ -50,7 +172,6 @@ def gym_room(request):
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
 
-    # Include the requesting user always; other members must be public
     members = (
         User.objects
         .filter(Q(gym__iexact=gym, is_public=True) | Q(id=request.user.id))
@@ -62,18 +183,11 @@ def gym_room(request):
                 distinct=True,
             ),
             minutes_month=Coalesce(
-                Sum(
-                    'training_sessions__duration',
-                    filter=Q(training_sessions__date__gte=month_ago),
-                ),
+                Sum('training_sessions__duration', filter=Q(training_sessions__date__gte=month_ago)),
                 0,
             ),
             total_sparring=Count('sparring_rounds', distinct=True),
-            won_sparring=Count(
-                'sparring_rounds',
-                filter=Q(sparring_rounds__outcome='win'),
-                distinct=True,
-            ),
+            won_sparring=Count('sparring_rounds', filter=Q(sparring_rounds__outcome='win'), distinct=True),
         )
     )
 
@@ -106,7 +220,6 @@ def gym_room(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def my_rivals(request):
-    """Auto-detect rivals: public MatLogic users the requester has named in sparring logs."""
     from sparring.models import SparringRound
     partner_names = (
         SparringRound.objects
@@ -130,14 +243,7 @@ def my_rivals(request):
         draws = rounds_vs.filter(outcome='draw').count()
         total = wins + losses + draws
         result.append({
-            'user': {
-                'id': rival.id,
-                'username': rival.username,
-                'belt': rival.belt,
-                'stripes': rival.stripes,
-                'display_belt': rival.display_belt,
-                'avatar': rival.avatar.url if rival.avatar else None,
-            },
+            'user': _mini_user(rival),
             'wins': wins,
             'losses': losses,
             'draws': draws,
@@ -148,6 +254,8 @@ def my_rivals(request):
     result.sort(key=lambda x: -x['total'])
     return Response(result)
 
+
+# ─── Public Profiles / Search ─────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -175,3 +283,119 @@ def search_users(request):
         .exclude(id=request.user.id)[:20]
     )
     return Response(PublicUserSerializer(users, many=True, context={'request': request}).data)
+
+
+# ─── Challenges ───────────────────────────────────────────────────────────────
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_challenge(request, username):
+    try:
+        target = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if target == request.user:
+        return Response({'detail': 'Cannot challenge yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not target.is_public:
+        return Response({'detail': 'This profile is private.'}, status=status.HTTP_403_FORBIDDEN)
+
+    challenge_type = request.data.get('challenge_type', 'sessions')
+    duration_days = int(request.data.get('duration_days', 7))
+    message = (request.data.get('message') or '').strip()[:200]
+
+    if challenge_type not in ('sessions', 'hours', 'win_rate'):
+        return Response({'detail': 'Invalid challenge type.'}, status=status.HTTP_400_BAD_REQUEST)
+    if duration_days not in (3, 7, 14, 30):
+        return Response({'detail': 'Invalid duration.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Only one active/pending challenge between two users at a time
+    existing = Challenge.objects.filter(
+        Q(challenger=request.user, challenged=target) |
+        Q(challenger=target, challenged=request.user),
+        status__in=('pending', 'active'),
+    ).exists()
+    if existing:
+        return Response({'detail': 'A challenge already exists between you two.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    challenge = Challenge.objects.create(
+        challenger=request.user,
+        challenged=target,
+        challenge_type=challenge_type,
+        duration_days=duration_days,
+        message=message,
+    )
+    return Response(_serialize_challenge(challenge, request.user), status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def respond_challenge(request, challenge_id):
+    try:
+        challenge = Challenge.objects.get(id=challenge_id, challenged=request.user, status='pending')
+    except Challenge.DoesNotExist:
+        return Response({'detail': 'Challenge not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    action = request.data.get('action')
+    if action == 'accept':
+        now = timezone.now()
+        challenge.status = 'active'
+        challenge.starts_at = now
+        challenge.ends_at = now + timedelta(days=challenge.duration_days)
+        challenge.save()
+    elif action == 'decline':
+        challenge.status = 'declined'
+        challenge.save()
+    else:
+        return Response({'detail': 'action must be accept or decline.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(_serialize_challenge(challenge, request.user))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_challenges(request):
+    viewer = request.user
+    all_challenges = (
+        Challenge.objects
+        .filter(Q(challenger=viewer) | Q(challenged=viewer))
+        .select_related('challenger', 'challenged', 'winner')
+        .exclude(status='declined')
+    )
+
+    # Auto-resolve expired active challenges
+    now = timezone.now()
+    for c in all_challenges:
+        if c.status == 'active' and c.ends_at and c.ends_at <= now:
+            _resolve_challenge(c)
+
+    # Re-fetch after resolution
+    all_challenges = (
+        Challenge.objects
+        .filter(Q(challenger=viewer) | Q(challenged=viewer))
+        .select_related('challenger', 'challenged', 'winner')
+        .exclude(status='declined')
+    )
+
+    pending_received = []
+    pending_sent = []
+    active = []
+    completed = []
+
+    for c in all_challenges:
+        if c.status == 'pending':
+            if c.challenged_id == viewer.id:
+                pending_received.append(_serialize_challenge(c, viewer))
+            else:
+                pending_sent.append(_serialize_challenge(c, viewer))
+        elif c.status == 'active':
+            active.append(_serialize_challenge(c, viewer))
+        elif c.status == 'completed':
+            completed.append(_serialize_challenge(c, viewer))
+
+    return Response({
+        'pending_received': pending_received,
+        'pending_sent': pending_sent,
+        'active': active,
+        'completed': completed[:5],
+    })

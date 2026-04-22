@@ -374,6 +374,48 @@ export interface Rival {
   win_rate: number | null
 }
 
+export type ChallengeType = 'sessions' | 'hours' | 'win_rate'
+export type ChallengeStatus = 'pending' | 'active' | 'completed' | 'declined'
+
+export interface ChallengeUser {
+  id: number
+  username: string
+  belt: Belt
+  stripes: number
+  display_belt: string
+  avatar: string | null
+}
+
+export interface ChallengeData {
+  id: number
+  challenge_type: ChallengeType
+  challenge_type_display: string
+  unit: string
+  duration_days: number
+  message: string
+  status: ChallengeStatus
+  is_challenger: boolean
+  opponent: ChallengeUser
+  challenger: ChallengeUser
+  challenged: ChallengeUser
+  created_at: string
+  // active / completed fields
+  my_value?: number | null
+  their_value?: number | null
+  ends_at?: string
+  days_left?: number
+  leading?: boolean
+  winner?: ChallengeUser | null
+  won?: boolean | null
+}
+
+export interface MyChallenges {
+  pending_received: ChallengeData[]
+  pending_sent: ChallengeData[]
+  active: ChallengeData[]
+  completed: ChallengeData[]
+}
+
 // ---- Pagination ----
 export interface PaginatedResponse<T> {
   count: number
