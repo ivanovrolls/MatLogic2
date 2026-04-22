@@ -14,7 +14,7 @@ import {
   startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth, getDate,
 } from 'date-fns'
 import {
-  BookOpen, Target, TrendingUp, ChevronRight, ChevronLeft,
+  BookOpen, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
   Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
   Zap, ChevronDown, Users, Swords, Clock, CheckCheck,
 } from 'lucide-react'
