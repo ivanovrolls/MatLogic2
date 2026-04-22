@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.db.models import Q
 from .models import WeeklyPlan, SessionChecklist
 from .serializers import WeeklyPlanSerializer, SessionChecklistSerializer
 
@@ -29,6 +30,119 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
             return Response(WeeklyPlanSerializer(plan).data)
         except WeeklyPlan.DoesNotExist:
             return Response({'detail': 'No plan for this week.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['post'])
+    def auto_generate(self, request):
+        from datetime import date, timedelta
+        from collections import Counter
+        import re
+
+        user = request.user
+        today = date.today()
+        monday = today - timedelta(days=today.weekday())
+
+        if WeeklyPlan.objects.filter(user=user, week_start=monday).exists():
+            return Response(
+                {'detail': 'A plan already exists for this week.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        def norm_sub(name):
+            return re.sub(r'\s+', ' ', re.sub(r"[^a-z0-9 ]", '', name.lower())).strip()
+
+        since = today - timedelta(days=90)
+        rounds = list(user.sparring_rounds.filter(date__gte=since))
+
+        from techniques.models import Technique
+        weekly_drills = []
+        goals_parts = []
+        focus_technique_ids = []
+
+        if rounds:
+            all_conceded = []
+            for r in rounds:
+                all_conceded.extend(norm_sub(s) for s in r.submissions_conceded)
+
+            for sub, count in Counter(all_conceded).most_common(2):
+                if not sub:
+                    continue
+                first_word = sub.split()[0] if sub.split() else sub
+                matching = user.techniques.filter(is_active=True).filter(
+                    Q(name__icontains=sub) | Q(name__icontains=first_word)
+                ).first()
+                drill_name = matching.name if matching else f"{sub} defense"
+                if matching and matching.id not in focus_technique_ids:
+                    focus_technique_ids.append(matching.id)
+                weekly_drills.append({
+                    'technique_id': matching.id if matching else 0,
+                    'technique_name': drill_name,
+                    'sets': 3,
+                    'reps': 5,
+                })
+                goals_parts.append(f"Shore up {sub} defense")
+
+            all_pos_conceded = []
+            for r in rounds:
+                all_pos_conceded.extend(r.positions_conceded)
+
+            if all_pos_conceded:
+                top_pos, _ = Counter(all_pos_conceded).most_common(1)[0]
+                pos_label = top_pos.replace('_', ' ')
+                matching_escape = user.techniques.filter(
+                    is_active=True, technique_type='escape', position=top_pos
+                ).first() or user.techniques.filter(
+                    is_active=True, position=top_pos
+                ).first()
+                drill_name = matching_escape.name if matching_escape else f"{pos_label} escape"
+                if matching_escape and matching_escape.id not in focus_technique_ids:
+                    focus_technique_ids.append(matching_escape.id)
+                weekly_drills.append({
+                    'technique_id': matching_escape.id if matching_escape else 0,
+                    'technique_name': drill_name,
+                    'sets': 3,
+                    'reps': 5,
+                })
+                goals_parts.append(f"Improve {pos_label} escapes")
+
+        if not weekly_drills:
+            top_techniques = list(user.techniques.filter(is_active=True).order_by('-times_drilled')[:3])
+            for t in top_techniques:
+                weekly_drills.append({
+                    'technique_id': t.id,
+                    'technique_name': t.name,
+                    'sets': 3,
+                    'reps': 10,
+                })
+                focus_technique_ids.append(t.id)
+            goals_parts.append("Continue drilling core techniques")
+
+        if not weekly_drills:
+            weekly_drills = [
+                {'technique_id': 0, 'technique_name': 'Armbar defense', 'sets': 3, 'reps': 5},
+                {'technique_id': 0, 'technique_name': 'Back escape', 'sets': 3, 'reps': 5},
+                {'technique_id': 0, 'technique_name': 'Mount escape', 'sets': 3, 'reps': 5},
+            ]
+            goals_parts.append("Work on fundamental defenses")
+
+        plan = WeeklyPlan.objects.create(
+            user=user,
+            week_start=monday,
+            title=f"Auto Plan — Week of {monday.strftime('%b %d')}",
+            goals=". ".join(goals_parts) + ".",
+            sessions_planned=3,
+            drill_mode='weekly',
+            weekly_drills=weekly_drills,
+        )
+
+        if focus_technique_ids:
+            plan.focus_techniques.set(
+                Technique.objects.filter(id__in=focus_technique_ids, user=user)
+            )
+
+        return Response(
+            WeeklyPlanSerializer(plan, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=['post'])
     def generate_checklist(self, request, pk=None):

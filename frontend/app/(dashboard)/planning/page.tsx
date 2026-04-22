@@ -9,6 +9,7 @@ import { format, parseISO, isThisWeek, isPast, addDays } from 'date-fns'
 import {
   Plus, CalendarDays, CheckCircle2, Circle, Loader2,
   Target, ChevronDown, Trophy, Pencil, Trash2, X, Dumbbell,
+  Sparkles, HelpCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import type { WeeklyPlan, TechniqueMinimal, ChecklistItem, DrillItem } from '@/lib/types'
@@ -568,9 +569,20 @@ export default function PlanningPage() {
   const [weekStartInput, setWeekStartInput] = useState(format(getWeekStart(), 'yyyy-MM-dd'))
   const [drillMode, setDrillMode] = useState<'weekly' | 'daily'>('weekly')
   const [weeklyDrills, setWeeklyDrills] = useState<DrillItem[]>([])
-  // dailyDrills: dayIndex (0=Mon..6=Sun) → DrillItem[]
   const [dailyDrills, setDailyDrills] = useState<Record<number, DrillItem[]>>({})
   const queryClient = useQueryClient()
+
+  const autoGenerateMutation = useMutation({
+    mutationFn: () => planningApi.autoGenerate(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Weekly plan generated from your insights!')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.detail || 'Failed to generate plan.'
+      toast.error(msg)
+    },
+  })
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ['plans'],
@@ -655,14 +667,37 @@ export default function PlanningPage() {
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <p className="text-mat-text-muted text-xs uppercase tracking-widest">Deliberate Practice</p>
           <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">Weekly Planner</h1>
         </div>
-        <button onClick={() => setShowNewPlan(!showNewPlan)} className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs shrink-0">
-          <Plus size={14} /> {showNewPlan ? 'Cancel' : 'New Plan'}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="relative group">
+            <button
+              onClick={() => autoGenerateMutation.mutate()}
+              disabled={autoGenerateMutation.isPending}
+              className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-xs disabled:opacity-60"
+            >
+              {autoGenerateMutation.isPending
+                ? <Loader2 size={13} className="animate-spin" />
+                : <Sparkles size={13} className="text-mat-gold" />
+              }
+              Auto-Generate Plan
+            </button>
+            <div className="absolute right-0 top-full mt-1 z-20 hidden group-hover:block w-64 bg-mat-panel border border-mat-border p-3 shadow-lg pointer-events-none">
+              <div className="flex items-start gap-2">
+                <HelpCircle size={12} className="text-mat-gold mt-0.5 shrink-0" />
+                <p className="text-mat-text-muted text-xs leading-relaxed">
+                  Auto-generates this week's plan based on your training insights — conceded submissions become defense drills, conceded positions become escape work. Matched techniques from your arsenal are linked automatically.
+                </p>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setShowNewPlan(!showNewPlan)} className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs">
+            <Plus size={14} /> {showNewPlan ? 'Cancel' : 'New Plan'}
+          </button>
+        </div>
       </div>
 
       {/* ── New Plan Form ── */}

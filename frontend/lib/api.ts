@@ -121,6 +121,7 @@ export const planningApi = {
   create: (data: object) => api.post('/planning/', data),
   update: (id: number, data: object) => api.patch(`/planning/${id}/`, data),
   delete: (id: number) => api.delete(`/planning/${id}/`),
+  autoGenerate: () => api.post('/planning/auto_generate/'),
   generateChecklist: (planId: number, data: object) =>
     api.post(`/planning/${planId}/generate_checklist/`, data),
   // Checklists

@@ -314,10 +314,90 @@ function SparringLogRow({ round: r }: { round: SparringRound }) {
   )
 }
 
+interface OpponentSummary {
+  name: string
+  belt: string
+  total: number
+  wins: number
+  losses: number
+  draws: number
+  winRate: number
+  lastSeen: string
+}
+
+function OpponentHistoryRow({ opp }: { opp: OpponentSummary }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-5 py-3 flex items-center justify-between hover:bg-mat-darker transition-colors"
+      >
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <span className="text-mat-text font-medium text-sm truncate">{opp.name}</span>
+          <span className="text-mat-text-dim text-xs capitalize hidden sm:block">{opp.belt}</span>
+          <span className="text-mat-text-dim text-xs hidden sm:block">{opp.total} round{opp.total !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={`font-display text-lg ${opp.winRate >= 50 ? 'text-mat-green-light' : 'text-mat-red-light'}`}>
+            {opp.winRate}%
+          </span>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-mat-text-muted">
+            <span className="text-mat-green-light">{opp.wins}W</span>
+            <span className="text-mat-text-dim">/</span>
+            <span className="text-mat-red-light">{opp.losses}L</span>
+            {opp.draws > 0 && <><span className="text-mat-text-dim">/</span><span className="text-mat-text-muted">{opp.draws}D</span></>}
+          </div>
+          <ChevronDown size={13} className={`text-mat-text-dim transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="px-5 pb-3 pt-1 bg-mat-darker border-t border-mat-border">
+          <div className="flex flex-wrap gap-4 text-xs text-mat-text-muted">
+            <span>Belt: <span className="text-mat-text capitalize">{opp.belt}</span></span>
+            <span>Total rounds: <span className="text-mat-text">{opp.total}</span></span>
+            <span className="text-mat-green-light">Wins: {opp.wins}</span>
+            <span className="text-mat-red-light">Losses: {opp.losses}</span>
+            {opp.draws > 0 && <span>Draws: {opp.draws}</span>}
+            <span>Last rolled: <span className="text-mat-text">{formatDate(opp.lastSeen, 'MMM d, yyyy')}</span></span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SparringLogTab() {
   const { data, isLoading } = useQuery({ queryKey: ['sparring'], queryFn: () => sparringApi.list({ page_size: 200 }).then(r => r.data) })
   const { data: stats } = useQuery({ queryKey: ['sparring', 'stats'], queryFn: () => sparringApi.stats().then(r => r.data) })
   const rounds: SparringRound[] = data?.results || (Array.isArray(data) ? data : [])
+  const [opponentOpen, setOpponentOpen] = useState(false)
+
+  const opponentMap: Record<string, OpponentSummary> = {}
+  rounds.forEach(r => {
+    const key = r.partner_name.toLowerCase().trim()
+    if (!opponentMap[key]) {
+      opponentMap[key] = {
+        name: r.partner_name,
+        belt: r.partner_belt,
+        total: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        winRate: 0,
+        lastSeen: r.date,
+      }
+    }
+    const o = opponentMap[key]
+    o.total += 1
+    if (r.outcome === 'win') o.wins += 1
+    else if (r.outcome === 'loss') o.losses += 1
+    else o.draws += 1
+    if (r.date > o.lastSeen) { o.lastSeen = r.date; o.belt = r.partner_belt }
+  })
+  const opponents = Object.values(opponentMap)
+    .map(o => ({ ...o, winRate: o.total > 0 ? Math.round(o.wins / o.total * 100) : 0 }))
+    .sort((a, b) => b.total - a.total)
 
   return (
     <div className="space-y-5">
@@ -339,6 +419,32 @@ function SparringLogTab() {
               <p className={`font-display text-3xl ${color}`}>{value}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {opponents.length > 0 && (
+        <div className="bg-mat-card border border-mat-border">
+          <button
+            onClick={() => setOpponentOpen(o => !o)}
+            className="w-full px-5 py-4 flex items-center justify-between hover:bg-mat-darker transition-colors group"
+          >
+            <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">
+              Opponent History <span className="text-mat-text-muted font-sans text-sm normal-case ml-1">({opponents.length})</span>
+            </h3>
+            <ChevronDown size={14} className={cn('text-mat-text-dim group-hover:text-mat-gold transition-transform duration-300', opponentOpen ? 'rotate-180' : '')} />
+          </button>
+          {opponentOpen && (
+            <div className="border-t border-mat-border divide-y divide-mat-border">
+              <div className="hidden md:grid grid-cols-12 gap-3 px-5 py-2 text-mat-text-dim text-xs uppercase tracking-widest">
+                <div className="col-span-4">Partner</div>
+                <div className="col-span-2">Belt</div>
+                <div className="col-span-2">Rounds</div>
+                <div className="col-span-2">W / L / D</div>
+                <div className="col-span-2">Win Rate</div>
+              </div>
+              {opponents.map(opp => <OpponentHistoryRow key={opp.name} opp={opp} />)}
+            </div>
+          )}
         </div>
       )}
 

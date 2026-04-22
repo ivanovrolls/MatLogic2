@@ -389,6 +389,52 @@ def insights(request):
                     'action': f'Focus a training block on preventing and escaping {top_pos.replace("_", " ")}.',
                 })
 
+    # ── Position-specific win rate analysis ───────────────────────────────────
+    if total_analysis >= 4:
+        pos_win_data = {}
+        for r in analysis_rounds:
+            for pos in r.dominant_positions:
+                if pos not in pos_win_data:
+                    pos_win_data[pos] = {'wins': 0, 'total': 0}
+                pos_win_data[pos]['total'] += 1
+                if r.outcome == 'win':
+                    pos_win_data[pos]['wins'] += 1
+
+        candidates = [
+            (pos, d['wins'], d['total'], round(d['wins'] / d['total'] * 100))
+            for pos, d in pos_win_data.items()
+            if d['total'] >= 2
+        ]
+        candidates.sort(key=lambda x: x[3], reverse=True)
+
+        if candidates:
+            best_pos, wins, total, wr = candidates[0]
+            pos_label = best_pos.replace('_', ' ')
+            early_note = ' (early data)' if early_data else ''
+            if wr >= 65:
+                highlights.append({
+                    'type': 'position_win_rate',
+                    'title': f'Strongest position: {pos_label} ({wr}%)',
+                    'detail': f'You win {wr}% of rounds ({wins}/{total}) when you control {pos_label} {belt_context}{early_note}. Keep hunting this position.',
+                })
+            elif wr >= 50:
+                insights_list.append({
+                    'type': 'position_win_rate',
+                    'title': f'Effective from {pos_label}: {wr}%',
+                    'detail': f'Your {pos_label} control converts to wins {wr}% of the time ({wins}/{total} rounds {belt_context}{early_note}).',
+                })
+
+            worst = [c for c in candidates if c[2] >= 2 and c[3] <= 40]
+            if worst:
+                worst_pos, w_wins, w_total, w_wr = worst[-1]
+                if worst_pos != best_pos:
+                    insights_list.append({
+                        'type': 'position_not_finishing',
+                        'title': f'{worst_pos.replace("_", " ").title()}: not finishing ({w_wr}%)',
+                        'detail': f'You hold {worst_pos.replace("_", " ")} in {w_total} rounds {belt_context} but only win {w_wr}% — your control isn\'t converting to finishes.',
+                        'action': f'Drill submission chains and transitions from {worst_pos.replace("_", " ")}.',
+                    })
+
     # ── Technique database gaps ───────────────────────────────────────────────
     techniques = user.techniques.filter(is_active=True)
     if techniques.count() < 10:

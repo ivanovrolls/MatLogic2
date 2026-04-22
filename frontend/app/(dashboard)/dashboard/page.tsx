@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, analyticsApi, competitionApi } from '@/lib/api'
+import { sessionsApi, analyticsApi, competitionApi, planningApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
@@ -462,6 +462,22 @@ function InsightCard({ insight }: { insight: { type: string; title: string; deta
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  const autoGenerateMutation = useMutation({
+    mutationFn: () => planningApi.autoGenerate(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plans'] })
+      toast.success('Weekly plan generated!')
+      router.push('/planning')
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.detail || 'Failed to generate plan.'
+      toast.error(msg)
+      if (msg.includes('already exists')) router.push('/planning')
+    },
+  })
 
   const { data: recentSessions } = useQuery({
     queryKey: ['sessions', 'recent'],
@@ -658,7 +674,6 @@ export default function DashboardPage() {
               {[
                 { href: '/sessions/new', label: 'Log Training Session', icon: BookOpen, color: 'text-mat-gold' },
                 { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
-                { href: '/planning', label: 'Set Weekly Plan', icon: TrendingUp, color: 'text-mat-green-light' },
                 { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
                 { href: '/sessions?tab=injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
               ].map(({ href, label, icon: Icon, color }) => (
@@ -672,6 +687,20 @@ export default function DashboardPage() {
                   <ChevronRight size={12} className="text-mat-text-dim group-hover:text-mat-gold ml-auto transition-colors" />
                 </Link>
               ))}
+              <button
+                onClick={() => autoGenerateMutation.mutate()}
+                disabled={autoGenerateMutation.isPending}
+                className="flex items-center gap-3 px-3 py-2.5 hover:bg-mat-darker transition-colors group w-full text-left disabled:opacity-60"
+              >
+                {autoGenerateMutation.isPending
+                  ? <Loader2 size={14} className="text-mat-green-light animate-spin shrink-0" />
+                  : <TrendingUp size={14} className="text-mat-green-light group-hover:scale-110 transition-transform shrink-0" />
+                }
+                <span className="text-mat-text-muted group-hover:text-mat-text text-sm transition-colors">
+                  {autoGenerateMutation.isPending ? 'Generating...' : 'Auto-Generate Weekly Plan'}
+                </span>
+                <ChevronRight size={12} className="text-mat-text-dim group-hover:text-mat-gold ml-auto transition-colors" />
+              </button>
             </div>
           </div>
         </div>
