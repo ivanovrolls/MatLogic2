@@ -261,7 +261,7 @@ def insights(request):
     peer_rounds = [r for r in all_rounds if r.partner_belt in equal_or_higher]
 
     # Use peer rounds if enough data, fall back to all rounds
-    if len(peer_rounds) >= 8:
+    if len(peer_rounds) >= 4:
         analysis_rounds = peer_rounds
         belt_context = f"against {user.belt} belt and above partners"
     else:
@@ -269,45 +269,49 @@ def insights(request):
         belt_context = "across all sparring rounds"
 
     total_analysis = len(analysis_rounds)
+    early_data = total_analysis < 5  # flag for honest caveats in insight text
     recent_rounds = [r for r in all_rounds if r.date >= date.today() - timedelta(days=60)]
     total_recent = len(recent_rounds)
 
     # Overall win rate (recent 60 days)
-    if total_recent >= 10:
+    if total_recent >= 3:
         win_rate = sum(1 for r in recent_rounds if r.outcome == 'win') / total_recent * 100
+        early_wr = total_recent < 8
         if win_rate < 30:
             warnings.append({
                 'type': 'low_win_rate',
-                'title': 'Win rate below 30%',
-                'detail': 'Focus on defense and survival first. Identify the positions you keep getting caught in.',
+                'title': 'Win rate below 30%' + (' (early data)' if early_wr else ''),
+                'detail': ('Early rounds suggest you\'re struggling — focus on defense and survival first.' if early_wr
+                           else 'Focus on defense and survival first. Identify the positions you keep getting caught in.'),
                 'severity': 'medium'
             })
         elif win_rate > 70:
             highlights.append({
                 'type': 'high_win_rate',
-                'title': f'Strong win rate: {win_rate:.0f}%',
-                'detail': 'You\'re performing well. Consider seeking out tougher training partners to accelerate growth.',
+                'title': f'{"Early lead" if early_wr else "Strong win rate"}: {win_rate:.0f}%',
+                'detail': ('Off to a great start. Keep logging rounds to confirm this trend.' if early_wr
+                           else 'You\'re performing well. Consider seeking out tougher training partners to accelerate growth.'),
             })
 
     # ── Submission concession analysis ────────────────────────────────────────
-    if total_analysis >= 5:
+    if total_analysis >= 2:
         all_conceded = []
         for r in analysis_rounds:
             all_conceded.extend(_norm_sub(s) for s in r.submissions_conceded)
 
         if all_conceded:
             conceded_counts = Counter(all_conceded)
-            # Warn about the top 1-2 most conceded submissions (min 3 occurrences)
             shown_concession = 0
             for sub, count in conceded_counts.most_common(3):
-                if count < 3 or shown_concession >= 2:
+                if count < 2 or shown_concession >= 2:
                     break
                 rate = round(count / total_analysis * 100)
+                early_note = ' (early data — keep logging)' if early_data else ''
                 if rate >= 40:
                     warnings.append({
                         'type': 'submission_concession',
                         'title': f'Defensive gap: {sub}',
-                        'detail': f'You\'ve tapped to {sub} {count} times — that\'s {rate}% of your rounds {belt_context}. This is a consistent vulnerability.',
+                        'detail': f'You\'ve tapped to {sub} {count} time{"s" if count > 1 else ""} — {rate}% of your rounds {belt_context}{early_note}. Worth addressing.',
                         'severity': 'medium',
                         'action': f'Drill {sub} defense and escapes. Add it to your technique database.',
                     })
@@ -315,13 +319,13 @@ def insights(request):
                     insights_list.append({
                         'type': 'submission_concession',
                         'title': f'Most conceded: {sub}',
-                        'detail': f'You\'ve tapped to {sub} {count} times ({rate}% of rounds {belt_context}). Worth shoring up.',
+                        'detail': f'You\'ve tapped to {sub} {count} time{"s" if count > 1 else ""} ({rate}% of rounds {belt_context}{early_note}). Worth shoring up.',
                         'action': f'Drill {sub} defense. Add the escape to your technique database.',
                     })
                 shown_concession += 1
 
     # ── Offensive weapon analysis ─────────────────────────────────────────────
-    if total_analysis >= 5:
+    if total_analysis >= 2:
         sub_stats = {}  # sub -> {'attempts': 0, 'win_rounds': 0}
         for r in analysis_rounds:
             for sub in (_norm_sub(s) for s in r.submissions_attempted):
@@ -331,43 +335,44 @@ def insights(request):
                 if r.outcome == 'win':
                     sub_stats[sub]['win_rounds'] += 1
 
-        # Find weapons: 4+ attempts, sort by win-rate-when-used
+        # Find weapons: 2+ attempts, sort by win-rate-when-used
         candidates = [
             (sub, d['attempts'], round(d['win_rounds'] / d['attempts'] * 100))
             for sub, d in sub_stats.items()
-            if d['attempts'] >= 4
+            if d['attempts'] >= 2
         ]
         candidates.sort(key=lambda x: x[2], reverse=True)
 
         if candidates:
             best_sub, attempts, wr = candidates[0]
+            early_note = ' — log more rounds to confirm' if early_data else ''
             if wr >= 65:
                 highlights.append({
                     'type': 'submission_weapon',
-                    'title': f'Your {best_sub} is a killer',
-                    'detail': f'You win {wr}% of rounds where you go for a {best_sub} ({attempts} attempts {belt_context}). This is your sharpest weapon — keep hunting it.',
+                    'title': f'Your {best_sub} is{"looking like" if early_data else ""} a weapon',
+                    'detail': f'You win {wr}% of rounds where you go for a {best_sub} ({attempts} attempt{"s" if attempts > 1 else ""} {belt_context}{early_note}). Keep hunting it.',
                 })
             elif wr >= 45:
                 insights_list.append({
                     'type': 'submission_potential',
                     'title': f'Developing weapon: {best_sub}',
-                    'detail': f'You attempt {best_sub} regularly ({attempts} times {belt_context}) with a {wr}% win rate when you use it. Refine the entries and setups.',
+                    'detail': f'You attempt {best_sub} regularly ({attempts} time{"s" if attempts > 1 else ""} {belt_context}) with a {wr}% win rate when you use it{early_note}. Refine the entries.',
                     'action': f'Drill {best_sub} setups from your most common entry positions.',
                 })
 
         # Check for high-volume attempts with low win rate — may signal telegraphing
         for sub, attempts, wr in candidates:
-            if attempts >= 6 and wr < 30:
+            if attempts >= 3 and wr < 30:
                 insights_list.append({
                     'type': 'submission_overuse',
-                    'title': f'{sub}: high attempts, low conversion',
-                    'detail': f'You\'ve gone for {sub} {attempts} times {belt_context} but only win {wr}% of those rounds. Partners may be reading it.',
+                    'title': f'{sub}: attempts not converting',
+                    'detail': f'You\'ve gone for {sub} {attempts} time{"s" if attempts > 1 else ""} {belt_context} but only win {wr}% of those rounds. Try varying your setups.',
                     'action': f'Work on {sub} setups and combination attacks to disguise the attempt.',
                 })
-                break  # Only flag the worst one
+                break
 
     # ── Positional vulnerability analysis ────────────────────────────────────
-    if total_analysis >= 8:
+    if total_analysis >= 3:
         all_conceded_pos = []
         for r in analysis_rounds:
             all_conceded_pos.extend(r.positions_conceded)
@@ -375,11 +380,12 @@ def insights(request):
         if all_conceded_pos:
             top_pos, top_pos_count = Counter(all_conceded_pos).most_common(1)[0]
             pos_rate = round(top_pos_count / total_analysis * 100)
+            early_note = ' (early data)' if early_data else ''
             if pos_rate >= 35:
                 insights_list.append({
                     'type': 'position_weakness',
                     'title': f'Positional gap: {top_pos.replace("_", " ")}',
-                    'detail': f'Your partner ends up in {top_pos.replace("_", " ")} in {pos_rate}% of your rounds {belt_context}. This is your most conceded position.',
+                    'detail': f'Your partner ends up in {top_pos.replace("_", " ")} in {pos_rate}% of your rounds {belt_context}{early_note}.',
                     'action': f'Focus a training block on preventing and escaping {top_pos.replace("_", " ")}.',
                 })
 
