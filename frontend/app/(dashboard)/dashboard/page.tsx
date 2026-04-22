@@ -19,7 +19,6 @@ import {
   Zap, ChevronDown, Users, Swords, Clock, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow, parseISO } from 'date-fns'
 
 function ProgressBar({ value, max, color = 'bg-mat-gold' }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
