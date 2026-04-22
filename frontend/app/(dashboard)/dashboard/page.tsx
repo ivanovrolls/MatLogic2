@@ -748,6 +748,50 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Mini Dojo leaderboard */}
+      {dojoData && !('detail' in dojoData) && (dojoData as DojoRoom).members.length > 1 && (() => {
+        const dojo = dojoData as DojoRoom
+        const top = [...dojo.members]
+          .sort((a, b) => b.hours_month - a.hours_month)
+          .slice(0, 5)
+        return (
+          <div className="bg-mat-card border border-mat-border">
+            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                <Users size={15} className="text-mat-gold" />
+                {dojo.gym} Dojo
+              </h2>
+              <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
+                Full Leaderboard <ChevronRight size={12} />
+              </Link>
+            </div>
+            <div className="divide-y divide-mat-border">
+              {top.map((m, i) => (
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-3 px-5 py-3 ${m.is_me ? 'bg-mat-gold/5' : ''}`}
+                >
+                  <span className={`font-display text-base w-5 text-center ${i === 0 ? 'text-amber-400' : 'text-mat-text-dim'}`}>
+                    #{i + 1}
+                  </span>
+                  <div className="w-7 h-7 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
+                    {m.avatar
+                      ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
+                      : <span className="text-mat-gold font-bold text-xs">{m.username.slice(0, 2).toUpperCase()}</span>
+                    }
+                  </div>
+                  <span className={`flex-1 text-sm ${m.is_me ? 'text-mat-gold font-medium' : 'text-mat-text'}`}>
+                    {m.username}{m.is_me ? ' (you)' : ''}
+                  </span>
+                  <span className="font-display text-mat-gold text-base">{m.hours_month}h</span>
+                  <span className="text-mat-text-dim text-xs">this month</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-4 items-stretch">
 
@@ -816,22 +860,6 @@ export default function DashboardPage() {
 
         {/* Right 1/3 */}
         <div className="flex flex-col gap-4">
-          {allInsights.length > 0 && (
-            <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="insights">
-              <div className="px-5 py-4 border-b border-mat-border">
-                <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                  <Lightbulb size={15} className="text-mat-gold" />
-                  Insights
-                </h2>
-              </div>
-              <div className="p-4 space-y-3">
-                {allInsights.map((insight: any, i: number) => (
-                  <InsightCard key={i} insight={insight} />
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="bg-mat-card border border-mat-border shrink-0">
             <div className="px-5 py-4 border-b border-mat-border">
               <h2 className="font-display text-lg tracking-wider uppercase text-mat-text">
@@ -916,53 +944,25 @@ export default function DashboardPage() {
               </div>
             )
           })()}
+
+          {allInsights.length > 0 && (
+            <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="insights">
+              <div className="px-5 py-4 border-b border-mat-border">
+                <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                  <Lightbulb size={15} className="text-mat-gold" />
+                  Insights
+                </h2>
+              </div>
+              <div className="p-4 space-y-3">
+                {allInsights.map((insight: any, i: number) => (
+                  <InsightCard key={i} insight={insight} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
-
-      {/* Mini Dojo leaderboard */}
-      {dojoData && !('detail' in dojoData) && (dojoData as DojoRoom).members.length > 1 && (() => {
-        const dojo = dojoData as DojoRoom
-        const top = [...dojo.members]
-          .sort((a, b) => b.hours_month - a.hours_month)
-          .slice(0, 5)
-        return (
-          <div className="bg-mat-card border border-mat-border">
-            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
-              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                <Users size={15} className="text-mat-gold" />
-                {dojo.gym} Dojo
-              </h2>
-              <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
-                Full Leaderboard <ChevronRight size={12} />
-              </Link>
-            </div>
-            <div className="divide-y divide-mat-border">
-              {top.map((m, i) => (
-                <div
-                  key={m.id}
-                  className={`flex items-center gap-3 px-5 py-3 ${m.is_me ? 'bg-mat-gold/5' : ''}`}
-                >
-                  <span className={`font-display text-base w-5 text-center ${i === 0 ? 'text-amber-400' : 'text-mat-text-dim'}`}>
-                    #{i + 1}
-                  </span>
-                  <div className="w-7 h-7 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
-                    {m.avatar
-                      ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
-                      : <span className="text-mat-gold font-bold text-xs">{m.username.slice(0, 2).toUpperCase()}</span>
-                    }
-                  </div>
-                  <span className={`flex-1 text-sm ${m.is_me ? 'text-mat-gold font-medium' : 'text-mat-text'}`}>
-                    {m.username}{m.is_me ? ' (you)' : ''}
-                  </span>
-                  <span className="font-display text-mat-gold text-base">{m.hours_month}h</span>
-                  <span className="text-mat-text-dim text-xs">this month</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
     </div>
   )
 }
