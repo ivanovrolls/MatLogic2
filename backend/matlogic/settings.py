@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'injuries',
     'social',
     'notifications',
+    'coaching',
 ]
 
 MIDDLEWARE = [

@@ -43,6 +43,13 @@ class Technique(models.Model):
         on_delete=models.CASCADE,
         related_name='techniques'
     )
+    coach_assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='coach_assigned_techniques'
+    )
+    coach_assignment_pending = models.BooleanField(default=False)
     name = models.CharField(max_length=200)
     position = models.CharField(max_length=50, choices=POSITION_CHOICES)
     technique_type = models.CharField(max_length=50, choices=TYPE_CHOICES)

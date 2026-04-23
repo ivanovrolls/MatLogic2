@@ -1,14 +1,15 @@
 'use client'
 
 import { useForm } from 'react-hook-form'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
-import { authApi } from '@/lib/api'
+import { authApi, coachingApi } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
-import { Loader2, Star, Camera, Globe, Lock, Shield } from 'lucide-react'
-import { BELT_COLORS } from '@/lib/utils'
+import { Loader2, Star, Camera, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX } from 'lucide-react'
+import { BELT_COLORS, cn } from '@/lib/utils'
 import Link from 'next/link'
+import type { CoachRelationship } from '@/lib/types'
 
 const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
 
@@ -355,6 +356,166 @@ export default function ProfilePage() {
           </button>
         </div>
       </form>
+
+      <CoachSection />
     </div>
   )
 }
+
+function CoachSection() {
+  const queryClient = useQueryClient()
+  const [coachInput, setCoachInput] = useState('')
+
+  const { data: relationship, isLoading: relLoading } = useQuery<CoachRelationship | null>({
+    queryKey: ['coach-relationship'],
+    queryFn: () => coachingApi.getRelationship().then(r => r.data),
+  })
+
+  const { data: incomingRequests } = useQuery<CoachRelationship[]>({
+    queryKey: ['coach-requests'],
+    queryFn: () => coachingApi.getRequests().then(r => r.data),
+  })
+
+  const requestMutation = useMutation({
+    mutationFn: () => coachingApi.requestCoach(coachInput.trim()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-relationship'] })
+      setCoachInput('')
+      toast.success('Coach request sent.')
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.error || 'User not found.'),
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: () => coachingApi.removeCoach(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-relationship'] })
+      toast.success('Coach removed.')
+    },
+  })
+
+  const respondMutation = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: 'accepted' | 'declined' }) =>
+      coachingApi.respondToRequest(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-requests'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-students'] })
+      toast.success('Response sent.')
+    },
+  })
+
+  const pendingRequests = incomingRequests?.filter(r => r.status === 'pending') || []
+  const hasActiveRelationship = relationship && relationship.status !== 'declined'
+
+  return (
+    <div className="space-y-5">
+      {/* My Coach */}
+      <div className="bg-mat-card border border-mat-border p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <GraduationCap size={14} className="text-mat-gold" />
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest">My Coach</p>
+        </div>
+
+        {relLoading ? (
+          <div className="flex items-center gap-2 text-mat-text-dim text-sm">
+            <Loader2 size={13} className="animate-spin" /> Loading...
+          </div>
+        ) : hasActiveRelationship && relationship ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-mat-muted border border-mat-border flex items-center justify-center text-mat-gold font-bold text-sm overflow-hidden shrink-0">
+                {relationship.coach_avatar
+                  ? <img src={relationship.coach_avatar} alt={relationship.coach_username} className="w-full h-full object-cover" />
+                  : relationship.coach_username.slice(0, 2).toUpperCase()
+                }
+              </div>
+              <div>
+                <p className="text-mat-text text-sm font-semibold">{relationship.coach_username}</p>
+                <p className={cn(
+                  'text-xs capitalize font-medium',
+                  relationship.status === 'accepted' ? 'text-mat-green-light' : 'text-mat-gold'
+                )}>
+                  {relationship.status === 'accepted' ? 'Active Coach' : 'Request Pending'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => removeMutation.mutate()}
+              disabled={removeMutation.isPending}
+              className="text-mat-text-dim hover:text-mat-red-light transition-colors text-xs flex items-center gap-1 border border-mat-border hover:border-mat-red-light/50 px-2.5 py-1.5"
+            >
+              <X size={11} /> Remove
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-mat-text-dim text-xs">
+              Enter a username to request someone as your coach. They will receive a request to accept.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={coachInput}
+                onChange={e => setCoachInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') requestMutation.mutate() }}
+                className="mat-input text-sm flex-1"
+                placeholder="Coach's username"
+              />
+              <button
+                onClick={() => requestMutation.mutate()}
+                disabled={!coachInput.trim() || requestMutation.isPending}
+                className="btn-primary px-4 py-2 text-xs flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+              >
+                {requestMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <GraduationCap size={12} />}
+                Request
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Incoming requests (if this user is a coach) */}
+      {pendingRequests.length > 0 && (
+        <div id="coach-requests" className="bg-mat-card border border-mat-border p-6 space-y-4">
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest">
+            Coaching Requests ({pendingRequests.length})
+          </p>
+          <div className="space-y-3">
+            {pendingRequests.map(req => (
+              <div key={req.id} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-mat-muted border border-mat-border flex items-center justify-center text-mat-gold font-bold text-xs overflow-hidden shrink-0">
+                    {req.student_avatar
+                      ? <img src={req.student_avatar} alt={req.student_username} className="w-full h-full object-cover" />
+                      : req.student_username.slice(0, 2).toUpperCase()
+                    }
+                  </div>
+                  <div>
+                    <p className="text-mat-text text-sm font-semibold">{req.student_username}</p>
+                    <p className="text-mat-text-dim text-xs capitalize">{req.student_belt} belt</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => respondMutation.mutate({ id: req.id, status: 'accepted' })}
+                    disabled={respondMutation.isPending}
+                    className="flex items-center gap-1.5 text-xs text-mat-green-light border border-mat-green-light/30 hover:bg-mat-green-light/10 px-2.5 py-1.5 transition-colors"
+                  >
+                    <UserCheck size={11} /> Accept
+                  </button>
+                  <button
+                    onClick={() => respondMutation.mutate({ id: req.id, status: 'declined' })}
+                    disabled={respondMutation.isPending}
+                    className="flex items-center gap-1.5 text-xs text-mat-red-light border border-mat-red-light/30 hover:bg-mat-red-light/10 px-2.5 py-1.5 transition-colors"
+                  >
+                    <UserX size={11} /> Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+

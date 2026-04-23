@@ -103,6 +103,31 @@ export const techniquesApi = {
     api.delete(`/techniques/chains/${chainId}/remove_technique/`, { data: { entry_id: entryId } }),
 }
 
+// ---- Coaching ----
+export const coachingApi = {
+  // Student side
+  getRelationship: () => api.get('/coaching/relationship/'),
+  requestCoach: (coach_username: string) => api.post('/coaching/relationship/', { coach_username }),
+  removeCoach: () => api.delete('/coaching/relationship/'),
+  getMyDrillingPlans: () => api.get('/coaching/drilling-plans/'),
+  // Coach side
+  getRequests: () => api.get('/coaching/requests/'),
+  respondToRequest: (id: number, status: 'accepted' | 'declined') =>
+    api.patch(`/coaching/requests/${id}/respond/`, { status }),
+  getStudents: () => api.get('/coaching/students/'),
+  getStudentData: (studentId: number, type?: string) =>
+    api.get(`/coaching/students/${studentId}/`, { params: type ? { type } : {} }),
+  assignTechnique: (studentId: number, data: object) =>
+    api.post(`/coaching/students/${studentId}/assign-technique/`, data),
+  getStudentDrillingPlans: (studentId: number) =>
+    api.get(`/coaching/students/${studentId}/drilling-plans/`),
+  createDrillingPlan: (studentId: number, data: object) =>
+    api.post(`/coaching/students/${studentId}/drilling-plans/`, data),
+  // Technique respond (student)
+  respondToCoachTechnique: (id: number, action: 'accept' | 'decline') =>
+    api.post(`/techniques/${id}/respond-coach/`, { action }),
+}
+
 // ---- Sparring ----
 export const sparringApi = {
   list: (params?: object) => api.get('/sparring/', { params }),

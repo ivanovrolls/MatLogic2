@@ -35,6 +35,22 @@ class TechniqueViewSet(viewsets.ModelViewSet):
         technique.save()
         return Response({'times_drilled': technique.times_drilled})
 
+    @action(detail=True, methods=['post'], url_path='respond-coach')
+    def respond_coach_assignment(self, request, pk=None):
+        technique = self.get_object()
+        if not technique.coach_assignment_pending:
+            return Response({'error': 'Not a pending coach assignment.'}, status=400)
+        action_val = request.data.get('action')
+        if action_val == 'accept':
+            technique.coach_assignment_pending = False
+            technique.coach_assigned_by = None
+            technique.save()
+            return Response({'status': 'accepted'})
+        elif action_val == 'decline':
+            technique.delete()
+            return Response({'status': 'declined'})
+        return Response({'error': 'action must be "accept" or "decline".'}, status=400)
+
 
 class TechniqueChainViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]

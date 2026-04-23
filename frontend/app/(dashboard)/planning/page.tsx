@@ -2,17 +2,17 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { planningApi, techniquesApi } from '@/lib/api'
+import { planningApi, techniquesApi, coachingApi } from '@/lib/api'
 import { formatDate, getWeekStart } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format, parseISO, isThisWeek, isPast, addDays } from 'date-fns'
 import {
   Plus, CalendarDays, CheckCircle2, Circle, Loader2,
   Target, ChevronDown, Trophy, Pencil, Trash2, X, Dumbbell,
-  Sparkles, HelpCircle, BookMarked,
+  Sparkles, HelpCircle, BookMarked, GraduationCap,
 } from 'lucide-react'
 import Link from 'next/link'
-import type { WeeklyPlan, WeeklyPlanTemplate, TechniqueMinimal, ChecklistItem, DrillItem } from '@/lib/types'
+import type { WeeklyPlan, WeeklyPlanTemplate, TechniqueMinimal, ChecklistItem, DrillItem, CoachDrillingPlan } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -627,6 +627,13 @@ export default function PlanningPage() {
     queryFn: () => techniquesApi.list({ page_size: 200 }).then(r => r.data?.results || r.data),
   })
 
+  const { data: coachPlansData } = useQuery({
+    queryKey: ['coach-drilling-plans'],
+    queryFn: () => coachingApi.getMyDrillingPlans().then(r => r.data?.results || r.data),
+  })
+
+  const coachDrillingPlans: CoachDrillingPlan[] = Array.isArray(coachPlansData) ? coachPlansData : []
+
   const allTechniques: TechniqueMinimal[] = Array.isArray(techniques) ? techniques : []
 
   const createMutation = useMutation({
@@ -892,6 +899,43 @@ export default function PlanningPage() {
           <button onClick={handleCreate} disabled={createMutation.isPending} className="btn-primary px-6 py-2.5 flex items-center gap-2">
             {createMutation.isPending ? <><Loader2 size={13} className="animate-spin" /> Creating...</> : 'Create Plan'}
           </button>
+        </div>
+      )}
+
+      {/* ── Coach Drilling Plans ── */}
+      {coachDrillingPlans.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={14} className="text-mat-gold" />
+            <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">From Your Coach</h2>
+            <div className="flex-1 h-px bg-mat-border" />
+          </div>
+          {coachDrillingPlans.map(plan => (
+            <div key={plan.id} className="bg-mat-card border border-mat-gold/40 p-5 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">{plan.title}</h3>
+                  <p className="text-mat-text-muted text-xs mt-0.5">
+                    Week of {format(parseISO(plan.week_start), 'MMM d, yyyy')} · assigned by <span className="text-mat-gold font-semibold">{plan.coach_username}</span>
+                  </p>
+                </div>
+              </div>
+              {plan.notes && (
+                <p className="text-mat-text-muted text-sm">{plan.notes}</p>
+              )}
+              {plan.drills.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest flex items-center gap-1.5"><Dumbbell size={11} /> Drills</p>
+                  {plan.drills.map((drill, i) => (
+                    <div key={i} className="flex items-center justify-between bg-mat-panel border border-mat-border px-3 py-1.5">
+                      <span className="text-mat-text text-xs">{drill.name}</span>
+                      <span className="text-mat-gold text-xs font-bold">{drill.sets} sets × {drill.reps} reps</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

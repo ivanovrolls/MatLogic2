@@ -5,15 +5,21 @@ from .models import Technique, TechniqueChain, ChainEntry
 class TechniqueSerializer(serializers.ModelSerializer):
     position_display = serializers.CharField(source='get_position_display', read_only=True)
     type_display = serializers.CharField(source='get_technique_type_display', read_only=True)
+    coach_assigned_by_username = serializers.SerializerMethodField()
 
     class Meta:
         model = Technique
         fields = [
             'id', 'name', 'position', 'position_display', 'technique_type',
             'type_display', 'description', 'notes', 'difficulty', 'video_url',
-            'tags', 'is_active', 'times_drilled', 'created_at', 'updated_at'
+            'tags', 'is_active', 'times_drilled',
+            'coach_assigned_by_username', 'coach_assignment_pending',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'coach_assigned_by_username', 'coach_assignment_pending', 'created_at', 'updated_at']
+
+    def get_coach_assigned_by_username(self, obj):
+        return obj.coach_assigned_by.username if obj.coach_assigned_by else None
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

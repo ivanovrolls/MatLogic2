@@ -129,7 +129,11 @@ export default function TechniquesPage() {
                 {techs.map(t => (
                   <div
                     key={t.id}
-                    className="bg-mat-card border border-mat-border hover:border-mat-gold/40 transition-colors group flex flex-col"
+                    className={`border transition-colors group flex flex-col ${
+                      t.coach_assignment_pending
+                        ? 'bg-mat-gold/5 border-mat-gold/50 shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                        : 'bg-mat-card border-mat-border hover:border-mat-gold/40'
+                    }`}
                   >
                     <Link href={`/techniques/${t.id}`} className="block p-4 flex-1">
                       <div className="flex items-start justify-between mb-2">
@@ -138,6 +142,12 @@ export default function TechniquesPage() {
                           {t.type_display}
                         </span>
                       </div>
+                      {t.coach_assignment_pending && (
+                        <p className="text-mat-gold text-xs mb-2 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-mat-gold inline-block animate-pulse" />
+                          From coach: {t.coach_assigned_by_username}
+                        </p>
+                      )}
                       <DifficultyBar value={t.difficulty} />
                       <div className="flex items-center justify-between mt-3">
                         <span className="text-mat-text-dim text-xs">{t.times_drilled} drills</span>
@@ -150,22 +160,24 @@ export default function TechniquesPage() {
                         )}
                       </div>
                     </Link>
-                    {/* Action row — always visible on mobile, hover-reveal on desktop */}
-                    <div className="flex items-center justify-end gap-0.5 px-3 pb-2 border-t border-mat-border sm:border-transparent sm:opacity-0 sm:group-hover:opacity-100 sm:border-t-0 transition-opacity">
-                      <Link
-                        href={`/techniques/${t.id}/edit`}
-                        className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <Pencil size={12} />
-                      </Link>
-                      <button
-                        onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
-                        className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+                    {/* Action row */}
+                    {!t.coach_assignment_pending && (
+                      <div className="flex items-center justify-end gap-0.5 px-3 pb-2 border-t border-mat-border sm:border-transparent sm:opacity-0 sm:group-hover:opacity-100 sm:border-t-0 transition-opacity">
+                        <Link
+                          href={`/techniques/${t.id}/edit`}
+                          className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <Pencil size={12} />
+                        </Link>
+                        <button
+                          onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
+                          className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

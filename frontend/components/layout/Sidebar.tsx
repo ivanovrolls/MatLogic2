@@ -1,14 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/authStore'
+import { useCoachingStore } from '@/stores/coachingStore'
 import { cn, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   BarChart2, Trophy, User, LogOut, ChevronRight, Swords,
-  Sun, Moon, HelpCircle,
+  Sun, Moon, HelpCircle, GraduationCap, X,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -30,6 +32,8 @@ export function Sidebar() {
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
   const { open: openTutorial } = useTutorialStore()
+  const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
+  const [showCoachPrompt, setShowCoachPrompt] = useState(false)
 
   const handleLogout = async () => {
     await logout()
@@ -37,7 +41,60 @@ export function Sidebar() {
     router.push('/login')
   }
 
+  const handleCoachClick = () => {
+    if (isCoachMode) {
+      router.push('/coaching')
+    } else {
+      setShowCoachPrompt(true)
+    }
+  }
+
+  const handleEnterCoachMode = () => {
+    enterCoachMode()
+    setShowCoachPrompt(false)
+    router.push('/coaching')
+  }
+
+  const handleExitCoachMode = () => {
+    exitCoachMode()
+    router.push('/dashboard')
+  }
+
   return (
+    <>
+    {/* Coach Mode Prompt */}
+    {showCoachPrompt && (
+      <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
+        <div className="bg-mat-card border border-mat-gold/30 w-full max-w-sm p-7 space-y-5 animate-slide-up">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-mat-gold/10 border border-mat-gold/30 flex items-center justify-center">
+                <GraduationCap size={16} className="text-mat-gold" />
+              </div>
+              <div>
+                <p className="text-mat-text-muted text-xs uppercase tracking-widest">Switch View</p>
+                <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">Coach Mode</h2>
+              </div>
+            </div>
+            <button onClick={() => setShowCoachPrompt(false)} className="text-mat-text-dim hover:text-mat-text transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-mat-text-muted text-sm leading-relaxed">
+            You&apos;ll switch to a coaching view showing your students&apos; training data. Your own data will be hidden until you exit.
+          </p>
+          <div className="flex gap-3">
+            <button onClick={handleEnterCoachMode} className="btn-primary flex-1 py-2.5 text-sm">
+              Enter Coach Mode
+            </button>
+            <button onClick={() => setShowCoachPrompt(false)} className="btn-secondary flex-1 py-2.5 text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-mat-darker border-r border-mat-border fixed left-0 top-0 z-20">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-mat-border">
@@ -85,6 +142,41 @@ export function Sidebar() {
             </Link>
           )
         })}
+
+        {/* Coach Mode */}
+        <div className="border-t border-mat-border mt-2 pt-2">
+          {isCoachMode ? (
+            <>
+              <Link
+                href="/coaching"
+                className={cn(
+                  'flex items-center gap-3 px-5 py-2.5 text-sm transition-all duration-150 border-l-2',
+                  pathname.startsWith('/coaching')
+                    ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
+                    : 'text-mat-gold/70 hover:text-mat-gold hover:bg-mat-card border-transparent'
+                )}
+              >
+                <GraduationCap size={15} className="shrink-0" />
+                <span className="font-medium tracking-wide">Coach View</span>
+              </Link>
+              <button
+                onClick={handleExitCoachMode}
+                className="flex items-center gap-3 px-5 py-2 text-xs text-mat-text-dim hover:text-mat-red-light transition-colors w-full border-l-2 border-transparent"
+              >
+                <X size={13} className="shrink-0" />
+                Exit Coach Mode
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleCoachClick}
+              className="flex items-center gap-3 px-5 py-2.5 text-sm text-mat-text-muted hover:text-mat-gold hover:bg-mat-card border-l-2 border-transparent transition-all w-full"
+            >
+              <GraduationCap size={15} className="shrink-0" />
+              <span className="font-medium tracking-wide">Coach</span>
+            </button>
+          )}
+        </div>
       </nav>
 
       {/* Footer */}
@@ -126,5 +218,6 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
+    </>
   )
 }

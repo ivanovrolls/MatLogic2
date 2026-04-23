@@ -95,6 +95,8 @@ export interface Technique {
   tags: string[]
   is_active: boolean
   times_drilled: number
+  coach_assigned_by_username: string | null
+  coach_assignment_pending: boolean
   created_at: string
   updated_at: string
 }
@@ -126,6 +128,51 @@ export interface TechniqueChain {
 // ---- Sparring ----
 export type Outcome = 'win' | 'loss' | 'draw'
 export type PartnerBelt = 'white' | 'blue' | 'purple' | 'brown' | 'black' | 'unknown'
+
+// ---- Coaching ----
+export interface CoachRelationship {
+  id: number
+  status: 'pending' | 'accepted' | 'declined'
+  created_at: string
+  coach_username: string
+  coach_avatar: string | null
+  coach_belt: Belt
+  student_username: string
+  student_avatar: string | null
+  student_belt: Belt
+  student_id: number
+}
+
+export interface StudentSummary {
+  id: number
+  username: string
+  belt: Belt
+  stripes: number
+  avatar: string | null
+  gym: string
+  display_belt: string
+  total_sessions: number
+  total_techniques: number
+  last_session: string | null
+  pending_techniques: number
+}
+
+export interface CoachDrill {
+  name: string
+  sets: number
+  reps: number
+}
+
+export interface CoachDrillingPlan {
+  id: number
+  coach_username: string
+  week_start: string
+  title: string
+  notes: string
+  drills: CoachDrill[]
+  created_at: string
+  updated_at: string
+}
 
 export interface SparringRound {
   id: number

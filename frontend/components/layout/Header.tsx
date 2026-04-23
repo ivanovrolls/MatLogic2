@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/authStore'
+import { useCoachingStore } from '@/stores/coachingStore'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, LogOut, Sun, Moon, HelpCircle, Swords,
+  BarChart2, Trophy, User, LogOut, Sun, Moon, HelpCircle, Swords, GraduationCap,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -31,6 +32,7 @@ export function Header() {
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
   const { open: openTutorial } = useTutorialStore()
+  const { isCoachMode, exitCoachMode } = useCoachingStore()
 
   const handleLogout = async () => {
     await logout()
@@ -112,6 +114,37 @@ export function Header() {
             >
               <User size={16} /> Profile
             </Link>
+            <div className="divider" />
+            {isCoachMode ? (
+              <>
+                <Link
+                  href="/coaching"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-4 px-4 py-3 text-sm border-l-2',
+                    pathname.startsWith('/coaching')
+                      ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
+                      : 'text-mat-gold/70 border-transparent'
+                  )}
+                >
+                  <GraduationCap size={16} /> Coach View
+                </Link>
+                <button
+                  onClick={() => { exitCoachMode(); setOpen(false); router.push('/dashboard') }}
+                  className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-dim text-sm border-l-2 border-transparent"
+                >
+                  <X size={16} /> Exit Coach Mode
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/coaching"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-4 px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
+              >
+                <GraduationCap size={16} /> Coach
+              </Link>
+            )}
             <button
               onClick={() => { openTutorial(); setOpen(false) }}
               className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"

@@ -6,8 +6,9 @@ import { techniquesApi } from '@/lib/api'
 import { formatDate, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play, Pencil } from 'lucide-react'
+import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play, Pencil, GraduationCap, Check, X } from 'lucide-react'
 import type { Technique } from '@/lib/types'
+import { coachingApi } from '@/lib/api'
 
 function getEmbedInfo(url: string): { type: 'youtube' | 'vimeo' | 'direct' | 'external'; src: string } {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
@@ -109,6 +110,21 @@ export default function TechniqueDetailPage() {
     },
   })
 
+  const respondCoachMutation = useMutation({
+    mutationFn: (action: 'accept' | 'decline') => coachingApi.respondToCoachTechnique(Number(id), action),
+    onSuccess: (_, action) => {
+      queryClient.invalidateQueries({ queryKey: ['techniques'] })
+      if (action === 'accept') {
+        queryClient.invalidateQueries({ queryKey: ['technique', id] })
+        toast.success('Technique added to your arsenal.')
+      } else {
+        toast.success('Technique declined.')
+        router.push('/techniques')
+      }
+    },
+    onError: () => toast.error('Failed to respond.'),
+  })
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><Loader2 size={20} className="animate-spin text-mat-gold" /></div>
   }
@@ -129,17 +145,19 @@ export default function TechniqueDetailPage() {
             <h1 className="font-display text-3xl tracking-wider text-mat-text uppercase">{technique.name}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-1">
-          <Link href={`/techniques/${id}/edit`} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-xs">
-            <Pencil size={12} /> Edit
-          </Link>
-          <button
-            onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate() }}
-            className="text-mat-text-dim hover:text-mat-red-light transition-colors p-2"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+        {!technique.coach_assignment_pending && (
+          <div className="flex items-center gap-2 mt-1">
+            <Link href={`/techniques/${id}/edit`} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-xs">
+              <Pencil size={12} /> Edit
+            </Link>
+            <button
+              onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate() }}
+              className="text-mat-text-dim hover:text-mat-red-light transition-colors p-2"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Meta badges */}
@@ -176,15 +194,49 @@ export default function TechniqueDetailPage() {
         </div>
       </div>
 
-      {/* Drill button */}
-      <button
-        onClick={() => drillMutation.mutate()}
-        disabled={drillMutation.isPending}
-        className="btn-primary w-full py-3 flex items-center justify-center gap-2"
-      >
-        <Target size={14} />
-        {drillMutation.isPending ? 'Updating...' : 'Mark as Drilled Today'}
-      </button>
+      {/* Coach assignment banner + respond buttons */}
+      {technique.coach_assignment_pending && technique.coach_assigned_by_username && (
+        <div className="border border-mat-gold/40 bg-mat-gold/5 p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap size={14} className="text-mat-gold" />
+            <p className="text-mat-gold text-sm font-semibold">
+              Assigned by your coach: <span className="font-bold">{technique.coach_assigned_by_username}</span>
+            </p>
+          </div>
+          <p className="text-mat-text-muted text-xs">
+            Accept to add this technique to your arsenal, or decline to remove it.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => respondCoachMutation.mutate('accept')}
+              disabled={respondCoachMutation.isPending}
+              className="flex-1 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold text-mat-black bg-mat-green-light hover:bg-mat-green-light/90 transition-colors disabled:opacity-50"
+            >
+              {respondCoachMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              Accept
+            </button>
+            <button
+              onClick={() => respondCoachMutation.mutate('decline')}
+              disabled={respondCoachMutation.isPending}
+              className="flex-1 py-2.5 flex items-center justify-center gap-2 text-sm font-semibold text-mat-black bg-mat-red-light hover:bg-mat-red-light/90 transition-colors disabled:opacity-50"
+            >
+              <X size={13} /> Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Drill button — only shown once accepted */}
+      {!technique.coach_assignment_pending && (
+        <button
+          onClick={() => drillMutation.mutate()}
+          disabled={drillMutation.isPending}
+          className="btn-primary w-full py-3 flex items-center justify-center gap-2"
+        >
+          <Target size={14} />
+          {drillMutation.isPending ? 'Updating...' : 'Mark as Drilled Today'}
+        </button>
+      )}
 
       {/* Description */}
       {technique.description && (
