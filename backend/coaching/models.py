@@ -45,6 +45,8 @@ class CoachDrillingPlan(models.Model):
     title = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
     drills = models.JSONField(default=list)  # [{name, sets, reps}]
+    drill_completions = models.JSONField(default=dict)  # {"0": true, "1": false}
+    student_feedback = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -53,3 +55,28 @@ class CoachDrillingPlan(models.Model):
 
     def __str__(self):
         return f"{self.coach.username} → {self.student.username}: {self.title}"
+
+
+class CoachSessionNote(models.Model):
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='coach_session_notes',
+        on_delete=models.CASCADE
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='received_session_notes',
+        on_delete=models.CASCADE
+    )
+    session = models.ForeignKey(
+        'training.TrainingSession',
+        related_name='coach_notes',
+        on_delete=models.CASCADE
+    )
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['coach', 'session']
+        ordering = ['-created_at']

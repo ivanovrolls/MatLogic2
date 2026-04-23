@@ -126,6 +126,22 @@ export const coachingApi = {
   // Technique respond (student)
   respondToCoachTechnique: (id: number, action: 'accept' | 'decline') =>
     api.post(`/techniques/${id}/respond-coach/`, { action }),
+  // Session notes (coach)
+  getStudentSessionNotes: (studentId: number) =>
+    api.get(`/coaching/students/${studentId}/session-notes/`),
+  saveSessionNote: (studentId: number, sessionId: number, note: string) =>
+    api.post(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`, { note }),
+  deleteSessionNote: (studentId: number, sessionId: number) =>
+    api.delete(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`),
+  // Session notes (student)
+  getMySessionNotes: (sessionId?: number) =>
+    api.get('/coaching/session-notes/', { params: sessionId ? { session_id: sessionId } : {} }),
+  // Drill check-in (student)
+  drillCheckIn: (planId: number, data: object) =>
+    api.patch(`/coaching/drilling-plans/${planId}/check-in/`, data),
+  // Remove student (coach)
+  removeStudent: (studentId: number) =>
+    api.delete(`/coaching/students/${studentId}/remove/`),
 }
 
 // ---- Sparring ----

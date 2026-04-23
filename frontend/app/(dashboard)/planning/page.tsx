@@ -561,6 +561,120 @@ function GenerateChecklistButton({ plan }: { plan: WeeklyPlan }) {
   )
 }
 
+// ── coach plan card (student side) ───────────────────────────────────────────
+
+function CoachPlanCard({ plan }: { plan: CoachDrillingPlan }) {
+  const queryClient = useQueryClient()
+  const [editingFeedback, setEditingFeedback] = useState(false)
+  const [feedbackText, setFeedbackText] = useState(plan.student_feedback || '')
+
+  const checkInMutation = useMutation({
+    mutationFn: (data: object) => coachingApi.drillCheckIn(plan.id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['coach-drilling-plans'] }),
+    onError: () => toast.error('Failed to update.'),
+  })
+
+  const toggleDrill = (i: number) => {
+    const current = plan.drill_completions[String(i)] || false
+    checkInMutation.mutate({ drill_completions: { ...plan.drill_completions, [String(i)]: !current } })
+  }
+
+  const saveFeedback = () => {
+    checkInMutation.mutate({ student_feedback: feedbackText })
+    setEditingFeedback(false)
+    toast.success('Feedback saved.')
+  }
+
+  const totalDrills = plan.drills.length
+  const completedDrills = Object.values(plan.drill_completions).filter(Boolean).length
+
+  return (
+    <div className="bg-mat-card border border-mat-gold/40 p-5 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">{plan.title}</h3>
+          <p className="text-mat-text-muted text-xs mt-0.5">
+            Week of {format(parseISO(plan.week_start), 'MMM d, yyyy')} · by <span className="text-mat-gold font-semibold">{plan.coach_username}</span>
+          </p>
+        </div>
+        {totalDrills > 0 && (
+          <div className="text-right shrink-0 ml-3">
+            <p className="text-mat-text-muted text-xs">{completedDrills}/{totalDrills} done</p>
+            <div className="w-20 h-1 bg-mat-muted mt-1">
+              <div className="h-full bg-mat-gold transition-all duration-300" style={{ width: totalDrills > 0 ? `${(completedDrills / totalDrills) * 100}%` : '0%' }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {plan.notes && <p className="text-mat-text-muted text-sm">{plan.notes}</p>}
+
+      {plan.drills.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest flex items-center gap-1.5"><Dumbbell size={11} /> Drills</p>
+          {plan.drills.map((drill, i) => {
+            const done = !!plan.drill_completions[String(i)]
+            return (
+              <button
+                key={i}
+                onClick={() => toggleDrill(i)}
+                disabled={checkInMutation.isPending}
+                className={cn(
+                  'w-full flex items-center justify-between px-3 py-2 border transition-colors text-left',
+                  done ? 'bg-mat-gold/10 border-mat-gold/30' : 'bg-mat-panel border-mat-border hover:border-mat-gold/30'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {done
+                    ? <CheckCircle2 size={13} className="text-mat-gold shrink-0" />
+                    : <Circle size={13} className="text-mat-text-dim shrink-0" />
+                  }
+                  <span className={cn('text-sm', done ? 'text-mat-text-muted line-through' : 'text-mat-text')}>{drill.name}</span>
+                </div>
+                <span className="text-mat-text-muted text-xs shrink-0">{drill.sets} × {drill.reps}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="border-t border-mat-border pt-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest">Your Feedback</p>
+          {!editingFeedback && (
+            <button
+              onClick={() => { setEditingFeedback(true); setFeedbackText(plan.student_feedback || '') }}
+              className="text-mat-text-dim hover:text-mat-gold text-xs flex items-center gap-1 transition-colors"
+            >
+              <Pencil size={10} /> {plan.student_feedback ? 'Edit' : 'Add'}
+            </button>
+          )}
+        </div>
+        {editingFeedback ? (
+          <div className="space-y-2">
+            <textarea
+              value={feedbackText}
+              onChange={e => setFeedbackText(e.target.value)}
+              className="mat-input resize-none w-full text-sm"
+              rows={3}
+              placeholder="How did this plan go? Let your coach know..."
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button onClick={saveFeedback} disabled={checkInMutation.isPending} className="btn-primary text-xs px-4 py-1.5 disabled:opacity-50">Save</button>
+              <button onClick={() => setEditingFeedback(false)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+            </div>
+          </div>
+        ) : plan.student_feedback ? (
+          <p className="text-mat-text-muted text-sm italic leading-relaxed">{plan.student_feedback}</p>
+        ) : (
+          <p className="text-mat-text-dim text-xs">No feedback left yet.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function PlanningPage() {
@@ -911,30 +1025,7 @@ export default function PlanningPage() {
             <div className="flex-1 h-px bg-mat-border" />
           </div>
           {coachDrillingPlans.map(plan => (
-            <div key={plan.id} className="bg-mat-card border border-mat-gold/40 p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">{plan.title}</h3>
-                  <p className="text-mat-text-muted text-xs mt-0.5">
-                    Week of {format(parseISO(plan.week_start), 'MMM d, yyyy')} · assigned by <span className="text-mat-gold font-semibold">{plan.coach_username}</span>
-                  </p>
-                </div>
-              </div>
-              {plan.notes && (
-                <p className="text-mat-text-muted text-sm">{plan.notes}</p>
-              )}
-              {plan.drills.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-mat-text-muted text-xs uppercase tracking-widest flex items-center gap-1.5"><Dumbbell size={11} /> Drills</p>
-                  {plan.drills.map((drill, i) => (
-                    <div key={i} className="flex items-center justify-between bg-mat-panel border border-mat-border px-3 py-1.5">
-                      <span className="text-mat-text text-xs">{drill.name}</span>
-                      <span className="text-mat-gold text-xs font-bold">{drill.sets} sets × {drill.reps} reps</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <CoachPlanCard key={plan.id} plan={plan} />
           ))}
         </div>
       )}

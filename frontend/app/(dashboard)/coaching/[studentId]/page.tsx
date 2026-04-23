@@ -5,33 +5,25 @@ import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { coachingApi } from '@/lib/api'
 import { useCoachingStore } from '@/stores/coachingStore'
-import { ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen, Database, ClipboardList, Trash2 } from 'lucide-react'
-import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS } from '@/lib/utils'
+import {
+  ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen,
+  Database, ClipboardList, MessageSquare, CheckCircle2, UserMinus,
+} from 'lucide-react'
+import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill } from '@/lib/types'
-import Link from 'next/link'
+import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
 const TYPES = Object.entries(TYPE_LABELS)
 
 // ── Assign Technique Modal ─────────────────────────────────────────────────────
 
-function AssignTechniqueModal({
-  studentId,
-  onClose,
-}: {
-  studentId: number
-  onClose: () => void
-}) {
+function AssignTechniqueModal({ studentId, onClose }: { studentId: number; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
-    name: '',
-    position: 'closed_guard',
-    technique_type: 'submission',
-    description: '',
-    notes: '',
-    difficulty: 3,
+    name: '', position: 'closed_guard', technique_type: 'submission',
+    description: '', notes: '', difficulty: 3,
   })
 
   const mutation = useMutation({
@@ -50,39 +42,23 @@ function AssignTechniqueModal({
       <div className="bg-mat-card border border-mat-border w-full max-w-md p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">Assign Technique</h2>
-          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors">
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
         </div>
-
         <div className="space-y-4">
           <div>
             <label className="mat-label">Technique Name *</label>
-            <input
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="mat-input"
-              placeholder="e.g. Triangle Choke"
-            />
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="mat-input" placeholder="e.g. Triangle Choke" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mat-label">Position</label>
-              <select
-                value={form.position}
-                onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
-                className="mat-input"
-              >
+              <select value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} className="mat-input">
                 {POSITIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
               <label className="mat-label">Type</label>
-              <select
-                value={form.technique_type}
-                onChange={e => setForm(f => ({ ...f, technique_type: e.target.value }))}
-                className="mat-input"
-              >
+              <select value={form.technique_type} onChange={e => setForm(f => ({ ...f, technique_type: e.target.value }))} className="mat-input">
                 {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
@@ -91,17 +67,8 @@ function AssignTechniqueModal({
             <label className="mat-label">Difficulty (1–5)</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, difficulty: n }))}
-                  className={cn(
-                    'flex-1 py-2 text-sm border transition-colors',
-                    form.difficulty === n
-                      ? 'border-mat-gold bg-mat-gold/10 text-mat-gold'
-                      : 'border-mat-border text-mat-text-muted hover:border-mat-gold'
-                  )}
-                >
+                <button key={n} type="button" onClick={() => setForm(f => ({ ...f, difficulty: n }))}
+                  className={cn('flex-1 py-2 text-sm border transition-colors', form.difficulty === n ? 'border-mat-gold bg-mat-gold/10 text-mat-gold' : 'border-mat-border text-mat-text-muted hover:border-mat-gold')}>
                   {n}
                 </button>
               ))}
@@ -109,32 +76,16 @@ function AssignTechniqueModal({
           </div>
           <div>
             <label className="mat-label">Description</label>
-            <textarea
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="mat-input resize-none"
-              rows={3}
-              placeholder="Describe the technique..."
-            />
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mat-input resize-none" rows={3} placeholder="Describe the technique..." />
           </div>
           <div>
             <label className="mat-label">Coach Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              className="mat-input resize-none"
-              rows={2}
-              placeholder="Notes for your student..."
-            />
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={2} placeholder="Notes for your student..." />
           </div>
         </div>
-
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={!form.name.trim() || mutation.isPending}
-            className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
-          >
+          <button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending}
+            className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50">
             {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
             Assign Technique
           </button>
@@ -147,13 +98,7 @@ function AssignTechniqueModal({
 
 // ── Drilling Plan Modal ────────────────────────────────────────────────────────
 
-function DrillingPlanModal({
-  studentId,
-  onClose,
-}: {
-  studentId: number
-  onClose: () => void
-}) {
+function DrillingPlanModal({ studentId, onClose }: { studentId: number; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [weekStart, setWeekStart] = useState('')
@@ -161,16 +106,12 @@ function DrillingPlanModal({
   const [drills, setDrills] = useState<CoachDrill[]>([{ name: '', sets: 3, reps: 10 }])
 
   const addDrill = () => setDrills(d => [...d, { name: '', sets: 3, reps: 10 }])
-  const updateDrill = (i: number, patch: Partial<CoachDrill>) =>
-    setDrills(d => d.map((dr, idx) => idx === i ? { ...dr, ...patch } : dr))
+  const updateDrill = (i: number, patch: Partial<CoachDrill>) => setDrills(d => d.map((dr, idx) => idx === i ? { ...dr, ...patch } : dr))
   const removeDrill = (i: number) => setDrills(d => d.filter((_, idx) => idx !== i))
 
   const mutation = useMutation({
     mutationFn: () => coachingApi.createDrillingPlan(studentId, {
-      student_id: studentId,
-      title,
-      week_start: weekStart,
-      notes,
+      student_id: studentId, title, week_start: weekStart, notes,
       drills: drills.filter(d => d.name.trim()),
     }),
     onSuccess: () => {
@@ -186,65 +127,27 @@ function DrillingPlanModal({
       <div className="bg-mat-card border border-mat-border w-full max-w-md p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">Drilling Plan</h2>
-          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors">
-            <X size={16} />
-          </button>
+          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
         </div>
-
         <div className="space-y-4">
           <div>
             <label className="mat-label">Plan Title *</label>
-            <input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="mat-input"
-              placeholder="e.g. Week 1 Guard Focus"
-            />
+            <input value={title} onChange={e => setTitle(e.target.value)} className="mat-input" placeholder="e.g. Week 1 Guard Focus" />
           </div>
           <div>
             <label className="mat-label">Week Starting</label>
-            <input
-              type="date"
-              value={weekStart}
-              onChange={e => setWeekStart(e.target.value)}
-              className="mat-input"
-            />
+            <input type="date" value={weekStart} onChange={e => setWeekStart(e.target.value)} className="mat-input" />
           </div>
           <div>
             <label className="mat-label">Drills</label>
             <div className="space-y-2">
               {drills.map((drill, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={drill.name}
-                    onChange={e => updateDrill(i, { name: e.target.value })}
-                    className="mat-input text-sm flex-1"
-                    placeholder="Drill name"
-                  />
-                  <input
-                    type="number"
-                    value={drill.sets}
-                    onChange={e => updateDrill(i, { sets: Number(e.target.value) })}
-                    className="mat-input text-sm w-14 text-center"
-                    min={1}
-                    title="Sets"
-                  />
+                  <input value={drill.name} onChange={e => updateDrill(i, { name: e.target.value })} className="mat-input text-sm flex-1" placeholder="Drill name" />
+                  <input type="number" value={drill.sets} onChange={e => updateDrill(i, { sets: Number(e.target.value) })} className="mat-input text-sm w-14 text-center" min={1} title="Sets" />
                   <span className="text-mat-text-dim text-xs">×</span>
-                  <input
-                    type="number"
-                    value={drill.reps}
-                    onChange={e => updateDrill(i, { reps: Number(e.target.value) })}
-                    className="mat-input text-sm w-14 text-center"
-                    min={1}
-                    title="Reps"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeDrill(i)}
-                    className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1 shrink-0"
-                  >
-                    <X size={12} />
-                  </button>
+                  <input type="number" value={drill.reps} onChange={e => updateDrill(i, { reps: Number(e.target.value) })} className="mat-input text-sm w-14 text-center" min={1} title="Reps" />
+                  <button type="button" onClick={() => removeDrill(i)} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1 shrink-0"><X size={12} /></button>
                 </div>
               ))}
               <p className="text-mat-text-dim text-xs text-right -mt-1">sets × reps</p>
@@ -255,22 +158,12 @@ function DrillingPlanModal({
           </div>
           <div>
             <label className="mat-label">Notes</label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              className="mat-input resize-none"
-              rows={2}
-              placeholder="Additional instructions..."
-            />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} className="mat-input resize-none" rows={2} placeholder="Additional instructions..." />
           </div>
         </div>
-
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={!title.trim() || !weekStart || mutation.isPending}
-            className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
-          >
+          <button onClick={() => mutation.mutate()} disabled={!title.trim() || !weekStart || mutation.isPending}
+            className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50">
             {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <ClipboardList size={13} />}
             Create Plan
           </button>
@@ -290,14 +183,14 @@ export default function StudentDetailPage() {
   const id = Number(studentId)
   const router = useRouter()
   const { isCoachMode } = useCoachingStore()
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('overview')
   const [showAssignTech, setShowAssignTech] = useState(false)
   const [showDrillingPlan, setShowDrillingPlan] = useState(false)
+  const [noteSessionId, setNoteSessionId] = useState<number | null>(null)
+  const [noteText, setNoteText] = useState('')
 
-  const { data: overview, isLoading: overviewLoading } = useQuery<{
-    student: StudentSummary
-    recent_sessions: TrainingSession[]
-  }>({
+  const { data: overview, isLoading: overviewLoading } = useQuery<{ student: StudentSummary; recent_sessions: TrainingSession[] }>({
     queryKey: ['coaching-student', id, 'overview'],
     queryFn: () => coachingApi.getStudentData(id).then(r => r.data),
     enabled: isCoachMode,
@@ -306,6 +199,12 @@ export default function StudentDetailPage() {
   const { data: sessions, isLoading: sessionsLoading } = useQuery<TrainingSession[]>({
     queryKey: ['coaching-student', id, 'sessions'],
     queryFn: () => coachingApi.getStudentData(id, 'sessions').then(r => r.data),
+    enabled: isCoachMode && tab === 'sessions',
+  })
+
+  const { data: sessionNotes } = useQuery<CoachSessionNote[]>({
+    queryKey: ['coaching-student', id, 'session-notes'],
+    queryFn: () => coachingApi.getStudentSessionNotes(id).then(r => r.data),
     enabled: isCoachMode && tab === 'sessions',
   })
 
@@ -321,13 +220,46 @@ export default function StudentDetailPage() {
     enabled: isCoachMode && tab === 'plans',
   })
 
+  const saveNoteMutation = useMutation({
+    mutationFn: ({ sessionId, note }: { sessionId: number; note: string }) =>
+      coachingApi.saveSessionNote(id, sessionId, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coaching-student', id, 'session-notes'] })
+      toast.success('Note saved.')
+      setNoteSessionId(null)
+    },
+    onError: () => toast.error('Failed to save note.'),
+  })
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (sessionId: number) => coachingApi.deleteSessionNote(id, sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coaching-student', id, 'session-notes'] })
+      toast.success('Note removed.')
+      setNoteSessionId(null)
+    },
+    onError: () => toast.error('Failed to remove note.'),
+  })
+
+  const removeStudentMutation = useMutation({
+    mutationFn: () => coachingApi.removeStudent(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coaching-students'] })
+      toast.success('Student removed.')
+      router.push('/coaching')
+    },
+    onError: () => toast.error('Failed to remove student.'),
+  })
+
   if (!isCoachMode) {
     router.push('/coaching')
     return null
   }
 
   const student = overview?.student
-  const beltColor = student ? (BELT_COLORS[student.belt]?.split(' ').find((c: string) => c.startsWith('text-')) || 'text-mat-gold') : 'text-mat-gold'
+  const beltColor = student
+    ? (BELT_COLORS[student.belt]?.split(' ').find((c: string) => c.startsWith('text-')) || 'text-mat-gold')
+    : 'text-mat-gold'
 
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Overview', icon: GraduationCap },
@@ -343,10 +275,7 @@ export default function StudentDetailPage() {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <button
-          onClick={() => router.push('/coaching')}
-          className="text-mat-text-muted hover:text-mat-gold transition-colors mt-1 shrink-0"
-        >
+        <button onClick={() => router.push('/coaching')} className="text-mat-text-muted hover:text-mat-gold transition-colors mt-1 shrink-0">
           <ChevronLeft size={18} />
         </button>
         <div className="flex-1 min-w-0">
@@ -371,17 +300,19 @@ export default function StudentDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-1">
-          <button
-            onClick={() => setShowAssignTech(true)}
-            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-          >
+          <button onClick={() => setShowAssignTech(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
             <Plus size={11} /> Assign Technique
           </button>
-          <button
-            onClick={() => setShowDrillingPlan(true)}
-            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-          >
+          <button onClick={() => setShowDrillingPlan(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
             <ClipboardList size={11} /> Add Plan
+          </button>
+          <button
+            onClick={() => { if (confirm(`Remove ${student?.username || 'this student'} as your student? This cannot be undone.`)) removeStudentMutation.mutate() }}
+            disabled={removeStudentMutation.isPending}
+            className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
+            title="Remove student"
+          >
+            <UserMinus size={15} />
           </button>
         </div>
       </div>
@@ -389,22 +320,15 @@ export default function StudentDetailPage() {
       {/* Tabs */}
       <div className="flex border-b border-mat-border">
         {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={cn(
-              'flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors',
-              tab === key
-                ? 'text-mat-gold border-mat-gold'
-                : 'text-mat-text-muted border-transparent hover:text-mat-text'
-            )}
-          >
+          <button key={key} onClick={() => setTab(key)}
+            className={cn('flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors',
+              tab === key ? 'text-mat-gold border-mat-gold' : 'text-mat-text-muted border-transparent hover:text-mat-text')}>
             <Icon size={12} /> {label}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* ── Overview ── */}
       {tab === 'overview' && (
         <div className="space-y-5">
           {overviewLoading ? (
@@ -425,7 +349,6 @@ export default function StudentDetailPage() {
                   <p className="font-display text-3xl text-mat-gold">{student.pending_techniques}</p>
                 </div>
               </div>
-
               {overview?.recent_sessions && overview.recent_sessions.length > 0 && (
                 <div className="bg-mat-card border border-mat-border">
                   <div className="px-5 py-4 border-b border-mat-border">
@@ -452,6 +375,7 @@ export default function StudentDetailPage() {
         </div>
       )}
 
+      {/* ── Sessions ── */}
       {tab === 'sessions' && (
         <div>
           {sessionsLoading ? (
@@ -460,39 +384,93 @@ export default function StudentDetailPage() {
             <p className="text-mat-text-dim py-12 text-center text-sm">No sessions logged yet.</p>
           ) : (
             <div className="space-y-2">
-              {sessions.map(s => (
-                <div key={s.id} className="bg-mat-card border border-mat-border px-5 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-mat-text text-sm font-medium">{s.title || s.session_type_display}</p>
-                    <p className="text-mat-text-dim text-xs">{formatDate(s.date, 'MMM d, yyyy')}</p>
-                  </div>
-                  <div className="flex items-center gap-4 text-right">
-                    <div>
-                      <p className="text-mat-text-muted text-xs">{s.duration} min</p>
-                      <p className="text-mat-text-dim text-xs">{s.round_count} rounds</p>
+              {sessions.map(s => {
+                const existingNote = sessionNotes?.find(n => n.session === s.id)
+                const isEditing = noteSessionId === s.id
+                return (
+                  <div key={s.id} className="bg-mat-card border border-mat-border">
+                    <div className="px-5 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-mat-text text-sm font-medium">{s.title || s.session_type_display}</p>
+                        <p className="text-mat-text-dim text-xs">{formatDate(s.date, 'MMM d, yyyy')}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {s.performance_rating && (
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <div key={n} className={`w-2 h-2 ${n <= (s.performance_rating || 0) ? 'bg-mat-gold' : 'bg-mat-muted'}`} />
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-right">
+                          <p className="text-mat-text-muted text-xs">{s.duration} min</p>
+                          <p className="text-mat-text-dim text-xs">{s.round_count} rounds</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (isEditing) { setNoteSessionId(null) }
+                            else { setNoteSessionId(s.id); setNoteText(existingNote?.note || '') }
+                          }}
+                          className={cn('p-1.5 transition-colors', existingNote ? 'text-mat-gold' : 'text-mat-text-dim hover:text-mat-gold')}
+                          title={existingNote ? 'Edit note' : 'Add note'}
+                        >
+                          <MessageSquare size={13} />
+                        </button>
+                      </div>
                     </div>
-                    {s.performance_rating && (
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(n => (
-                          <div key={n} className={`w-2 h-2 ${n <= (s.performance_rating || 0) ? 'bg-mat-gold' : 'bg-mat-muted'}`} />
-                        ))}
+
+                    {/* Inline note editor */}
+                    {isEditing && (
+                      <div className="border-t border-mat-border px-5 py-4 space-y-3 bg-mat-darker">
+                        <textarea
+                          value={noteText}
+                          onChange={e => setNoteText(e.target.value)}
+                          className="mat-input resize-none w-full text-sm"
+                          rows={3}
+                          placeholder="Leave feedback for this session..."
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => saveNoteMutation.mutate({ sessionId: s.id, note: noteText })}
+                            disabled={!noteText.trim() || saveNoteMutation.isPending}
+                            className="btn-primary text-xs px-4 py-1.5 disabled:opacity-50"
+                          >
+                            {saveNoteMutation.isPending ? 'Saving...' : 'Save Note'}
+                          </button>
+                          {existingNote && (
+                            <button
+                              onClick={() => { if (confirm('Remove this note?')) deleteNoteMutation.mutate(s.id) }}
+                              disabled={deleteNoteMutation.isPending}
+                              className="text-xs px-3 py-1.5 border border-mat-red-light/30 text-mat-red-light hover:bg-mat-red-light/10 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          )}
+                          <button onClick={() => setNoteSessionId(null)} className="btn-secondary text-xs px-3 py-1.5">Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Existing note preview */}
+                    {!isEditing && existingNote && (
+                      <div className="border-t border-mat-gold/20 px-5 py-3 bg-mat-gold/5">
+                        <p className="text-mat-text-muted text-xs italic leading-relaxed">{existingNote.note}</p>
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
       )}
 
+      {/* ── Techniques ── */}
       {tab === 'techniques' && (
         <div>
           <div className="flex justify-end mb-3">
-            <button
-              onClick={() => setShowAssignTech(true)}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-            >
+            <button onClick={() => setShowAssignTech(true)} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5">
               <Plus size={12} /> Assign Technique
             </button>
           </div>
@@ -503,15 +481,7 @@ export default function StudentDetailPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {techniques.map(t => (
-                <div
-                  key={t.id}
-                  className={cn(
-                    'bg-mat-card border p-4 flex flex-col gap-1',
-                    t.coach_assignment_pending
-                      ? 'border-mat-gold/50 bg-mat-gold/5'
-                      : 'border-mat-border'
-                  )}
-                >
+                <div key={t.id} className={cn('bg-mat-card border p-4 flex flex-col gap-1', t.coach_assignment_pending ? 'border-mat-gold/50 bg-mat-gold/5' : 'border-mat-border')}>
                   <div className="flex items-start justify-between">
                     <p className="text-mat-text font-semibold text-sm leading-tight">{t.name}</p>
                     {t.coach_assignment_pending && (
@@ -527,13 +497,11 @@ export default function StudentDetailPage() {
         </div>
       )}
 
+      {/* ── Drilling Plans ── */}
       {tab === 'plans' && (
         <div>
           <div className="flex justify-end mb-3">
-            <button
-              onClick={() => setShowDrillingPlan(true)}
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-            >
+            <button onClick={() => setShowDrillingPlan(true)} className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5">
               <Plus size={12} /> Create Plan
             </button>
           </div>
@@ -543,29 +511,52 @@ export default function StudentDetailPage() {
             <p className="text-mat-text-dim py-12 text-center text-sm">No drilling plans created yet.</p>
           ) : (
             <div className="space-y-4">
-              {plans.map(plan => (
-                <div key={plan.id} className="bg-mat-card border border-mat-border p-5 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-mat-text font-semibold">{plan.title}</p>
-                      <p className="text-mat-text-dim text-xs mt-0.5">
-                        Week of {formatDate(plan.week_start, 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                  </div>
-                  {plan.notes && <p className="text-mat-text-muted text-sm">{plan.notes}</p>}
-                  {plan.drills.length > 0 && (
-                    <div className="space-y-1.5">
-                      {plan.drills.map((drill, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm">
-                          <span className="text-mat-text">{drill.name}</span>
-                          <span className="text-mat-text-muted text-xs">{drill.sets} sets × {drill.reps} reps</span>
+              {plans.map(plan => {
+                const totalDrills = plan.drills.length
+                const completedDrills = Object.values(plan.drill_completions).filter(Boolean).length
+                const pct = totalDrills > 0 ? (completedDrills / totalDrills) * 100 : 0
+                return (
+                  <div key={plan.id} className="bg-mat-card border border-mat-border p-5 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-mat-text font-semibold">{plan.title}</p>
+                        <p className="text-mat-text-dim text-xs mt-0.5">Week of {formatDate(plan.week_start, 'MMM d, yyyy')}</p>
+                      </div>
+                      {totalDrills > 0 && (
+                        <div className="text-right shrink-0 ml-3">
+                          <p className="text-mat-text-muted text-xs">{completedDrills}/{totalDrills} done</p>
+                          <div className="w-20 h-1 bg-mat-muted mt-1">
+                            <div className="h-full bg-mat-gold transition-all" style={{ width: `${pct}%` }} />
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {plan.notes && <p className="text-mat-text-muted text-sm">{plan.notes}</p>}
+                    {plan.drills.length > 0 && (
+                      <div className="space-y-1.5">
+                        {plan.drills.map((drill, i) => {
+                          const done = !!plan.drill_completions[String(i)]
+                          return (
+                            <div key={i} className={cn('flex items-center justify-between text-sm px-3 py-2 border', done ? 'bg-mat-gold/5 border-mat-gold/20' : 'bg-mat-panel border-mat-border')}>
+                              <div className="flex items-center gap-2">
+                                {done ? <CheckCircle2 size={12} className="text-mat-gold shrink-0" /> : <div className="w-3 h-3 border border-mat-text-dim rounded-full shrink-0" />}
+                                <span className={cn('text-sm', done ? 'text-mat-text-muted line-through' : 'text-mat-text')}>{drill.name}</span>
+                              </div>
+                              <span className="text-mat-text-muted text-xs">{drill.sets} × {drill.reps}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {plan.student_feedback && (
+                      <div className="border-t border-mat-border pt-3">
+                        <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Student Feedback</p>
+                        <p className="text-mat-text-muted text-sm italic leading-relaxed">{plan.student_feedback}</p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>

@@ -2,14 +2,14 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, sparringApi } from '@/lib/api'
+import { sessionsApi, sparringApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { TrainingSession, SparringRound } from '@/lib/types'
+import type { TrainingSession, SparringRound, CoachSessionNote } from '@/lib/types'
 import { useAuthStore } from '@/stores/authStore'
 import { estimateCalories, estimateCaloriesFromBlocks, BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
 import type { BlockType } from '@/lib/types'
@@ -177,6 +177,11 @@ export default function SessionDetailPage() {
   const { data: session, isLoading } = useQuery<TrainingSession>({
     queryKey: ['session', id],
     queryFn: () => sessionsApi.get(Number(id)).then(r => r.data),
+  })
+
+  const { data: coachNotes } = useQuery<CoachSessionNote[]>({
+    queryKey: ['session-coach-notes', id],
+    queryFn: () => coachingApi.getMySessionNotes(Number(id)).then(r => r.data),
   })
 
   const { data: rounds } = useQuery<{ results: SparringRound[] }>({
@@ -411,6 +416,24 @@ export default function SessionDetailPage() {
                 <span className="text-mat-text-muted text-xs capitalize">{t.position} ·</span>
                 <span className="text-mat-text font-medium">{t.name}</span>
               </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Coach notes */}
+      {coachNotes && coachNotes.length > 0 && (
+        <div className="bg-mat-card border border-mat-gold/40">
+          <div className="px-6 py-4 border-b border-mat-gold/20 flex items-center gap-2">
+            <GraduationCap size={14} className="text-mat-gold" />
+            <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Coach Feedback</h3>
+          </div>
+          <div className="divide-y divide-mat-border">
+            {coachNotes.map(note => (
+              <div key={note.id} className="px-6 py-4">
+                <p className="text-mat-gold text-xs font-semibold mb-2">{note.coach_username}</p>
+                <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap">{note.note}</p>
+              </div>
             ))}
           </div>
         </div>

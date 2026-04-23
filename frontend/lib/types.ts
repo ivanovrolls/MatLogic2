@@ -170,6 +170,17 @@ export interface CoachDrillingPlan {
   title: string
   notes: string
   drills: CoachDrill[]
+  drill_completions: Record<string, boolean>
+  student_feedback: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CoachSessionNote {
+  id: number
+  coach_username: string
+  session: number
+  note: string
   created_at: string
   updated_at: string
 }

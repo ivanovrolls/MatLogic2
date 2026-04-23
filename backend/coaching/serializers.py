@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CoachRelationship, CoachDrillingPlan
+from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote
 
 User = get_user_model()
 
@@ -74,6 +74,15 @@ class CoachDrillingPlanSerializer(serializers.ModelSerializer):
         model = CoachDrillingPlan
         fields = [
             'id', 'coach_username', 'week_start', 'title', 'notes',
-            'drills', 'created_at', 'updated_at',
+            'drills', 'drill_completions', 'student_feedback', 'created_at', 'updated_at',
         ]
+        read_only_fields = ['id', 'coach_username', 'created_at', 'updated_at']
+
+
+class CoachSessionNoteSerializer(serializers.ModelSerializer):
+    coach_username = serializers.CharField(source='coach.username', read_only=True)
+
+    class Meta:
+        model = CoachSessionNote
+        fields = ['id', 'coach_username', 'session', 'note', 'created_at', 'updated_at']
         read_only_fields = ['id', 'coach_username', 'created_at', 'updated_at']

@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 
-from .models import CoachRelationship, CoachDrillingPlan
+from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote
 from .serializers import (
-    CoachRelationshipSerializer, StudentSummarySerializer, CoachDrillingPlanSerializer
+    CoachRelationshipSerializer, StudentSummarySerializer,
+    CoachDrillingPlanSerializer, CoachSessionNoteSerializer,
 )
 
 User = get_user_model()
@@ -178,6 +179,96 @@ class DrillingPlanView(APIView):
             drills=request.data.get('drills', []),
         )
         return Response(CoachDrillingPlanSerializer(plan).data, status=status.HTTP_201_CREATED)
+
+
+class RemoveStudentView(APIView):
+    """Coach-side: end an accepted relationship."""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, student_id):
+        try:
+            rel = CoachRelationship.objects.get(
+                coach=request.user, student_id=student_id, status='accepted'
+            )
+        except CoachRelationship.DoesNotExist:
+            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+        rel.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CoachStudentNotesView(APIView):
+    """Coach-side: list all session notes for a student."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        try:
+            CoachRelationship.objects.get(coach=request.user, student_id=student_id, status='accepted')
+        except CoachRelationship.DoesNotExist:
+            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        notes = CoachSessionNote.objects.filter(coach=request.user, student_id=student_id)
+        return Response(CoachSessionNoteSerializer(notes, many=True).data)
+
+
+class CoachSessionNoteView(APIView):
+    """Coach-side: create/update/delete a note on a specific session."""
+    permission_classes = [IsAuthenticated]
+
+    def _check_access(self, request, student_id):
+        try:
+            CoachRelationship.objects.get(coach=request.user, student_id=student_id, status='accepted')
+            return True
+        except CoachRelationship.DoesNotExist:
+            return False
+
+    def post(self, request, student_id, session_id):
+        if not self._check_access(request, student_id):
+            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from training.models import TrainingSession
+        try:
+            session = TrainingSession.objects.get(pk=session_id, user_id=student_id)
+        except TrainingSession.DoesNotExist:
+            return Response({'error': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+        note_obj, _ = CoachSessionNote.objects.update_or_create(
+            coach=request.user,
+            session=session,
+            defaults={'student_id': student_id, 'note': request.data.get('note', '')},
+        )
+        return Response(CoachSessionNoteSerializer(note_obj).data)
+
+    def delete(self, request, student_id, session_id):
+        if not self._check_access(request, student_id):
+            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        CoachSessionNote.objects.filter(coach=request.user, session_id=session_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentSessionNotesView(APIView):
+    """Student-side: view coach notes on their own sessions."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        session_id = request.query_params.get('session_id')
+        qs = CoachSessionNote.objects.filter(student=request.user)
+        if session_id:
+            qs = qs.filter(session_id=session_id)
+        return Response(CoachSessionNoteSerializer(qs, many=True).data)
+
+
+class DrillPlanCheckInView(APIView):
+    """Student-side: mark drills complete and/or leave feedback."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, plan_id):
+        try:
+            plan = CoachDrillingPlan.objects.get(pk=plan_id, student=request.user)
+        except CoachDrillingPlan.DoesNotExist:
+            return Response({'error': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if 'drill_completions' in request.data:
+            plan.drill_completions = request.data['drill_completions']
+        if 'student_feedback' in request.data:
+            plan.student_feedback = request.data['student_feedback']
+        plan.save()
+        return Response(CoachDrillingPlanSerializer(plan).data)
 
 
 class StudentDrillingPlansView(APIView):
