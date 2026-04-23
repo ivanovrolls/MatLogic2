@@ -19,6 +19,7 @@ import {
   Zap, ChevronDown, Users, Swords, Clock, CheckCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import MyProfilePage from '../my-profile/page'
 
 function ProgressBar({ value, max, color = 'bg-mat-gold' }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
@@ -607,10 +608,16 @@ function InsightCard({ insight }: { insight: { type: string; title: string; deta
   )
 }
 
+const TABS = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'my-profile', label: 'My Profile' },
+]
+
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const [tab, setTab] = useState('overview')
 
   const autoGenerateMutation = useMutation({
     mutationFn: () => planningApi.autoGenerate(),
@@ -679,7 +686,22 @@ export default function DashboardPage() {
   ].slice(0, 4)
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="animate-fade-in">
+      <div className="flex border-b border-mat-border mb-6">
+        {TABS.map(t => (
+          <button key={t.value} onClick={() => setTab(t.value)}
+            className={cn('px-5 py-3 text-sm font-medium tracking-wide transition-colors border-b-2 -mb-px',
+              tab === t.value ? 'text-mat-gold border-mat-gold' : 'text-mat-text-muted border-transparent hover:text-mat-text'
+            )}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'my-profile' && <MyProfilePage />}
+
+      {tab === 'overview' && (
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex items-end justify-between gap-3">
         <div>
@@ -963,6 +985,8 @@ export default function DashboardPage() {
         </div>
 
       </div>
+      </div>
+      )}
     </div>
   )
 }
