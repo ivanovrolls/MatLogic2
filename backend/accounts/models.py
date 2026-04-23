@@ -56,3 +56,17 @@ class WeightEntry(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.weight_kg}kg on {self.date}"
+
+
+class MatPost(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mat_posts')
+    caption = models.TextField(max_length=500)
+    image = models.ImageField(upload_to='posts/', null=True, blank=True)
+    tags = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user} — {self.caption[:40]}"

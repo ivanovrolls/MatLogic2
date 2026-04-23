@@ -2,7 +2,8 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .views import (
     RegisterView, ProfileView, logout_view,
-    WeightListCreateView, WeightDetailView, PublicProfileView,
+    WeightListCreateView, WeightDetailView,
+    PublicProfileView, MatPostListCreateView, MatPostDetailView, UserPostsView,
 )
 
 urlpatterns = [
@@ -12,5 +13,8 @@ urlpatterns = [
     path('profile/', ProfileView.as_view(), name='profile'),
     path('weight/', WeightListCreateView.as_view(), name='weight-list'),
     path('weight/<int:pk>/', WeightDetailView.as_view(), name='weight-detail'),
+    path('posts/', MatPostListCreateView.as_view(), name='mat-posts'),
+    path('posts/<int:pk>/', MatPostDetailView.as_view(), name='mat-post-detail'),
     path('users/<str:username>/', PublicProfileView.as_view(), name='public-profile'),
+    path('users/<str:username>/posts/', UserPostsView.as_view(), name='user-posts'),
 ]

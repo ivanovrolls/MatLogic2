@@ -1,7 +1,8 @@
+import json
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import WeightEntry
+from .models import WeightEntry, MatPost
 
 User = get_user_model()
 
@@ -87,3 +88,21 @@ class PublicProfileSerializer(serializers.ModelSerializer):
             return None
         wins = rounds.filter(outcome='win').count()
         return round(wins / total * 100, 1)
+
+
+class MatPostSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MatPost
+        fields = ['id', 'caption', 'image', 'tags', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def to_internal_value(self, data):
+        # tags may arrive as a JSON string when sent via FormData
+        if isinstance(data.get('tags'), str):
+            mutable = data.copy() if hasattr(data, 'copy') else dict(data)
+            try:
+                mutable['tags'] = json.loads(mutable['tags'])
+            except (json.JSONDecodeError, ValueError):
+                mutable['tags'] = []
+            data = mutable
+        return super().to_internal_value(data)

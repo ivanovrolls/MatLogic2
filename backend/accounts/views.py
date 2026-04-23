@@ -1,15 +1,16 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
-from .models import WeightEntry
+from .models import WeightEntry, MatPost
 from .serializers import (
     UserRegistrationSerializer, UserProfileSerializer,
-    WeightEntrySerializer, PublicProfileSerializer,
+    WeightEntrySerializer, PublicProfileSerializer, MatPostSerializer,
 )
 
 User = get_user_model()
@@ -89,3 +90,44 @@ class PublicProfileView(APIView):
         if not user.is_public:
             return Response({'detail': 'This profile is private.'}, status=status.HTTP_403_FORBIDDEN)
         return Response(PublicProfileSerializer(user, context={'request': request}).data)
+
+
+class MatPostListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        posts = MatPost.objects.filter(user=request.user)
+        return Response(MatPostSerializer(posts, many=True, context={'request': request}).data)
+
+    def post(self, request):
+        serializer = MatPostSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MatPostDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            post = MatPost.objects.get(pk=pk, user=request.user)
+        except MatPost.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        post.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserPostsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, username):
+        try:
+            user = User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not user.is_public:
+            return Response({'detail': 'This profile is private.'}, status=status.HTTP_403_FORBIDDEN)
+        posts = MatPost.objects.filter(user=user)
+        return Response(MatPostSerializer(posts, many=True, context={'request': request}).data)

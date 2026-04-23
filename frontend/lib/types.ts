@@ -473,6 +473,15 @@ export interface MyChallenges {
   completed: ChallengeData[]
 }
 
+// ---- Mat Wall posts ----
+export interface MatPost {
+  id: number
+  caption: string
+  image: string | null
+  tags: string[]
+  created_at: string
+}
+
 // ---- Weight tracking ----
 export interface WeightEntry {
   id: number

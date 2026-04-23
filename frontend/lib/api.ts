@@ -63,6 +63,13 @@ export const authApi = {
   listWeight: () => api.get('/auth/weight/'),
   addWeight: (data: object) => api.post('/auth/weight/', data),
   deleteWeight: (id: number) => api.delete(`/auth/weight/${id}/`),
+  // Mat Wall posts
+  listPosts: () => api.get('/auth/posts/'),
+  createPost: (form: FormData) => api.post('/auth/posts/', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deletePost: (id: number) => api.delete(`/auth/posts/${id}/`),
+  getUserPosts: (username: string) => api.get(`/auth/users/${username}/posts/`),
   // Public profile
   getPublicProfile: (username: string) => api.get(`/auth/users/${username}/`),
 }
