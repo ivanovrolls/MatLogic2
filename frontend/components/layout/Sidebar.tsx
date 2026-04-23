@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   BarChart2, Trophy, User, LogOut, ChevronRight, Swords,
-  Sun, Moon, HelpCircle, GraduationCap, X,
+  Sun, Moon, HelpCircle, GraduationCap, X, Globe,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -200,8 +200,19 @@ export function Sidebar() {
           )}
         >
           <User size={14} />
-          <span>Profile</span>
+          <span>Profile Settings</span>
         </Link>
+        {user && (
+          <a
+            href={`/u/${user.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-3 py-2 text-sm text-mat-text-muted hover:text-mat-gold transition-colors hover:bg-mat-card border-l-2 border-transparent"
+          >
+            <Globe size={14} />
+            <span>Public Profile</span>
+          </a>
+        )}
         <button
           onClick={openTutorial}
           className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors hover:bg-mat-card"

@@ -112,7 +112,7 @@ export function Header() {
                   : 'text-mat-text-muted border-transparent'
               )}
             >
-              <User size={16} /> Profile
+              <User size={16} /> Profile Settings
             </Link>
             <div className="divider" />
             {isCoachMode ? (

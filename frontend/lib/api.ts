@@ -59,6 +59,12 @@ export const authApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  // Weight tracking
+  listWeight: () => api.get('/auth/weight/'),
+  addWeight: (data: object) => api.post('/auth/weight/', data),
+  deleteWeight: (id: number) => api.delete(`/auth/weight/${id}/`),
+  // Public profile
+  getPublicProfile: (username: string) => api.get(`/auth/users/${username}/`),
 }
 
 // ---- Training Sessions ----

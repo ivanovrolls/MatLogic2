@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -40,3 +41,18 @@ class User(AbstractUser):
     @property
     def display_belt(self):
         return f"{self.get_belt_display()} Belt ({self.stripes} stripe{'s' if self.stripes != 1 else ''})"
+
+
+class WeightEntry(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='weight_entries')
+    weight_kg = models.FloatField()
+    date = models.DateField()
+    notes = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+        unique_together = ['user', 'date']
+
+    def __str__(self):
+        return f"{self.user} — {self.weight_kg}kg on {self.date}"

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { analyticsApi, sparringApi } from '@/lib/api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { analyticsApi, sparringApi, authApi } from '@/lib/api'
 import { formatDate, OUTCOME_COLORS } from '@/lib/utils'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -10,11 +10,11 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts'
 import {
-  Loader2, TrendingUp, Swords, Target, Lightbulb, AlertTriangle,
-  CheckCircle2, ChevronDown,
+  Loader2, TrendingUp, Swords, Target, ChevronDown, Weight, Plus, X,
 } from 'lucide-react'
-import type { SparringRound } from '@/lib/types'
+import type { SparringRound, WeightEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import toast from 'react-hot-toast'
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -43,6 +43,116 @@ function SectionCard({ title, children, icon: Icon }: { title: string; children:
   )
 }
 
+// ─── Weight tracker ───────────────────────────────────────────────────────────
+
+function WeightSection() {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [weightKg, setWeightKg] = useState('')
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [notes, setNotes] = useState('')
+
+  const { data: entries = [] } = useQuery<WeightEntry[]>({
+    queryKey: ['weight-entries'],
+    queryFn: () => authApi.listWeight().then(r => r.data),
+  })
+
+  const addMutation = useMutation({
+    mutationFn: () => authApi.addWeight({ weight_kg: parseFloat(weightKg), date, notes }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['weight-entries'] })
+      setShowForm(false)
+      setWeightKg('')
+      setNotes('')
+      toast.success('Weight logged.')
+    },
+    onError: (e: any) => toast.error(e?.response?.data?.non_field_errors?.[0] || 'Failed to save.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => authApi.deleteWeight(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['weight-entries'] }),
+  })
+
+  const chartData = [...entries].reverse().map(e => ({
+    date: formatDate(e.date, 'MMM d'),
+    weight: e.weight_kg,
+  }))
+
+  return (
+    <SectionCard title="Weight Over Time" icon={Weight}>
+      <div className="space-y-4">
+        {chartData.length >= 2 ? (
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={chartData} margin={{ left: -20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.muted} />
+              <XAxis dataKey="date" tick={{ fill: CHART_COLORS.text, fontSize: 10 }} />
+              <YAxis tick={{ fill: CHART_COLORS.text, fontSize: 10 }} domain={['auto', 'auto']} />
+              <Tooltip content={<CustomTooltip />} />
+              <Line type="monotone" dataKey="weight" stroke={CHART_COLORS.gold} strokeWidth={2} dot={{ fill: CHART_COLORS.gold, r: 3 }} name="kg" />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-mat-text-dim text-sm text-center py-8">Log at least 2 entries to see your trend.</p>
+        )}
+
+        {/* Recent entries */}
+        {entries.length > 0 && (
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {entries.slice(0, 10).map(e => (
+              <div key={e.id} className="flex items-center justify-between text-xs px-1 py-1 hover:bg-mat-darker rounded">
+                <span className="text-mat-text-muted">{formatDate(e.date, 'MMM d, yyyy')}</span>
+                <span className="text-mat-gold font-semibold">{e.weight_kg} kg</span>
+                {e.notes && <span className="text-mat-text-dim truncate max-w-24">{e.notes}</span>}
+                <button onClick={() => deleteMutation.mutate(e.id)} className="text-mat-text-dim hover:text-mat-red-light transition-colors ml-2">
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {showForm ? (
+          <div className="border border-mat-border p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mat-label">Weight (kg)</label>
+                <input
+                  type="number" step="0.1" value={weightKg} onChange={e => setWeightKg(e.target.value)}
+                  className="mat-input" placeholder="75.5" autoFocus
+                />
+              </div>
+              <div>
+                <label className="mat-label">Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="mat-input" />
+              </div>
+            </div>
+            <input value={notes} onChange={e => setNotes(e.target.value)} className="mat-input w-full" placeholder="Notes (optional)" />
+            <div className="flex gap-2">
+              <button
+                onClick={() => addMutation.mutate()}
+                disabled={!weightKg || addMutation.isPending}
+                className="btn-primary py-2 px-4 text-sm flex items-center gap-1.5"
+              >
+                {addMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+                Save
+              </button>
+              <button onClick={() => setShowForm(false)} className="btn-secondary py-2 px-4 text-sm">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border hover:border-mat-gold/40 px-3 py-2"
+          >
+            <Plus size={12} /> Log weight
+          </button>
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
 // ─── Analytics tab ────────────────────────────────────────────────────────────
 
 const PERIODS = [
@@ -59,7 +169,6 @@ function AnalyticsTab() {
   const { data: trends, isLoading: trendsLoading } = useQuery({ queryKey: ['analytics', 'trends', period], queryFn: () => analyticsApi.trainingTrends(period).then(r => r.data) })
   const { data: sparring, isLoading: sparringLoading } = useQuery({ queryKey: ['analytics', 'sparring', period], queryFn: () => analyticsApi.sparringStats(period).then(r => r.data) })
   const { data: techAnalysis } = useQuery({ queryKey: ['analytics', 'techniques', period], queryFn: () => analyticsApi.techniqueAnalysis(period).then(r => r.data) })
-  const { data: insights } = useQuery({ queryKey: ['analytics', 'insights'], queryFn: () => analyticsApi.insights().then(r => r.data) })
 
   const typeData = Object.entries(trends?.session_type_breakdown || {}).map(([k, v]) => ({ name: k.replace('_', ' ').toUpperCase(), value: v as number }))
   const positionData = Object.entries(techAnalysis?.position_coverage || {}).map(([k, v]) => ({ name: k.replace(/_/g, ' '), value: v as number })).sort((a, b) => b.value - a.value).slice(0, 8)
@@ -194,44 +303,14 @@ function AnalyticsTab() {
             </div>
           )}
 
-          {insights && (
-            <div className="bg-mat-card border border-mat-border">
-              <div className="px-6 py-4 border-b border-mat-border flex items-center gap-2">
-                <Lightbulb size={15} className="text-mat-gold" />
-                <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Training Insights</h3>
-              </div>
-              <div className="p-6 space-y-3">
-                {[
-                  ...(insights.warnings || []).map((i: any) => ({ ...i, _kind: 'warning' })),
-                  ...(insights.highlights || []).map((i: any) => ({ ...i, _kind: 'highlight' })),
-                  ...(insights.insights || []).map((i: any) => ({ ...i, _kind: 'insight' })),
-                ].map((insight: any, idx: number) => (
-                  <div key={idx} className="border border-mat-border p-4 gold-bar">
-                    <div className="flex items-start gap-3">
-                      {insight._kind === 'warning' && <AlertTriangle size={14} className="text-amber-400 mt-0.5 shrink-0" />}
-                      {insight._kind === 'highlight' && <CheckCircle2 size={14} className="text-mat-green-light mt-0.5 shrink-0" />}
-                      {insight._kind === 'insight' && <Lightbulb size={14} className="text-mat-gold mt-0.5 shrink-0" />}
-                      <div>
-                        <p className="text-mat-text font-semibold text-sm">{insight.title}</p>
-                        <p className="text-mat-text-muted text-xs mt-1 leading-relaxed">{insight.detail}</p>
-                        {insight.action && <p className="text-mat-gold text-xs mt-2">→ {insight.action}</p>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {(!insights.warnings?.length && !insights.highlights?.length && !insights.insights?.length) && (
-                  <p className="text-mat-text-dim text-sm text-center py-6">Log more training data to generate insights.</p>
-                )}
-              </div>
-            </div>
-          )}
+          <WeightSection />
         </>
       )}
     </div>
   )
 }
 
-// ─── Sparring Log tab (read-only) ─────────────────────────────────────────────
+// ─── Sparring Log tab ─────────────────────────────────────────────────────────
 
 function SparringLogRow({ round: r }: { round: SparringRound }) {
   const [expanded, setExpanded] = useState(false)
@@ -378,13 +457,8 @@ function SparringLogTab() {
     const key = r.partner_name.toLowerCase().trim()
     if (!opponentMap[key]) {
       opponentMap[key] = {
-        name: r.partner_name,
-        belt: r.partner_belt,
-        total: 0,
-        wins: 0,
-        losses: 0,
-        draws: 0,
-        winRate: 0,
+        name: r.partner_name, belt: r.partner_belt,
+        total: 0, wins: 0, losses: 0, draws: 0, winRate: 0,
         lastSeen: r.date,
       }
     }
@@ -398,6 +472,27 @@ function SparringLogTab() {
   const opponents = Object.values(opponentMap)
     .map(o => ({ ...o, winRate: o.total > 0 ? Math.round(o.wins / o.total * 100) : 0 }))
     .sort((a, b) => b.total - a.total)
+
+  // Gi / No-Gi split
+  const giCount = rounds.filter(r => r.is_gi).length
+  const nogiCount = rounds.filter(r => !r.is_gi).length
+  const giData = giCount || nogiCount
+    ? [{ name: 'Gi', value: giCount }, { name: 'No-Gi', value: nogiCount }].filter(d => d.value > 0)
+    : []
+
+  // Belt matchup breakdown
+  const beltMap: Record<string, { wins: number; losses: number; draws: number }> = {}
+  rounds.forEach(r => {
+    const b = r.partner_belt
+    if (!beltMap[b]) beltMap[b] = { wins: 0, losses: 0, draws: 0 }
+    if (r.outcome === 'win') beltMap[b].wins++
+    else if (r.outcome === 'loss') beltMap[b].losses++
+    else beltMap[b].draws++
+  })
+  const beltOrder = ['white', 'blue', 'purple', 'brown', 'black', 'unknown']
+  const beltData = beltOrder
+    .filter(b => beltMap[b])
+    .map(b => ({ name: b.charAt(0).toUpperCase() + b.slice(1), ...beltMap[b] }))
 
   return (
     <div className="space-y-5">
@@ -419,6 +514,41 @@ function SparringLogTab() {
               <p className={`font-display text-3xl ${color}`}>{value}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sparring analytics charts */}
+      {rounds.length >= 3 && (
+        <div className="grid md:grid-cols-2 gap-4">
+          {giData.length > 0 && (
+            <SectionCard title="Gi vs No-Gi">
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={giData} cx="50%" cy="50%" outerRadius={65} dataKey="value">
+                    {giData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                  </Pie>
+                  <Legend wrapperStyle={{ fontSize: 10, color: CHART_COLORS.text }} />
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+            </SectionCard>
+          )}
+
+          {beltData.length > 0 && (
+            <SectionCard title="Results by Belt" icon={Swords}>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={beltData} margin={{ left: -10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.muted} />
+                  <XAxis dataKey="name" tick={{ fill: CHART_COLORS.text, fontSize: 10 }} />
+                  <YAxis tick={{ fill: CHART_COLORS.text, fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="wins" fill={CHART_COLORS.green} name="Wins" stackId="a" />
+                  <Bar dataKey="losses" fill={CHART_COLORS.red} name="Losses" stackId="a" />
+                  {beltData.some(d => d.draws > 0) && <Bar dataKey="draws" fill={CHART_COLORS.muted} name="Draws" stackId="a" />}
+                </BarChart>
+              </ResponsiveContainer>
+            </SectionCard>
+          )}
         </div>
       )}
 

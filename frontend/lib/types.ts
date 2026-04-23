@@ -473,6 +473,15 @@ export interface MyChallenges {
   completed: ChallengeData[]
 }
 
+// ---- Weight tracking ----
+export interface WeightEntry {
+  id: number
+  weight_kg: number
+  date: string
+  notes: string
+  created_at: string
+}
+
 // ---- Pagination ----
 export interface PaginatedResponse<T> {
   count: number

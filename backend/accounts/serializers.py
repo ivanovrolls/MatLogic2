@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from .models import WeightEntry
 
 User = get_user_model()
 
@@ -51,3 +52,38 @@ class UserMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username', 'belt', 'stripes', 'avatar']
+
+
+class WeightEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WeightEntry
+        fields = ['id', 'weight_kg', 'date', 'notes', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class PublicProfileSerializer(serializers.ModelSerializer):
+    display_belt = serializers.ReadOnlyField()
+    total_sessions = serializers.SerializerMethodField()
+    total_rounds = serializers.SerializerMethodField()
+    win_rate = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'belt', 'stripes', 'display_belt',
+            'gym', 'bio', 'avatar', 'total_sessions', 'total_rounds', 'win_rate',
+        ]
+
+    def get_total_sessions(self, obj):
+        return obj.training_sessions.count()
+
+    def get_total_rounds(self, obj):
+        return obj.sparring_rounds.count()
+
+    def get_win_rate(self, obj):
+        rounds = obj.sparring_rounds.all()
+        total = rounds.count()
+        if total == 0:
+            return None
+        wins = rounds.filter(outcome='win').count()
+        return round(wins / total * 100, 1)
