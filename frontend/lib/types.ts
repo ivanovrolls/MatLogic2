@@ -190,6 +190,7 @@ export interface SparringRound {
   session_date: string | null
   date: string
   partner_name: string
+  partner_username: string
   partner_belt: PartnerBelt
   partner_belt_display: string
   duration_minutes: number

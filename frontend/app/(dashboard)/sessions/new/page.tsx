@@ -136,6 +136,7 @@ const OUTCOME_CLS: Record<Outcome, string> = {
 interface DraftRound {
   id: string
   partner_name: string
+  partner_username: string
   partner_belt: PartnerBelt
   duration_minutes: number
   outcome: Outcome
@@ -246,6 +247,14 @@ function RoundForm({
           placeholder="Partner name"
         />
       </div>
+
+      {/* Optional MatLogic username for profile link */}
+      <input
+        value={draft.partner_username}
+        onChange={e => patch({ partner_username: e.target.value.replace(/\s/g, '') })}
+        className="mat-input text-xs"
+        placeholder="Their MatLogic username (optional — links their name to their profile)"
+      />
 
       {/* Row 2: belt + duration + gi toggle */}
       <div className="flex items-center gap-2">
@@ -527,6 +536,7 @@ export default function NewSessionPage() {
               session: sessionId,
               date: sessionDate,
               partner_name: r.partner_name,
+              partner_username: r.partner_username,
               partner_belt: r.partner_belt,
               duration_minutes: r.duration_minutes,
               outcome: r.outcome,
@@ -809,6 +819,7 @@ export default function NewSessionPage() {
             initial={{
               id: '',
               partner_name: '',
+              partner_username: '',
               partner_belt: 'unknown',
               duration_minutes: 5,
               outcome: 'win',

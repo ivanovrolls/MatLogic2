@@ -33,7 +33,7 @@ class SparringRoundSerializer(serializers.ModelSerializer):
     class Meta:
         model = SparringRound
         fields = [
-            'id', 'session', 'session_date', 'date', 'partner_name',
+            'id', 'session', 'session_date', 'date', 'partner_name', 'partner_username',
             'partner_belt', 'partner_belt_display', 'duration_minutes',
             'outcome', 'outcome_display', 'is_gi',
             'dominant_positions', 'positions_conceded',

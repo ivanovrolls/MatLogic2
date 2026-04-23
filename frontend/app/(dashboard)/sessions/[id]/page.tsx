@@ -45,7 +45,14 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
-            <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
+            {r.partner_username ? (
+              <a href={`/u/${r.partner_username}`} target="_blank" rel="noopener noreferrer"
+                className="text-mat-text font-medium text-sm hover:text-mat-gold transition-colors hover:underline underline-offset-2">
+                {r.partner_name}
+              </a>
+            ) : (
+              <span className="text-mat-text font-medium text-sm">{r.partner_name}</span>
+            )}
             <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
             <span className="text-mat-text-muted text-xs">{r.duration_minutes}min</span>
             <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>

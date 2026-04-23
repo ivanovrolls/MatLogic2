@@ -46,6 +46,7 @@ class SparringRound(models.Model):
     )
     date = models.DateField()
     partner_name = models.CharField(max_length=200)
+    partner_username = models.CharField(max_length=150, blank=True)
     partner_belt = models.CharField(max_length=20, choices=BELT_CHOICES, default='unknown')
     duration_minutes = models.PositiveIntegerField(default=5)
     outcome = models.CharField(max_length=10, choices=OUTCOME_CHOICES)

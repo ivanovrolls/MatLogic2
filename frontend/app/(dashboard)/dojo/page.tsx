@@ -186,7 +186,7 @@ function RivalCard({ rival }: { rival: Rival }) {
   return (
     <>
       <div className="bg-mat-panel border border-mat-border p-4 flex items-center gap-4">
-        <Link href={`/users/${rival.user.username}`} className="shrink-0">
+        <Link href={`/u/${rival.user.username}`} className="shrink-0">
           <div className="w-10 h-10 bg-mat-muted border border-mat-border flex items-center justify-center hover:border-mat-gold/50 transition-colors">
             {rival.user.avatar
               ? <img src={rival.user.avatar} alt={rival.user.username} className="w-full h-full object-cover" />
@@ -197,7 +197,7 @@ function RivalCard({ rival }: { rival: Rival }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Link href={`/users/${rival.user.username}`} className="text-mat-text font-medium hover:text-mat-gold transition-colors">
+            <Link href={`/u/${rival.user.username}`} className="text-mat-text font-medium hover:text-mat-gold transition-colors">
               {rival.user.username}
             </Link>
             <BeltBar belt={rival.user.belt} />
@@ -270,10 +270,21 @@ function LeaderboardRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${member.is_me ? 'text-mat-gold' : 'text-mat-text'}`}>
-            {member.username}
-            {member.is_me && <span className="text-xs text-mat-text-muted ml-1">(you)</span>}
-          </span>
+          {member.is_me ? (
+            <span className="text-sm font-medium text-mat-gold">
+              {member.username}
+              <span className="text-xs text-mat-text-muted ml-1">(you)</span>
+            </span>
+          ) : (
+            <a
+              href={`/u/${member.username}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-mat-text hover:text-mat-gold transition-colors"
+            >
+              {member.username}
+            </a>
+          )}
           <BeltBar belt={member.belt} />
         </div>
         <p className={`text-xs ${textColor}`}>{member.display_belt}</p>
