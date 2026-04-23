@@ -13,8 +13,14 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 
 export default function CoachingPage() {
-  const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
+  const { isCoachMode, exitCoachMode } = useCoachingStore()
   const router = useRouter()
+
+  useEffect(() => {
+    if (!isCoachMode) {
+      router.replace('/dashboard')
+    }
+  }, [isCoachMode, router])
 
   const { data: students, isLoading: studentsLoading } = useQuery<StudentSummary[]>({
     queryKey: ['coaching-students'],
@@ -30,35 +36,7 @@ export default function CoachingPage() {
 
   const pendingRequests = requests?.filter(r => r.status === 'pending') || []
 
-  if (!isCoachMode) {
-    return (
-      <div className="fixed inset-0 z-40 mat-overlay flex items-center justify-center p-4">
-        <div className="bg-mat-card border border-mat-gold/30 w-full max-w-sm p-8 space-y-6 animate-slide-up">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-mat-gold/10 border border-mat-gold/30 flex items-center justify-center">
-              <GraduationCap size={18} className="text-mat-gold" />
-            </div>
-            <div>
-              <p className="text-mat-text-muted text-xs uppercase tracking-widest">Switch View</p>
-              <h2 className="font-display text-2xl tracking-wider text-mat-text uppercase">Coach Mode</h2>
-            </div>
-          </div>
-          <p className="text-mat-text-muted text-sm leading-relaxed">
-            Switch to a coaching view to see your students&apos; training data, assign techniques, and create drilling plans.
-            Your own data will be hidden until you exit.
-          </p>
-          <div className="flex gap-3">
-            <button onClick={enterCoachMode} className="btn-primary flex-1 py-3 flex items-center justify-center gap-2">
-              <GraduationCap size={14} /> Enter Coach Mode
-            </button>
-            <button onClick={() => router.back()} className="btn-secondary flex-1 py-3">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (!isCoachMode) return null
 
   return (
     <div className="space-y-6 animate-fade-in">

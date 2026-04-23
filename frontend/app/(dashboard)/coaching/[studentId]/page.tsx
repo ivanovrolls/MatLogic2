@@ -23,7 +23,7 @@ function AssignTechniqueModal({ studentId, onClose }: { studentId: number; onClo
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
     name: '', position: 'closed_guard', technique_type: 'submission',
-    description: '', notes: '', difficulty: 3,
+    description: '', notes: '', difficulty: 3, video_url: '',
   })
 
   const mutation = useMutation({
@@ -82,6 +82,10 @@ function AssignTechniqueModal({ studentId, onClose }: { studentId: number; onClo
             <label className="mat-label">Coach Notes</label>
             <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={2} placeholder="Notes for your student..." />
           </div>
+          <div>
+            <label className="mat-label">Reference Video URL (optional)</label>
+            <input value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} className="mat-input" placeholder="https://youtube.com/..." type="url" />
+          </div>
         </div>
         <div className="flex gap-3 pt-1">
           <button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending}
@@ -103,9 +107,9 @@ function DrillingPlanModal({ studentId, onClose }: { studentId: number; onClose:
   const [title, setTitle] = useState('')
   const [weekStart, setWeekStart] = useState('')
   const [notes, setNotes] = useState('')
-  const [drills, setDrills] = useState<CoachDrill[]>([{ name: '', sets: 3, reps: 10 }])
+  const [drills, setDrills] = useState<CoachDrill[]>([{ name: '', reps: 10 }])
 
-  const addDrill = () => setDrills(d => [...d, { name: '', sets: 3, reps: 10 }])
+  const addDrill = () => setDrills(d => [...d, { name: '', reps: 10 }])
   const updateDrill = (i: number, patch: Partial<CoachDrill>) => setDrills(d => d.map((dr, idx) => idx === i ? { ...dr, ...patch } : dr))
   const removeDrill = (i: number) => setDrills(d => d.filter((_, idx) => idx !== i))
 
@@ -144,13 +148,11 @@ function DrillingPlanModal({ studentId, onClose }: { studentId: number; onClose:
               {drills.map((drill, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <input value={drill.name} onChange={e => updateDrill(i, { name: e.target.value })} className="mat-input text-sm flex-1" placeholder="Drill name" />
-                  <input type="number" value={drill.sets} onChange={e => updateDrill(i, { sets: Number(e.target.value) })} className="mat-input text-sm w-14 text-center" min={1} title="Sets" />
-                  <span className="text-mat-text-dim text-xs">×</span>
-                  <input type="number" value={drill.reps} onChange={e => updateDrill(i, { reps: Number(e.target.value) })} className="mat-input text-sm w-14 text-center" min={1} title="Reps" />
+                  <input type="number" value={drill.reps} onChange={e => updateDrill(i, { reps: Number(e.target.value) })} className="mat-input text-sm w-20 text-center" min={1} title="Reps" />
+                  <span className="text-mat-text-dim text-xs shrink-0">reps</span>
                   <button type="button" onClick={() => removeDrill(i)} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1 shrink-0"><X size={12} /></button>
                 </div>
               ))}
-              <p className="text-mat-text-dim text-xs text-right -mt-1">sets × reps</p>
             </div>
             <button type="button" onClick={addDrill} className="btn-secondary text-xs px-3 py-1.5 mt-2 flex items-center gap-1.5">
               <Plus size={11} /> Add Drill
@@ -542,7 +544,7 @@ export default function StudentDetailPage() {
                                 {done ? <CheckCircle2 size={12} className="text-mat-gold shrink-0" /> : <div className="w-3 h-3 border border-mat-text-dim rounded-full shrink-0" />}
                                 <span className={cn('text-sm', done ? 'text-mat-text-muted line-through' : 'text-mat-text')}>{drill.name}</span>
                               </div>
-                              <span className="text-mat-text-muted text-xs">{drill.sets} × {drill.reps}</span>
+                              <span className="text-mat-text-muted text-xs">{drill.reps} reps</span>
                             </div>
                           )
                         })}

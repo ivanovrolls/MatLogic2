@@ -631,7 +631,7 @@ function CoachPlanCard({ plan }: { plan: CoachDrillingPlan }) {
                   }
                   <span className={cn('text-sm', done ? 'text-mat-text-muted line-through' : 'text-mat-text')}>{drill.name}</span>
                 </div>
-                <span className="text-mat-text-muted text-xs shrink-0">{drill.sets} × {drill.reps}</span>
+                <span className="text-mat-text-muted text-xs shrink-0">{drill.reps} reps</span>
               </button>
             )
           })}

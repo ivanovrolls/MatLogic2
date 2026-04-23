@@ -159,7 +159,6 @@ export interface StudentSummary {
 
 export interface CoachDrill {
   name: string
-  sets: number
   reps: number
 }
 

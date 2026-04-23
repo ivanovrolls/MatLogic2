@@ -150,6 +150,7 @@ class AssignTechniqueView(APIView):
             notes=request.data.get('notes', ''),
             difficulty=request.data.get('difficulty', 3),
             tags=request.data.get('tags', []),
+            video_url=request.data.get('video_url', ''),
         )
         return Response(TechniqueSerializer(technique).data, status=status.HTTP_201_CREATED)
 
