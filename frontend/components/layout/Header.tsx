@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, LogOut, Sun, Moon, HelpCircle,
+  BarChart2, Trophy, User, LogOut, Sun, Moon, HelpCircle, Swords,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -16,6 +16,7 @@ import { useTutorialStore } from '@/stores/tutorialStore'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
+  { href: '/dojo', label: 'Dojo', icon: Swords, tutorialId: 'nav-dojo' },
   { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
   { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
