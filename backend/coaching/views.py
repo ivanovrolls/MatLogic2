@@ -27,7 +27,7 @@ class CoachRelationshipView(APIView):
     def post(self, request):
         coach_username = request.data.get('coach_username', '').strip()
         try:
-            coach = User.objects.get(username=coach_username)
+            coach = User.objects.get(username__iexact=coach_username)
         except User.DoesNotExist:
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         if coach == request.user:
