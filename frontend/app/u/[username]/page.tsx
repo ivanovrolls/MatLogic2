@@ -1,13 +1,14 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { authApi } from '@/lib/api'
 import { BELT_COLORS, formatDate } from '@/lib/utils'
-import { Loader2, MapPin, BookOpen, Swords, ImageIcon } from 'lucide-react'
+import { Loader2, MapPin, BookOpen, Swords, ImageIcon, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import type { PublicUser, MatPost } from '@/lib/types'
+import { useAuthStore } from '@/stores/authStore'
 
 // ─── Post card (read-only) ────────────────────────────────────────────────────
 
@@ -64,6 +65,8 @@ function PublicPostCard({ post }: { post: MatPost }) {
 
 export default function PublicProfilePage() {
   const { username } = useParams<{ username: string }>()
+  const router = useRouter()
+  const { user: me } = useAuthStore()
 
   const { data: profile, isLoading, error } = useQuery<PublicUser>({
     queryKey: ['public-profile', username],
@@ -107,6 +110,16 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-mat-black">
+      {me && (
+        <div className="max-w-lg mx-auto px-4 pt-6">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-mat-text-muted hover:text-mat-gold transition-colors text-sm"
+          >
+            <ArrowLeft size={14} /> Back
+          </button>
+        </div>
+      )}
       <div className="max-w-lg mx-auto px-4 py-10 space-y-6 animate-fade-in">
 
         {/* Brand */}
