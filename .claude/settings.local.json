@@ -3,7 +3,25 @@
     "allow": [
       "Bash(npx tsc *)",
       "Bash(python manage.py makemigrations planning training)",
-      "Bash(python manage.py migrate)"
+      "Bash(python manage.py migrate)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(python manage.py makemigrations sparring --name add_submissions_hit)",
+      "Bash(python manage.py migrate accounts 0005_user_mat_id)",
+      "Bash(python manage.py migrate sparring 0003_sparringround_partner_mat_id)",
+      "Bash(python manage.py shell -c \"from accounts.models import User; users = User.objects.all\\(\\); print\\(f'Total users: {users.count\\(\\)}'\\); [print\\(f'  {u.username}: {u.mat_id}'\\) for u in users]\")",
+      "Bash(python manage.py check)",
+      "Bash(python manage.py migrate sparring 0002_add_submissions_hit)",
+      "Bash(python manage.py migrate accounts 0004_auto_optin_dojo)",
+      "Bash(python manage.py makemigrations coaching techniques)",
+      "Bash(python manage.py migrate accounts)",
+      "Bash(node -e \"const { Weight } = require\\('lucide-react'\\); console.log\\(Weight ? 'found' : 'missing'\\)\")",
+      "Bash(node *)",
+      "Bash(python manage.py migrate sparring)",
+      "Bash(python manage.py migrate notifications)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(git rm *)"
     ]
   }
 }
