@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Technique, TechniqueChain, ChainEntry
 from .serializers import TechniqueSerializer, TechniqueChainSerializer, ChainEntrySerializer
+from notifications.models import InAppNotification
 
 
 class TechniqueViewSet(viewsets.ModelViewSet):
@@ -39,17 +40,37 @@ class TechniqueViewSet(viewsets.ModelViewSet):
     def respond_coach_assignment(self, request, pk=None):
         technique = self.get_object()
         if not technique.coach_assignment_pending:
-            return Response({'error': 'Not a pending coach assignment.'}, status=400)
+            return Response({'detail': 'Not a pending coach assignment.'}, status=400)
         action_val = request.data.get('action')
         if action_val == 'accept':
+            coach = technique.coach_assigned_by
+            technique_name = technique.name
             technique.coach_assignment_pending = False
             technique.coach_assigned_by = None
             technique.save()
+            if coach:
+                InAppNotification.objects.create(
+                    user=coach,
+                    type='coach',
+                    title=f'{request.user.username} accepted "{technique_name}"',
+                    message='They added this technique to their arsenal.',
+                    link='/coaching',
+                )
             return Response({'status': 'accepted'})
         elif action_val == 'decline':
+            coach = technique.coach_assigned_by
+            technique_name = technique.name
             technique.delete()
+            if coach:
+                InAppNotification.objects.create(
+                    user=coach,
+                    type='coach',
+                    title=f'{request.user.username} declined "{technique_name}"',
+                    message='Consider discussing why or assigning a different technique.',
+                    link='/coaching',
+                )
             return Response({'status': 'declined'})
-        return Response({'error': 'action must be "accept" or "decline".'}, status=400)
+        return Response({'detail': 'action must be "accept" or "decline".'}, status=400)
 
 
 class TechniqueChainViewSet(viewsets.ModelViewSet):
@@ -69,7 +90,7 @@ class TechniqueChainViewSet(viewsets.ModelViewSet):
         except Technique.DoesNotExist:
             from rest_framework.response import Response
             from rest_framework import status
-            return Response({'error': 'Technique not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Technique not found.'}, status=status.HTTP_404_NOT_FOUND)
         next_order = chain.entries.count() + 1
         entry = ChainEntry.objects.create(chain=chain, technique=technique, order=next_order, notes=notes)
         return Response(ChainEntrySerializer(entry).data)

@@ -9,6 +9,7 @@ from .serializers import (
     CoachRelationshipSerializer, StudentSummarySerializer,
     CoachDrillingPlanSerializer, CoachSessionNoteSerializer,
 )
+from notifications.models import InAppNotification
 
 User = get_user_model()
 
@@ -36,6 +37,13 @@ class CoachRelationshipView(APIView):
         if CoachRelationship.objects.filter(student=request.user).exclude(status='declined').exists():
             return Response({'detail':'You already have a pending or active coach relationship.'}, status=status.HTTP_400_BAD_REQUEST)
         rel = CoachRelationship.objects.create(coach=coach, student=request.user)
+        InAppNotification.objects.create(
+            user=coach,
+            type='coach',
+            title=f'{request.user.username} wants you as their coach',
+            message='Review their request and accept or decline from Profile Settings.',
+            link='/profile',
+        )
         return Response(CoachRelationshipSerializer(rel, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
     def delete(self, request):
@@ -66,6 +74,22 @@ class RespondToRequestView(APIView):
             return Response({'detail':'status must be "accepted" or "declined".'}, status=status.HTTP_400_BAD_REQUEST)
         rel.status = new_status
         rel.save()
+        if new_status == 'accepted':
+            InAppNotification.objects.create(
+                user=rel.student,
+                type='coach',
+                title=f'{request.user.username} accepted your coach request',
+                message='You now have a coach. Check your drilling plans and assigned techniques.',
+                link='/profile',
+            )
+        else:
+            InAppNotification.objects.create(
+                user=rel.student,
+                type='coach',
+                title=f'{request.user.username} declined your coach request',
+                message='You can request a different coach from Profile Settings.',
+                link='/profile',
+            )
         return Response(CoachRelationshipSerializer(rel, context={'request': request}).data)
 
 
@@ -155,6 +179,13 @@ class AssignTechniqueView(APIView):
             tags=request.data.get('tags', []),
             video_url=request.data.get('video_url', ''),
         )
+        InAppNotification.objects.create(
+            user=student,
+            type='coach',
+            title=f'Coach assigned a new technique: {technique.name}',
+            message='Review and accept or decline it from your Arsenal.',
+            link='/techniques',
+        )
         return Response(TechniqueSerializer(technique).data, status=status.HTTP_201_CREATED)
 
 
@@ -181,6 +212,13 @@ class DrillingPlanView(APIView):
             title=request.data.get('title', ''),
             notes=request.data.get('notes', ''),
             drills=request.data.get('drills', []),
+        )
+        InAppNotification.objects.create(
+            user=plan.student,
+            type='coach',
+            title=f'New drilling plan: {plan.title or "Untitled"}',
+            message=f'Your coach assigned a drilling plan for the week of {plan.week_start}.',
+            link='/profile',
         )
         return Response(CoachDrillingPlanSerializer(plan).data, status=status.HTTP_201_CREATED)
 
@@ -269,9 +307,18 @@ class DrillPlanCheckInView(APIView):
             return Response({'detail':'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
         if 'drill_completions' in request.data:
             plan.drill_completions = request.data['drill_completions']
-        if 'student_feedback' in request.data:
+        has_feedback = 'student_feedback' in request.data
+        if has_feedback:
             plan.student_feedback = request.data['student_feedback']
         plan.save()
+        if has_feedback and plan.student_feedback:
+            InAppNotification.objects.create(
+                user=plan.coach,
+                type='coach',
+                title=f'{request.user.username} submitted drilling feedback',
+                message=f'They left feedback on "{plan.title or "Untitled"}". Check their progress.',
+                link='/coaching',
+            )
         return Response(CoachDrillingPlanSerializer(plan).data)
 
 
@@ -303,5 +350,12 @@ class StudentDrillingPlansView(APIView):
             title=request.data.get('title', ''),
             notes=request.data.get('notes', ''),
             drills=request.data.get('drills', []),
+        )
+        InAppNotification.objects.create(
+            user=plan.student,
+            type='coach',
+            title=f'New drilling plan: {plan.title or "Untitled"}',
+            message=f'Your coach assigned a drilling plan for the week of {plan.week_start}.',
+            link='/profile',
         )
         return Response(CoachDrillingPlanSerializer(plan).data, status=status.HTTP_201_CREATED)
