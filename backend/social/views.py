@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import Challenge
 from .serializers import PublicUserSerializer
+from notifications.models import InAppNotification
 
 User = get_user_model()
 
@@ -114,11 +115,39 @@ def _resolve_challenge(challenge):
                   f'You won the {type_label} challenge!')
         send_push(loser, 'Challenge Complete',
                   f'The {type_label} challenge has ended. Better luck next time.')
+        InAppNotification.objects.create(
+            user=winner,
+            type='achievement',
+            title='Challenge Complete — Victory!',
+            message=f'You won the {type_label} challenge!',
+            link='/dashboard',
+        )
+        InAppNotification.objects.create(
+            user=loser,
+            type='challenge',
+            title='Challenge Complete',
+            message=f'The {type_label} challenge has ended. Better luck next time.',
+            link='/dashboard',
+        )
     else:
         send_push(challenge.challenger, 'Challenge Complete — Draw!',
                   f'The {type_label} challenge ended in a draw.')
         send_push(challenge.challenged, 'Challenge Complete — Draw!',
                   f'The {type_label} challenge ended in a draw.')
+        InAppNotification.objects.create(
+            user=challenge.challenger,
+            type='challenge',
+            title='Challenge Complete — Draw!',
+            message=f'The {type_label} challenge ended in a draw.',
+            link='/dashboard',
+        )
+        InAppNotification.objects.create(
+            user=challenge.challenged,
+            type='challenge',
+            title='Challenge Complete — Draw!',
+            message=f'The {type_label} challenge ended in a draw.',
+            link='/dashboard',
+        )
 
     return challenge
 
@@ -348,6 +377,13 @@ def send_challenge(request, username):
         f'{request.user.username} challenged you!',
         f'Compete in {type_label} over {duration_days} days. Accept from the dashboard.',
     )
+    InAppNotification.objects.create(
+        user=target,
+        type='challenge',
+        title=f'{request.user.username} challenged you!',
+        message=f'Compete in {type_label} over {duration_days} days. Accept from the dashboard.',
+        link='/dashboard',
+    )
 
     return Response(_serialize_challenge(challenge, request.user), status=status.HTTP_201_CREATED)
 
@@ -375,6 +411,13 @@ def respond_challenge(request, challenge_id):
             f'{request.user.username} accepted your challenge!',
             f"The {type_label} contest has started. {challenge.duration_days} days on the clock.",
         )
+        InAppNotification.objects.create(
+            user=challenge.challenger,
+            type='challenge',
+            title=f'{request.user.username} accepted your challenge!',
+            message=f'The {type_label} contest has started. {challenge.duration_days} days on the clock.',
+            link='/dashboard',
+        )
     elif action == 'decline':
         challenge.status = 'declined'
         challenge.save()
@@ -383,6 +426,13 @@ def respond_challenge(request, challenge_id):
             f'{request.user.username} declined your challenge',
             'Head to the Dojo to challenge someone else.',
             '/dojo',
+        )
+        InAppNotification.objects.create(
+            user=challenge.challenger,
+            type='challenge',
+            title=f'{request.user.username} declined your challenge',
+            message='Head to the Dojo to challenge someone else.',
+            link='/dojo',
         )
     else:
         return Response({'detail': 'action must be accept or decline.'}, status=status.HTTP_400_BAD_REQUEST)
