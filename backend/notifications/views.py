@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import PushSubscription
+from .models import PushSubscription, InAppNotification
 
 
 @api_view(['POST'])
@@ -26,3 +26,48 @@ def unsubscribe(request):
     if endpoint:
         PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
     return Response({'status': 'unsubscribed'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_notifications(request):
+    notifications = InAppNotification.objects.filter(user=request.user)[:30]
+    data = [
+        {
+            'id': n.id,
+            'type': n.type,
+            'title': n.title,
+            'message': n.message,
+            'link': n.link,
+            'is_read': n.is_read,
+            'created_at': n.created_at.isoformat(),
+        }
+        for n in notifications
+    ]
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def unread_count(request):
+    count = InAppNotification.objects.filter(user=request.user, is_read=False).count()
+    return Response({'count': count})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_read(request, pk):
+    try:
+        notification = InAppNotification.objects.get(pk=pk, user=request.user)
+    except InAppNotification.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=404)
+    notification.is_read = True
+    notification.save(update_fields=['is_read'])
+    return Response({'status': 'ok'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_all_read(request):
+    InAppNotification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return Response({'status': 'ok'})

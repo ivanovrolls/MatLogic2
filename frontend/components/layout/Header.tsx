@@ -14,6 +14,7 @@ import {
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
 import { useTutorialStore } from '@/stores/tutorialStore'
+import { NotificationCenter } from '@/components/NotificationCenter'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
@@ -60,12 +61,15 @@ export function Header() {
           <span className="text-mat-gold">MAT</span>
           <span className="text-mat-text">LOGIC</span>
         </Link>
-        <button
-          onClick={() => setOpen(!open)}
-          className="text-mat-text-muted hover:text-mat-gold transition-colors p-1"
-        >
-          {open ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationCenter iconSize={18} />
+          <button
+            onClick={() => setOpen(!open)}
+            className="text-mat-text-muted hover:text-mat-gold transition-colors p-1"
+          >
+            {open ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile nav overlay */}

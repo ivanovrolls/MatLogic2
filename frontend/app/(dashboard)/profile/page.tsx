@@ -82,10 +82,10 @@ export default function ProfilePage() {
       const inch = parseFloat(heightIn || '0')
       const lbs = parseFloat(weightLbs || '0')
       if (ft || inch) {
-        setValue('height_cm', parseFloat(((ft * 12 + inch) * 2.54).toFixed(1)) as any, { shouldDirty: true })
+        setValue('height_cm', parseFloat(((ft * 12 + inch) * 2.54).toFixed(1)), { shouldDirty: true })
       }
       if (lbs) {
-        setValue('weight_kg', parseFloat((lbs / 2.2046).toFixed(1)) as any, { shouldDirty: true })
+        setValue('weight_kg', parseFloat((lbs / 2.2046).toFixed(1)), { shouldDirty: true })
       }
     }
     setUnits(next)
@@ -383,7 +383,7 @@ function CoachSection() {
       setCoachInput('')
       toast.success('Coach request sent.')
     },
-    onError: (err: any) => toast.error(err?.response?.data?.error || 'User not found.'),
+    onError: (err: any) => toast.error(err?.response?.data?.detail || 'User not found.'),
   })
 
   const removeMutation = useMutation({

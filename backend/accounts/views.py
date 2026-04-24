@@ -44,12 +44,13 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
+    from rest_framework_simplejwt.exceptions import TokenError
     try:
         refresh_token = request.data.get('refresh')
         token = RefreshToken(refresh_token)
         token.blacklist()
         return Response({'detail': 'Logged out successfully.'})
-    except Exception:
+    except TokenError:
         return Response({'detail': 'Invalid token.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -74,7 +75,7 @@ class WeightDetailView(APIView):
         try:
             entry = WeightEntry.objects.get(pk=pk, user=request.user)
         except WeightEntry.DoesNotExist:
-            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         entry.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -114,7 +115,7 @@ class MatPostDetailView(APIView):
         try:
             post = MatPost.objects.get(pk=pk, user=request.user)
         except MatPost.DoesNotExist:
-            return Response({'error': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         post.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

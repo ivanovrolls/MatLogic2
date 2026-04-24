@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Count, Avg, Sum
 from datetime import date, timedelta
 from collections import Counter, defaultdict
+from techniques.models import Technique
 
 
 def get_date_range(period):
@@ -172,19 +173,17 @@ def technique_analysis(request):
     most_drilled = techniques.order_by('-times_drilled')[:10]
 
     # Technique usage in sessions (from M2M)
-    from techniques.models import Technique
-    from django.db.models import Count as DjCount
     session_technique_counts = (
         Technique.objects.filter(user=user, training_sessions__date__gte=since)
-        .annotate(session_count=DjCount('training_sessions'))
+        .annotate(session_count=Count('training_sessions'))
         .order_by('-session_count')[:10]
     )
 
     # Position coverage
-    position_counts = techniques.values('position').annotate(count=DjCount('id'))
+    position_counts = techniques.values('position').annotate(count=Count('id'))
 
     # Type coverage
-    type_counts = techniques.values('technique_type').annotate(count=DjCount('id'))
+    type_counts = techniques.values('technique_type').annotate(count=Count('id'))
 
     return Response({
         'total_techniques': techniques.count(),

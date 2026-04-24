@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, HeartPulse, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react'
 import { format } from 'date-fns'
-import type { TrainingSession, SessionTemplate, InjuryLog } from '@/lib/types'
+import type { TrainingSession, SessionTemplate, InjuryLog, InjurySeverity, InjuryStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 // ─── Sessions tab ─────────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ function InjuryForm({ initial, onSave, onCancel, isPending }: {
         </div>
         <div>
           <label className="mat-label">Severity</label>
-          <select value={severity} onChange={e => setSeverity(e.target.value as any)} className="mat-input">
+          <select value={severity} onChange={e => setSeverity(e.target.value as InjurySeverity)} className="mat-input">
             <option value="mild">Mild</option>
             <option value="moderate">Moderate</option>
             <option value="severe">Severe</option>
@@ -255,7 +255,7 @@ function InjuryForm({ initial, onSave, onCancel, isPending }: {
         </div>
         <div>
           <label className="mat-label">Status</label>
-          <select value={status} onChange={e => setStatus(e.target.value as any)} className="mat-input">
+          <select value={status} onChange={e => setStatus(e.target.value as InjuryStatus)} className="mat-input">
             <option value="active">Active</option>
             <option value="recovering">Recovering</option>
             <option value="resolved">Resolved</option>

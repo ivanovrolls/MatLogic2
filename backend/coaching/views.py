@@ -30,11 +30,11 @@ class CoachRelationshipView(APIView):
         try:
             coach = User.objects.get(username__iexact=coach_username)
         except User.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         if coach == request.user:
-            return Response({'error': 'You cannot be your own coach.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'You cannot be your own coach.'}, status=status.HTTP_400_BAD_REQUEST)
         if CoachRelationship.objects.filter(student=request.user).exclude(status='declined').exists():
-            return Response({'error': 'You already have a pending or active coach relationship.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'You already have a pending or active coach relationship.'}, status=status.HTTP_400_BAD_REQUEST)
         rel = CoachRelationship.objects.create(coach=coach, student=request.user)
         return Response(CoachRelationshipSerializer(rel, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
@@ -60,10 +60,10 @@ class RespondToRequestView(APIView):
         try:
             rel = CoachRelationship.objects.get(pk=pk, coach=request.user, status='pending')
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Request not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'Request not found.'}, status=status.HTTP_404_NOT_FOUND)
         new_status = request.data.get('status')
         if new_status not in ('accepted', 'declined'):
-            return Response({'error': 'status must be "accepted" or "declined".'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail':'status must be "accepted" or "declined".'}, status=status.HTTP_400_BAD_REQUEST)
         rel.status = new_status
         rel.save()
         return Response(CoachRelationshipSerializer(rel, context={'request': request}).data)
@@ -97,7 +97,7 @@ class StudentDataView(APIView):
     def get(self, request, student_id):
         student = self._get_student(request, student_id)
         if not student:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
 
         data_type = request.query_params.get('type', 'overview')
 
@@ -133,12 +133,15 @@ class AssignTechniqueView(APIView):
                 coach=request.user, student_id=student_id, status='accepted'
             )
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
 
         from techniques.models import Technique
         from techniques.serializers import TechniqueSerializer
 
-        student = User.objects.get(pk=student_id)
+        try:
+            student = User.objects.get(pk=student_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
         technique = Technique.objects.create(
             user=student,
             coach_assigned_by=request.user,
@@ -170,7 +173,7 @@ class DrillingPlanView(APIView):
                 coach=request.user, student_id=student_id, status='accepted'
             )
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         plan = CoachDrillingPlan.objects.create(
             coach=request.user,
             student_id=student_id,
@@ -192,7 +195,7 @@ class RemoveStudentView(APIView):
                 coach=request.user, student_id=student_id, status='accepted'
             )
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
         rel.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -205,7 +208,7 @@ class CoachStudentNotesView(APIView):
         try:
             CoachRelationship.objects.get(coach=request.user, student_id=student_id, status='accepted')
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         notes = CoachSessionNote.objects.filter(coach=request.user, student_id=student_id)
         return Response(CoachSessionNoteSerializer(notes, many=True).data)
 
@@ -223,12 +226,12 @@ class CoachSessionNoteView(APIView):
 
     def post(self, request, student_id, session_id):
         if not self._check_access(request, student_id):
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         from training.models import TrainingSession
         try:
             session = TrainingSession.objects.get(pk=session_id, user_id=student_id)
         except TrainingSession.DoesNotExist:
-            return Response({'error': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
         note_obj, _ = CoachSessionNote.objects.update_or_create(
             coach=request.user,
             session=session,
@@ -238,7 +241,7 @@ class CoachSessionNoteView(APIView):
 
     def delete(self, request, student_id, session_id):
         if not self._check_access(request, student_id):
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         CoachSessionNote.objects.filter(coach=request.user, session_id=session_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -263,7 +266,7 @@ class DrillPlanCheckInView(APIView):
         try:
             plan = CoachDrillingPlan.objects.get(pk=plan_id, student=request.user)
         except CoachDrillingPlan.DoesNotExist:
-            return Response({'error': 'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail':'Plan not found.'}, status=status.HTTP_404_NOT_FOUND)
         if 'drill_completions' in request.data:
             plan.drill_completions = request.data['drill_completions']
         if 'student_feedback' in request.data:
@@ -282,7 +285,7 @@ class StudentDrillingPlansView(APIView):
                 coach=request.user, student_id=student_id, status='accepted'
             )
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         plans = CoachDrillingPlan.objects.filter(student_id=student_id, coach=request.user)
         return Response(CoachDrillingPlanSerializer(plans, many=True).data)
 
@@ -292,7 +295,7 @@ class StudentDrillingPlansView(APIView):
                 coach=request.user, student_id=student_id, status='accepted'
             )
         except CoachRelationship.DoesNotExist:
-            return Response({'error': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         plan = CoachDrillingPlan.objects.create(
             coach=request.user,
             student_id=student_id,

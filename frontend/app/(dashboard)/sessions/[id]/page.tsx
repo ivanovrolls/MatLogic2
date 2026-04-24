@@ -238,7 +238,7 @@ export default function SessionDetailPage() {
     return <div className="text-mat-text-muted py-20 text-center">Session not found.</div>
   }
 
-  const sparringRounds: SparringRound[] = (rounds as any)?.results || (Array.isArray(rounds) ? rounds : [])
+  const sparringRounds: SparringRound[] = Array.isArray(rounds) ? rounds : []
   const sparringMinutes = sparringRounds.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
   const hasBlocks = session?.session_blocks && session.session_blocks.length > 0
   const calories = session && user?.weight_kg
@@ -251,7 +251,7 @@ export default function SessionDetailPage() {
           sparringMinutes,
         })
     : null
-  const allRoundsArr: SparringRound[] = (allRounds as any)?.results || (Array.isArray(allRounds) ? allRounds : [])
+  const allRoundsArr: SparringRound[] = Array.isArray(allRounds) ? allRounds : []
 
   // Rounds not already linked to this session
   const linkedIds = new Set(sparringRounds.map(r => r.id))

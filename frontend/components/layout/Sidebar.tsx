@@ -15,6 +15,7 @@ import {
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
 import { useTutorialStore } from '@/stores/tutorialStore'
+import { NotificationCenter } from '@/components/NotificationCenter'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
@@ -97,11 +98,12 @@ export function Sidebar() {
 
     <aside className="hidden lg:flex flex-col w-56 min-h-screen bg-mat-darker border-r border-mat-border fixed left-0 top-0 z-20">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-mat-border">
+      <div className="px-5 py-5 border-b border-mat-border flex items-center justify-between">
         <Link href="/dashboard" className="font-display text-2xl tracking-widest">
           <span className="text-mat-gold">MAT</span>
           <span className="text-mat-text">LOGIC</span>
         </Link>
+        <NotificationCenter iconSize={16} />
       </div>
 
       {/* User info */}
