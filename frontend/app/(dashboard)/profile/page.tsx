@@ -1,9 +1,10 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { authApi, coachingApi } from '@/lib/api'
+import { GymPicker } from '@/components/GymPicker'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
 import { Loader2, Star, Camera, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX } from 'lucide-react'
@@ -49,13 +50,13 @@ export default function ProfilePage() {
     avatarMutation.mutate(file)
   }
 
-  const { register, handleSubmit, formState: { isDirty }, getValues, setValue } = useForm({
+  const { register, handleSubmit, formState: { isDirty }, getValues, setValue, control } = useForm({
     defaultValues: {
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
       belt: user?.belt || 'white',
       stripes: user?.stripes || 0,
-      gym: user?.gym || '',
+      gym_ref: user?.gym_ref_id ?? null,
       start_date: user?.start_date || '',
       weight_class: user?.weight_class || '',
       bio: user?.bio || '',
@@ -222,7 +223,17 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mat-label">Gym</label>
-              <input {...register('gym')} className="mat-input" placeholder="Your gym" />
+              <Controller
+                name="gym_ref"
+                control={control}
+                render={({ field }) => (
+                  <GymPicker
+                    value={field.value}
+                    initialName={user?.gym || ''}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </div>
             <div>
               <label className="mat-label">Training Since</label>

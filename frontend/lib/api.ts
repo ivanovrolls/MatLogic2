@@ -257,6 +257,8 @@ export const socialApi = {
   respondChallenge: (id: number, action: 'accept' | 'decline') =>
     api.post(`/social/challenges/${id}/respond/`, { action }),
   myChallenges: () => api.get('/social/challenges/'),
+  gymSearch: (q: string) => api.get('/social/gyms/', { params: { q } }),
+  gymCreate: (data: { name: string; aliases: string }) => api.post('/social/gyms/create/', data),
 }
 
 export default api

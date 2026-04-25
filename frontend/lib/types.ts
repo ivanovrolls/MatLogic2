@@ -1,4 +1,11 @@
 // ---- Auth ----
+export interface Gym {
+  id: number
+  name: string
+  aliases: string
+  member_count: number
+}
+
 export interface User {
   id: number
   email: string
@@ -8,6 +15,7 @@ export interface User {
   belt: Belt
   stripes: number
   gym: string
+  gym_ref_id: number | null
   start_date: string | null
   bio: string
   is_premium: boolean

@@ -203,13 +203,53 @@ def _serialize_challenge(c, viewer):
     return base
 
 
+# ─── Gym Registry ─────────────────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def gym_list(request):
+    from accounts.models import Gym
+    q = request.query_params.get('q', '').strip()
+    gyms = Gym.objects.annotate(
+        member_count=Count('members', filter=Q(members__is_public=True), distinct=True)
+    )
+    if q:
+        gyms = gyms.filter(Q(name__icontains=q) | Q(aliases__icontains=q))
+    gyms = gyms.order_by('-member_count', 'name')[:20]
+    return Response([{
+        'id': g.id,
+        'name': g.name,
+        'aliases': g.aliases,
+        'member_count': g.member_count,
+    } for g in gyms])
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def gym_create(request):
+    from accounts.models import Gym
+    name = (request.data.get('name') or '').strip()
+    aliases = (request.data.get('aliases') or '').strip()
+    if not name:
+        return Response({'detail': 'Name is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    existing = Gym.objects.filter(name__iexact=name).first()
+    if existing:
+        return Response(
+            {'detail': 'A gym with this name already exists.', 'id': existing.id},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    gym = Gym.objects.create(name=name, aliases=aliases)
+    return Response({'id': gym.id, 'name': gym.name, 'aliases': gym.aliases, 'member_count': 0},
+                    status=status.HTTP_201_CREATED)
+
+
 # ─── Dojo / Gym Room ──────────────────────────────────────────────────────────
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def gym_room(request):
-    gym = (request.user.gym or '').strip()
-    if not gym:
+    gym_ref = request.user.gym_ref
+    if not gym_ref:
         return Response({'detail': 'no_gym'})
 
     today = date.today()
@@ -218,7 +258,7 @@ def gym_room(request):
 
     members = (
         User.objects
-        .filter(Q(gym__iexact=gym, is_public=True) | Q(id=request.user.id))
+        .filter(Q(gym_ref=gym_ref, is_public=True) | Q(id=request.user.id))
         .distinct()
         .annotate(
             sessions_week=Count(
@@ -258,7 +298,7 @@ def gym_room(request):
             'is_me': m.id == request.user.id,
         })
 
-    return Response({'gym': gym, 'members': data})
+    return Response({'gym': gym_ref.name, 'members': data})
 
 
 @api_view(['GET'])
@@ -323,8 +363,15 @@ def search_users(request):
         return Response([])
     users = (
         User.objects
-        .filter(Q(username__icontains=q) | Q(gym__icontains=q), is_public=True)
-        .exclude(id=request.user.id)[:20]
+        .filter(
+            Q(username__icontains=q)
+            | Q(gym__icontains=q)
+            | Q(gym_ref__name__icontains=q)
+            | Q(gym_ref__aliases__icontains=q),
+            is_public=True,
+        )
+        .exclude(id=request.user.id)
+        .distinct()[:20]
     )
     return Response(PublicUserSerializer(users, many=True, context={'request': request}).data)
 
