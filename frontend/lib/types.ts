@@ -192,6 +192,25 @@ export interface CoachSessionNote {
   updated_at: string
 }
 
+export interface CoachSessionEdit {
+  id: number
+  coach_username: string
+  session: number
+  status: 'pending' | 'accepted' | 'declined'
+  proposed_changes: Partial<{
+    title: string
+    notes: string
+    session_type: string
+    duration: number
+    performance_rating: number | null
+    energy_level: number | null
+    instructor: string
+    gym_location: string
+  }>
+  created_at: string
+  updated_at: string
+}
+
 export interface SparringRound {
   id: number
   session: number | null

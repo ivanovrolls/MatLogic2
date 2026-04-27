@@ -6,10 +6,10 @@ import { sessionsApi, sparringApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap, CheckCircle2, X as XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { TrainingSession, SparringRound, CoachSessionNote } from '@/lib/types'
+import type { TrainingSession, SparringRound, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
 import { useAuthStore } from '@/stores/authStore'
 import { estimateCalories, estimateCaloriesFromBlocks, BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
 import type { BlockType } from '@/lib/types'
@@ -191,6 +191,23 @@ export default function SessionDetailPage() {
     queryFn: () => coachingApi.getMySessionNotes(Number(id)).then(r => r.data),
   })
 
+  const { data: pendingEdits, refetch: refetchEdits } = useQuery<CoachSessionEdit[]>({
+    queryKey: ['session-pending-edits', id],
+    queryFn: () => coachingApi.getMySessionEdits(Number(id)).then(r => r.data),
+  })
+
+  const respondEditMutation = useMutation({
+    mutationFn: ({ editId, action }: { editId: number; action: 'accept' | 'decline' }) =>
+      coachingApi.respondToSessionEdit(editId, action),
+    onSuccess: (_, { action }) => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] })
+      queryClient.invalidateQueries({ queryKey: ['session-pending-edits', id] })
+      queryClient.invalidateQueries({ queryKey: ['my-session-edits'] })
+      toast.success(action === 'accept' ? 'Changes applied to your session.' : 'Edit suggestion declined.')
+    },
+    onError: () => toast.error('Failed to respond to edit.'),
+  })
+
   const { data: rounds } = useQuery<{ results: SparringRound[] }>({
     queryKey: ['sparring', 'session', id],
     queryFn: () => sparringApi.list({ session: id }).then(r => r.data),
@@ -290,8 +307,57 @@ export default function SessionDetailPage() {
         </div>
       </div>
 
+      {/* Pending coach edits */}
+      {pendingEdits && pendingEdits.map(edit => {
+        const FIELD_LABELS: Record<string, string> = {
+          title: 'Title', notes: 'Notes', session_type: 'Session Type', duration: 'Duration (min)',
+          performance_rating: 'Performance Rating', energy_level: 'Energy Level',
+          instructor: 'Instructor', gym_location: 'Location',
+        }
+        return (
+          <div
+            key={edit.id}
+            className="bg-mat-gold/5 border border-mat-gold/50 shadow-[0_0_16px_rgba(212,175,55,0.15)] space-y-4 p-5"
+          >
+            <div className="flex items-center gap-2">
+              <GraduationCap size={15} className="text-mat-gold shrink-0" />
+              <p className="text-mat-gold font-semibold text-sm">{edit.coach_username} recommended edits</p>
+              <span className="w-1.5 h-1.5 rounded-full bg-mat-gold animate-pulse ml-1 shrink-0" />
+            </div>
+            <div className="space-y-2">
+              {Object.entries(edit.proposed_changes).map(([field, value]) => (
+                <div key={field} className="flex items-start gap-3 text-sm">
+                  <span className="text-mat-text-muted text-xs uppercase tracking-widest w-28 shrink-0 pt-0.5">
+                    {FIELD_LABELS[field] ?? field.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-mat-text leading-relaxed whitespace-pre-wrap">
+                    {value === null ? '—' : String(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => respondEditMutation.mutate({ editId: edit.id, action: 'accept' })}
+                disabled={respondEditMutation.isPending}
+                className="btn-primary flex-1 py-2 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <CheckCircle2 size={14} /> Accept Changes
+              </button>
+              <button
+                onClick={() => respondEditMutation.mutate({ editId: edit.id, action: 'decline' })}
+                disabled={respondEditMutation.isPending}
+                className="flex-1 py-2 text-sm border border-mat-red-light/40 text-mat-red-light hover:bg-mat-red-light/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <XIcon size={14} /> Decline
+              </button>
+            </div>
+          </div>
+        )
+      })}
+
       {/* Meta */}
-      <div className="bg-mat-card border border-mat-border p-6">
+      <div className={cn('bg-mat-card border p-6', pendingEdits && pendingEdits.length > 0 ? 'border-mat-gold/40' : 'border-mat-border')}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           <div>
             <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Date</p>

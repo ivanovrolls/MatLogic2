@@ -8,11 +8,12 @@ import { useCoachingStore } from '@/stores/coachingStore'
 import {
   ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen,
   Database, ClipboardList, MessageSquare, CheckCircle2, UserMinus,
+  Eye, Pencil, ChevronRight,
 } from 'lucide-react'
-import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
+import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote } from '@/lib/types'
+import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
 const TYPES = Object.entries(TYPE_LABELS)
@@ -76,11 +77,11 @@ function AssignTechniqueModal({ studentId, onClose }: { studentId: number; onClo
           </div>
           <div>
             <label className="mat-label">Description</label>
-            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mat-input resize-none" rows={3} placeholder="Describe the technique..." />
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mat-input resize-none" rows={5} placeholder="Describe the technique..." />
           </div>
           <div>
             <label className="mat-label">Coach Notes</label>
-            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={2} placeholder="Notes for your student..." />
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={4} placeholder="Notes for your student..." />
           </div>
           <div>
             <label className="mat-label">Reference Video URL (optional)</label>
@@ -176,6 +177,243 @@ function DrillingPlanModal({ studentId, onClose }: { studentId: number; onClose:
   )
 }
 
+// ── Session Type options ───────────────────────────────────────────────────────
+
+const SESSION_TYPES = [
+  { value: 'gi', label: 'Gi' },
+  { value: 'nogi', label: 'No-Gi' },
+  { value: 'open_mat', label: 'Open Mat' },
+  { value: 'competition', label: 'Competition' },
+  { value: 'drilling', label: 'Drilling Only' },
+  { value: 'wrestling', label: 'Wrestling / Takedowns' },
+  { value: 'fundamentals', label: 'Fundamentals Class' },
+]
+
+// ── Session Detail Modal ───────────────────────────────────────────────────────
+
+function SessionDetailModal({
+  studentId,
+  sessionId,
+  onClose,
+}: {
+  studentId: number
+  sessionId: number
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState<Record<string, string | number | null>>({})
+
+  const { data, isLoading } = useQuery<{ session: TrainingSession; pending_edit: CoachSessionEdit | null }>({
+    queryKey: ['coaching-student-session', studentId, sessionId],
+    queryFn: () => coachingApi.getStudentSessionDetail(studentId, sessionId).then(r => r.data),
+  })
+
+  const session = data?.session
+  const pendingEdit = data?.pending_edit
+
+  const initEditForm = (s: TrainingSession) => {
+    setEditForm({
+      title: s.title,
+      notes: s.notes,
+      session_type: s.session_type,
+      duration: s.duration,
+      performance_rating: s.performance_rating ?? '',
+      energy_level: s.energy_level ?? '',
+      instructor: s.instructor,
+      gym_location: s.gym_location,
+    })
+    setEditMode(true)
+  }
+
+  const submitMutation = useMutation({
+    mutationFn: () => {
+      const changes: Record<string, string | number | null> = {}
+      if (!session) return Promise.reject()
+      const fields = ['title', 'notes', 'session_type', 'duration', 'performance_rating', 'energy_level', 'instructor', 'gym_location'] as const
+      for (const f of fields) {
+        const val = editForm[f]
+        if (val !== '' && val !== null && val !== undefined) {
+          changes[f] = typeof val === 'string' && ['duration', 'performance_rating', 'energy_level'].includes(f)
+            ? Number(val)
+            : val
+        } else if (['performance_rating', 'energy_level'].includes(f)) {
+          changes[f] = null
+        }
+      }
+      return coachingApi.submitSessionEdit(studentId, sessionId, changes)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coaching-student-session', studentId, sessionId] })
+      setEditMode(false)
+      toast.success('Edit suggestion sent.')
+    },
+    onError: () => toast.error('Failed to send edit suggestion.'),
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
+      <div className="bg-mat-card border border-mat-border w-full max-w-lg p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">
+            {editMode ? 'Suggest Edits' : 'Session Details'}
+          </h2>
+          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin text-mat-gold" /></div>
+        ) : !session ? (
+          <p className="text-mat-text-dim text-sm py-8 text-center">Session not found.</p>
+        ) : editMode ? (
+          /* ── Edit form ── */
+          <div className="space-y-4">
+            <div>
+              <label className="mat-label">Title</label>
+              <input value={String(editForm.title ?? '')} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="mat-input" placeholder="Session title" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mat-label">Session Type</label>
+                <select value={String(editForm.session_type ?? '')} onChange={e => setEditForm(f => ({ ...f, session_type: e.target.value }))} className="mat-input">
+                  {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mat-label">Duration (min)</label>
+                <input type="number" value={String(editForm.duration ?? '')} onChange={e => setEditForm(f => ({ ...f, duration: e.target.value }))} className="mat-input" min={1} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mat-label">Performance (1–5)</label>
+                <select value={String(editForm.performance_rating ?? '')} onChange={e => setEditForm(f => ({ ...f, performance_rating: e.target.value }))} className="mat-input">
+                  <option value="">—</option>
+                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mat-label">Energy Level (1–5)</label>
+                <select value={String(editForm.energy_level ?? '')} onChange={e => setEditForm(f => ({ ...f, energy_level: e.target.value }))} className="mat-input">
+                  <option value="">—</option>
+                  {[1,2,3,4,5].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mat-label">Instructor</label>
+              <input value={String(editForm.instructor ?? '')} onChange={e => setEditForm(f => ({ ...f, instructor: e.target.value }))} className="mat-input" placeholder="Instructor name" />
+            </div>
+            <div>
+              <label className="mat-label">Location</label>
+              <input value={String(editForm.gym_location ?? '')} onChange={e => setEditForm(f => ({ ...f, gym_location: e.target.value }))} className="mat-input" placeholder="Gym / Location" />
+            </div>
+            <div>
+              <label className="mat-label">Notes</label>
+              <textarea value={String(editForm.notes ?? '')} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={5} placeholder="Session notes..." />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => submitMutation.mutate()}
+                disabled={submitMutation.isPending}
+                className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {submitMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Pencil size={13} />}
+                Send Edit Suggestion
+              </button>
+              <button onClick={() => setEditMode(false)} className="btn-secondary flex-1 py-2.5">Back</button>
+            </div>
+          </div>
+        ) : (
+          /* ── Session detail view ── */
+          <div className="space-y-4">
+            {pendingEdit && (
+              <div className="bg-mat-gold/5 border border-mat-gold/40 px-4 py-3 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-mat-gold animate-pulse shrink-0" />
+                <p className="text-mat-gold text-xs font-semibold">Edit suggestion pending student review</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mat-label">Date</p>
+                <p className="text-mat-text text-sm">{formatDate(session.date, 'MMM d, yyyy')}</p>
+              </div>
+              <div>
+                <p className="mat-label">Type</p>
+                <p className={`text-sm font-bold uppercase ${SESSION_TYPE_COLORS[session.session_type] || 'text-mat-text'}`}>{session.session_type_display}</p>
+              </div>
+              <div>
+                <p className="mat-label">Duration</p>
+                <p className="text-mat-text text-sm">{session.duration} min</p>
+              </div>
+              <div>
+                <p className="mat-label">Rounds</p>
+                <p className="text-mat-text text-sm">{session.round_count || '—'}</p>
+              </div>
+              {session.performance_rating && (
+                <div>
+                  <p className="mat-label">Performance</p>
+                  <div className="flex gap-1 mt-1">
+                    {[1,2,3,4,5].map(n => <div key={n} className={`w-4 h-2 ${n <= session.performance_rating! ? 'bg-mat-gold' : 'bg-mat-muted'}`} />)}
+                  </div>
+                </div>
+              )}
+              {session.energy_level && (
+                <div>
+                  <p className="mat-label">Energy</p>
+                  <div className="flex gap-1 mt-1">
+                    {[1,2,3,4,5].map(n => <div key={n} className={`w-4 h-2 ${n <= session.energy_level! ? 'bg-mat-gold' : 'bg-mat-muted'}`} />)}
+                  </div>
+                </div>
+              )}
+              {session.instructor && (
+                <div>
+                  <p className="mat-label">Instructor</p>
+                  <p className="text-mat-text text-sm">{session.instructor}</p>
+                </div>
+              )}
+              {session.gym_location && (
+                <div>
+                  <p className="mat-label">Location</p>
+                  <p className="text-mat-text text-sm">{session.gym_location}</p>
+                </div>
+              )}
+            </div>
+
+            {session.notes && (
+              <div>
+                <p className="mat-label">Notes</p>
+                <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap mt-1">{session.notes}</p>
+              </div>
+            )}
+
+            {session.techniques_worked && session.techniques_worked.length > 0 && (
+              <div>
+                <p className="mat-label mb-1">Techniques Worked</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {session.techniques_worked.map(t => (
+                    <span key={t.id} className="text-xs bg-mat-panel border border-mat-border px-2 py-1 text-mat-text-muted">{t.name}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-1">
+              <button
+                onClick={() => initEditForm(session)}
+                className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 text-sm"
+              >
+                <Pencil size={13} /> Suggest Edits
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 type Tab = 'overview' | 'sessions' | 'techniques' | 'plans'
@@ -189,6 +427,7 @@ export default function StudentDetailPage() {
   const [tab, setTab] = useState<Tab>('overview')
   const [showAssignTech, setShowAssignTech] = useState(false)
   const [showDrillingPlan, setShowDrillingPlan] = useState(false)
+  const [viewSessionId, setViewSessionId] = useState<number | null>(null)
   const [noteSessionId, setNoteSessionId] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
 
@@ -274,6 +513,7 @@ export default function StudentDetailPage() {
     <div className="space-y-5 animate-fade-in">
       {showAssignTech && <AssignTechniqueModal studentId={id} onClose={() => setShowAssignTech(false)} />}
       {showDrillingPlan && <DrillingPlanModal studentId={id} onClose={() => setShowDrillingPlan(false)} />}
+      {viewSessionId && <SessionDetailModal studentId={id} sessionId={viewSessionId} onClose={() => setViewSessionId(null)} />}
 
       {/* Header */}
       <div className="flex items-start gap-3">
@@ -408,6 +648,13 @@ export default function StudentDetailPage() {
                           <p className="text-mat-text-muted text-xs">{s.duration} min</p>
                           <p className="text-mat-text-dim text-xs">{s.round_count} rounds</p>
                         </div>
+                        <button
+                          onClick={() => setViewSessionId(s.id)}
+                          className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
+                          title="View full details / suggest edits"
+                        >
+                          <Eye size={13} />
+                        </button>
                         <button
                           onClick={() => {
                             if (isEditing) { setNoteSessionId(null) }

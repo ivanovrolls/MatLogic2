@@ -149,6 +149,16 @@ export const coachingApi = {
   // Session notes (student)
   getMySessionNotes: (sessionId?: number) =>
     api.get('/coaching/session-notes/', { params: sessionId ? { session_id: sessionId } : {} }),
+  // Session detail + edits (coach)
+  getStudentSessionDetail: (studentId: number, sessionId: number) =>
+    api.get(`/coaching/students/${studentId}/sessions/${sessionId}/`),
+  submitSessionEdit: (studentId: number, sessionId: number, changes: object) =>
+    api.post(`/coaching/students/${studentId}/sessions/${sessionId}/edits/`, changes),
+  // Session edits (student)
+  getMySessionEdits: (sessionId?: number) =>
+    api.get('/coaching/session-edits/', { params: sessionId ? { session_id: sessionId } : {} }),
+  respondToSessionEdit: (editId: number, action: 'accept' | 'decline') =>
+    api.post(`/coaching/session-edits/${editId}/respond/`, { action }),
   // Drill check-in (student)
   drillCheckIn: (planId: number, data: object) =>
     api.patch(`/coaching/drilling-plans/${planId}/check-in/`, data),

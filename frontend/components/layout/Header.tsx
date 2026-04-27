@@ -28,12 +28,20 @@ const navItems = [
 
 export function Header() {
   const [open, setOpen] = useState(false)
+  const [showCoachPrompt, setShowCoachPrompt] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
   const { open: openTutorial } = useTutorialStore()
-  const { isCoachMode, exitCoachMode } = useCoachingStore()
+  const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
+
+  const handleEnterCoachMode = () => {
+    enterCoachMode()
+    setShowCoachPrompt(false)
+    setOpen(false)
+    router.push('/coaching')
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -56,6 +64,39 @@ export function Header() {
 
   return (
     <>
+      {/* Coach Mode Prompt */}
+      {showCoachPrompt && (
+        <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
+          <div className="bg-mat-card border border-mat-gold/30 w-full max-w-sm p-7 space-y-5 animate-slide-up">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-mat-gold/10 border border-mat-gold/30 flex items-center justify-center">
+                  <GraduationCap size={16} className="text-mat-gold" />
+                </div>
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest">Switch View</p>
+                  <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">Coach Mode</h2>
+                </div>
+              </div>
+              <button onClick={() => setShowCoachPrompt(false)} className="text-mat-text-dim hover:text-mat-text transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-mat-text-muted text-sm leading-relaxed">
+              You&apos;ll switch to a coaching view showing your students&apos; training data. Your own data will be hidden until you exit.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleEnterCoachMode} className="btn-primary flex-1 py-2.5 text-sm">
+                Enter Coach Mode
+              </button>
+              <button onClick={() => setShowCoachPrompt(false)} className="btn-secondary flex-1 py-2.5 text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-mat-darker border-b border-mat-border px-4 py-3 flex items-center justify-between">
         <Link href="/dashboard" className="font-display text-xl tracking-widest">
           <span className="text-mat-gold">MAT</span>
@@ -141,13 +182,12 @@ export function Header() {
                 </button>
               </>
             ) : (
-              <Link
-                href="/coaching"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-4 px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
+              <button
+                onClick={() => setShowCoachPrompt(true)}
+                className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
               >
                 <GraduationCap size={16} /> Coach
-              </Link>
+              </button>
             )}
             <button
               onClick={() => { openTutorial(); setOpen(false) }}

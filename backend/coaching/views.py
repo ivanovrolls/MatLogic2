@@ -4,10 +4,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 
-from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote
+from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit
 from .serializers import (
     CoachRelationshipSerializer, StudentSummarySerializer,
-    CoachDrillingPlanSerializer, CoachSessionNoteSerializer,
+    CoachDrillingPlanSerializer, CoachSessionNoteSerializer, CoachSessionEditSerializer,
 )
 from notifications.models import InAppNotification
 
@@ -294,6 +294,140 @@ class StudentSessionNotesView(APIView):
         if session_id:
             qs = qs.filter(session_id=session_id)
         return Response(CoachSessionNoteSerializer(qs, many=True).data)
+
+
+class CoachSessionDetailView(APIView):
+    """Coach-side: view full details of a specific student session."""
+    permission_classes = [IsAuthenticated]
+
+    def _get_student(self, request, student_id):
+        try:
+            rel = CoachRelationship.objects.get(
+                coach=request.user, student_id=student_id, status='accepted'
+            )
+            return rel.student
+        except CoachRelationship.DoesNotExist:
+            return None
+
+    def get(self, request, student_id, session_id):
+        student = self._get_student(request, student_id)
+        if not student:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from training.models import TrainingSession
+        from training.serializers import TrainingSessionSerializer
+        try:
+            session_obj = TrainingSession.objects.get(pk=session_id, user=student)
+        except TrainingSession.DoesNotExist:
+            return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+        pending_edit = CoachSessionEdit.objects.filter(
+            coach=request.user, session=session_obj, status='pending'
+        ).first()
+        return Response({
+            'session': TrainingSessionSerializer(session_obj, context={'request': request}).data,
+            'pending_edit': CoachSessionEditSerializer(pending_edit).data if pending_edit else None,
+        })
+
+
+class CoachSessionEditView(APIView):
+    """Coach-side: create or update a session edit proposal for a student."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_id, session_id):
+        try:
+            CoachRelationship.objects.get(
+                coach=request.user, student_id=student_id, status='accepted'
+            )
+        except CoachRelationship.DoesNotExist:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from training.models import TrainingSession
+        try:
+            student_user = User.objects.get(pk=student_id)
+            session_obj = TrainingSession.objects.get(pk=session_id, user=student_user)
+        except (User.DoesNotExist, TrainingSession.DoesNotExist):
+            return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+        allowed_fields = {
+            'title', 'notes', 'session_type', 'duration',
+            'performance_rating', 'energy_level', 'instructor', 'gym_location',
+        }
+        proposed_changes = {k: v for k, v in request.data.items() if k in allowed_fields}
+        if not proposed_changes:
+            return Response({'detail': 'No valid fields to propose.'}, status=status.HTTP_400_BAD_REQUEST)
+        edit, created = CoachSessionEdit.objects.update_or_create(
+            coach=request.user,
+            session=session_obj,
+            defaults={
+                'student': student_user,
+                'proposed_changes': proposed_changes,
+                'status': 'pending',
+            },
+        )
+        InAppNotification.objects.create(
+            user=student_user,
+            type='coach',
+            title=f'{request.user.username} recommended edits to a training session',
+            message='Your coach suggested changes to one of your sessions. Review them in Sessions.',
+            link='/sessions',
+        )
+        return Response(
+            CoachSessionEditSerializer(edit).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class StudentSessionEditsView(APIView):
+    """Student-side: list pending coach edits on their sessions."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        session_id = request.query_params.get('session_id')
+        qs = CoachSessionEdit.objects.filter(student=request.user, status='pending')
+        if session_id:
+            qs = qs.filter(session_id=session_id)
+        return Response(CoachSessionEditSerializer(qs, many=True).data)
+
+
+class RespondToSessionEditView(APIView):
+    """Student-side: accept or decline a coach session edit."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, edit_id):
+        try:
+            edit = CoachSessionEdit.objects.get(pk=edit_id, student=request.user, status='pending')
+        except CoachSessionEdit.DoesNotExist:
+            return Response({'detail': 'Edit not found.'}, status=status.HTTP_404_NOT_FOUND)
+        action = request.data.get('action')
+        if action not in ('accept', 'decline'):
+            return Response({'detail': 'action must be "accept" or "decline".'}, status=status.HTTP_400_BAD_REQUEST)
+        if action == 'accept':
+            session_obj = edit.session
+            allowed_fields = {
+                'title', 'notes', 'session_type', 'duration',
+                'performance_rating', 'energy_level', 'instructor', 'gym_location',
+            }
+            for field, value in edit.proposed_changes.items():
+                if field in allowed_fields:
+                    setattr(session_obj, field, value)
+            session_obj.save()
+            edit.status = 'accepted'
+            edit.save()
+            InAppNotification.objects.create(
+                user=edit.coach,
+                type='coach',
+                title=f'{request.user.username} accepted your session edit',
+                message='Your suggested changes have been applied to their session.',
+                link='/coaching',
+            )
+        else:
+            edit.status = 'declined'
+            edit.save()
+            InAppNotification.objects.create(
+                user=edit.coach,
+                type='coach',
+                title=f'{request.user.username} declined your session edit',
+                message='They chose to keep their original session data.',
+                link='/coaching',
+            )
+        return Response(CoachSessionEditSerializer(edit).data)
 
 
 class DrillPlanCheckInView(APIView):

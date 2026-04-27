@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, templatesApi, injuriesApi } from '@/lib/api'
+import { sessionsApi, templatesApi, injuriesApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, HeartPulse, AlertTriangle, CheckCircle2, Pencil } from 'lucide-react'
+import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, HeartPulse, AlertTriangle, CheckCircle2, Pencil, GraduationCap } from 'lucide-react'
 import { format } from 'date-fns'
-import type { TrainingSession, SessionTemplate, InjuryLog, InjurySeverity, InjuryStatus } from '@/lib/types'
+import type { TrainingSession, SessionTemplate, InjuryLog, InjurySeverity, InjuryStatus, CoachSessionEdit } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 // ─── Sessions tab ─────────────────────────────────────────────────────────────
@@ -41,6 +41,12 @@ function SessionsTab() {
   const [page, setPage] = useState(1)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: pendingEdits } = useQuery<CoachSessionEdit[]>({
+    queryKey: ['my-session-edits'],
+    queryFn: () => coachingApi.getMySessionEdits().then(r => r.data),
+  })
+  const pendingEditBySession = new Map((pendingEdits ?? []).map(e => [e.session, e]))
 
   const { data: templatesData } = useQuery({
     queryKey: ['templates'],
@@ -160,31 +166,50 @@ function SessionsTab() {
               <div className="col-span-2">Rating</div>
               <div className="col-span-1"></div>
             </div>
-            {sessions.map(s => (
-              <div key={s.id} className="grid grid-cols-12 gap-3 items-center px-5 py-3.5 border-b border-mat-border last:border-0 hover:bg-mat-darker transition-colors group">
-                <div className="col-span-12 md:col-span-2 text-mat-text-muted text-sm">{formatDate(s.date, 'MMM d, yy')}</div>
-                <div className="col-span-6 md:col-span-2">
-                  <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || ''}`}>{s.session_type_display}</span>
+            {sessions.map(s => {
+              const hasPendingEdit = pendingEditBySession.has(s.id)
+              return (
+                <div
+                  key={s.id}
+                  className={cn(
+                    'grid grid-cols-12 gap-3 items-center px-5 py-3.5 border-b border-mat-border last:border-0 transition-colors group',
+                    hasPendingEdit
+                      ? 'bg-mat-gold/5 hover:bg-mat-gold/10 shadow-[0_0_12px_rgba(212,175,55,0.12)]'
+                      : 'hover:bg-mat-darker'
+                  )}
+                >
+                  <div className="col-span-12 md:col-span-2 text-mat-text-muted text-sm flex items-center gap-1.5">
+                    {formatDate(s.date, 'MMM d, yy')}
+                    {hasPendingEdit && <span className="w-1.5 h-1.5 rounded-full bg-mat-gold animate-pulse shrink-0" title="Coach edit pending" />}
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || ''}`}>{s.session_type_display}</span>
+                  </div>
+                  <div className="col-span-12 md:col-span-3 text-mat-text text-sm truncate">
+                    {s.title || <span className="text-mat-text-dim italic">No title</span>}
+                  </div>
+                  <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{formatDuration(s.duration)}</div>
+                  <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{s.round_count > 0 ? s.round_count : '—'}</div>
+                  <div className="col-span-4 md:col-span-2"><RatingDots rating={s.performance_rating} /></div>
+                  <div className="col-span-12 md:col-span-1 flex items-center justify-end gap-2">
+                    {hasPendingEdit && (
+                      <Link href={`/sessions/${s.id}`} className="text-mat-gold p-1" title="Coach edit pending — review it">
+                        <GraduationCap size={13} />
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate(s.id) }}
+                      className="text-mat-text-dim hover:text-mat-red-light transition-colors opacity-0 group-hover:opacity-100 p-1"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                    <Link href={`/sessions/${s.id}`} className="text-mat-text-dim hover:text-mat-gold transition-colors p-1">
+                      <ChevronRight size={13} />
+                    </Link>
+                  </div>
                 </div>
-                <div className="col-span-12 md:col-span-3 text-mat-text text-sm truncate">
-                  {s.title || <span className="text-mat-text-dim italic">No title</span>}
-                </div>
-                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{formatDuration(s.duration)}</div>
-                <div className="col-span-4 md:col-span-1 text-mat-text-muted text-sm">{s.round_count > 0 ? s.round_count : '—'}</div>
-                <div className="col-span-4 md:col-span-2"><RatingDots rating={s.performance_rating} /></div>
-                <div className="col-span-12 md:col-span-1 flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate(s.id) }}
-                    className="text-mat-text-dim hover:text-mat-red-light transition-colors opacity-0 group-hover:opacity-100 p-1"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                  <Link href={`/sessions/${s.id}`} className="text-mat-text-dim hover:text-mat-gold transition-colors p-1">
-                    <ChevronRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </>
         )}
       </div>
