@@ -7,6 +7,7 @@ from .views import (
     StudentSessionNotesView, DrillPlanCheckInView,
     CoachSessionDetailView, CoachSessionEditView,
     StudentSessionEditsView, RespondToSessionEditView,
+    CoachUpdateTechniqueView,
 )
 
 urlpatterns = [
@@ -17,6 +18,7 @@ urlpatterns = [
     path('students/<int:student_id>/', StudentDataView.as_view()),
     path('students/<int:student_id>/remove/', RemoveStudentView.as_view()),
     path('students/<int:student_id>/assign-technique/', AssignTechniqueView.as_view()),
+    path('students/<int:student_id>/techniques/<int:technique_id>/', CoachUpdateTechniqueView.as_view()),
     path('students/<int:student_id>/drilling-plans/', StudentDrillingPlansView.as_view()),
     path('students/<int:student_id>/session-notes/', CoachStudentNotesView.as_view()),
     path('students/<int:student_id>/sessions/<int:session_id>/', CoachSessionDetailView.as_view()),

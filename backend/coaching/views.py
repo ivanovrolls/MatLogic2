@@ -296,6 +296,33 @@ class StudentSessionNotesView(APIView):
         return Response(CoachSessionNoteSerializer(qs, many=True).data)
 
 
+class CoachUpdateTechniqueView(APIView):
+    """Coach-side: update a technique they originally assigned to a student."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, student_id, technique_id):
+        try:
+            CoachRelationship.objects.get(
+                coach=request.user, student_id=student_id, status='accepted'
+            )
+        except CoachRelationship.DoesNotExist:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from techniques.models import Technique
+        from techniques.serializers import TechniqueSerializer
+        try:
+            technique = Technique.objects.get(
+                pk=technique_id, user_id=student_id, coach_assigned_by=request.user
+            )
+        except Technique.DoesNotExist:
+            return Response({'detail': 'Technique not found.'}, status=status.HTTP_404_NOT_FOUND)
+        allowed_fields = {'name', 'position', 'technique_type', 'description', 'notes', 'difficulty', 'video_url'}
+        for field, value in request.data.items():
+            if field in allowed_fields:
+                setattr(technique, field, value)
+        technique.save()
+        return Response(TechniqueSerializer(technique).data)
+
+
 class CoachSessionDetailView(APIView):
     """Coach-side: view full details of a specific student session."""
     permission_classes = [IsAuthenticated]

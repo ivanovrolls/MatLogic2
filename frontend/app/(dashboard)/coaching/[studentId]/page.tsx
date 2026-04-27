@@ -8,7 +8,7 @@ import { useCoachingStore } from '@/stores/coachingStore'
 import {
   ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen,
   Database, ClipboardList, MessageSquare, CheckCircle2, UserMinus,
-  Eye, Pencil, ChevronRight,
+  Eye, Pencil, ChevronRight, Save,
 } from 'lucide-react'
 import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
@@ -414,6 +414,163 @@ function SessionDetailModal({
   )
 }
 
+// ── Technique Detail / Edit Modal ─────────────────────────────────────────────
+
+function TechniqueDetailModal({
+  studentId,
+  technique,
+  onClose,
+  onUpdated,
+}: {
+  studentId: number
+  technique: Technique
+  onClose: () => void
+  onUpdated: () => void
+}) {
+  const canEdit = technique.coach_assignment_pending
+  const [editing, setEditing] = useState(canEdit)
+  const [form, setForm] = useState({
+    name: technique.name,
+    position: technique.position,
+    technique_type: technique.technique_type,
+    description: technique.description,
+    notes: technique.notes,
+    difficulty: technique.difficulty,
+    video_url: technique.video_url,
+  })
+
+  const mutation = useMutation({
+    mutationFn: () => coachingApi.updateStudentTechnique(studentId, technique.id, form),
+    onSuccess: () => {
+      toast.success('Technique updated.')
+      onUpdated()
+      onClose()
+    },
+    onError: () => toast.error('Failed to update technique.'),
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
+      <div className="bg-mat-card border border-mat-border w-full max-w-md p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">
+            {editing && canEdit ? 'Edit Technique' : 'Technique Details'}
+          </h2>
+          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
+        </div>
+
+        {technique.coach_assignment_pending && (
+          <div className="bg-mat-gold/5 border border-mat-gold/30 px-3 py-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-mat-gold animate-pulse shrink-0" />
+            <p className="text-mat-gold text-xs font-semibold">Pending student acceptance</p>
+          </div>
+        )}
+
+        {editing && canEdit ? (
+          <div className="space-y-4">
+            <div>
+              <label className="mat-label">Technique Name *</label>
+              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="mat-input" placeholder="e.g. Triangle Choke" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mat-label">Position</label>
+                <select value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value as import('@/lib/types').Position }))} className="mat-input">
+                  {POSITIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mat-label">Type</label>
+                <select value={form.technique_type} onChange={e => setForm(f => ({ ...f, technique_type: e.target.value as import('@/lib/types').TechniqueType }))} className="mat-input">
+                  {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mat-label">Difficulty (1–5)</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button key={n} type="button" onClick={() => setForm(f => ({ ...f, difficulty: n }))}
+                    className={cn('flex-1 py-2 text-sm border transition-colors', form.difficulty === n ? 'border-mat-gold bg-mat-gold/10 text-mat-gold' : 'border-mat-border text-mat-text-muted hover:border-mat-gold')}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="mat-label">Description</label>
+              <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="mat-input resize-none" rows={5} placeholder="Describe the technique..." />
+            </div>
+            <div>
+              <label className="mat-label">Coach Notes</label>
+              <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={4} placeholder="Notes for your student..." />
+            </div>
+            <div>
+              <label className="mat-label">Reference Video URL (optional)</label>
+              <input value={form.video_url} onChange={e => setForm(f => ({ ...f, video_url: e.target.value }))} className="mat-input" placeholder="https://youtube.com/..." type="url" />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending}
+                className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50">
+                {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                Save Changes
+              </button>
+              <button onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mat-label">Position</p>
+                <p className="text-mat-text text-sm">{POSITION_LABELS[technique.position] || technique.position}</p>
+              </div>
+              <div>
+                <p className="mat-label">Type</p>
+                <p className="text-mat-text text-sm capitalize">{technique.type_display}</p>
+              </div>
+              <div>
+                <p className="mat-label">Difficulty</p>
+                <div className="flex gap-1 mt-1">
+                  {[1,2,3,4,5].map(n => (
+                    <div key={n} className={`w-4 h-2 ${n <= technique.difficulty ? 'bg-mat-gold' : 'bg-mat-muted'}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {technique.description && (
+              <div>
+                <p className="mat-label">Description</p>
+                <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap mt-1">{technique.description}</p>
+              </div>
+            )}
+            {technique.notes && (
+              <div>
+                <p className="mat-label">Coach Notes</p>
+                <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap mt-1">{technique.notes}</p>
+              </div>
+            )}
+            {technique.video_url && (
+              <div>
+                <p className="mat-label">Reference Video</p>
+                <a href={technique.video_url} target="_blank" rel="noopener noreferrer" className="text-mat-gold text-sm hover:underline break-all">{technique.video_url}</a>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              {canEdit && (
+                <button onClick={() => setEditing(true)} className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 text-sm">
+                  <Pencil size={13} /> Edit Technique
+                </button>
+              )}
+              <button onClick={onClose} className={cn('py-2.5 flex-1 text-sm', canEdit ? 'btn-secondary' : 'btn-primary')}>Close</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 type Tab = 'overview' | 'sessions' | 'techniques' | 'plans'
@@ -428,6 +585,7 @@ export default function StudentDetailPage() {
   const [showAssignTech, setShowAssignTech] = useState(false)
   const [showDrillingPlan, setShowDrillingPlan] = useState(false)
   const [viewSessionId, setViewSessionId] = useState<number | null>(null)
+  const [viewTechnique, setViewTechnique] = useState<Technique | null>(null)
   const [noteSessionId, setNoteSessionId] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
 
@@ -505,8 +663,8 @@ export default function StudentDetailPage() {
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Overview', icon: GraduationCap },
     { key: 'sessions', label: 'Sessions', icon: BookOpen },
-    { key: 'techniques', label: 'Techniques', icon: Database },
-    { key: 'plans', label: 'Drilling Plans', icon: ClipboardList },
+    { key: 'techniques', label: 'Arsenal', icon: Database },
+    { key: 'plans', label: 'Plans', icon: ClipboardList },
   ]
 
   return (
@@ -514,56 +672,68 @@ export default function StudentDetailPage() {
       {showAssignTech && <AssignTechniqueModal studentId={id} onClose={() => setShowAssignTech(false)} />}
       {showDrillingPlan && <DrillingPlanModal studentId={id} onClose={() => setShowDrillingPlan(false)} />}
       {viewSessionId && <SessionDetailModal studentId={id} sessionId={viewSessionId} onClose={() => setViewSessionId(null)} />}
+      {viewTechnique && (
+        <TechniqueDetailModal
+          studentId={id}
+          technique={viewTechnique}
+          onClose={() => setViewTechnique(null)}
+          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['coaching-student', id, 'techniques'] })}
+        />
+      )}
 
       {/* Header */}
-      <div className="flex items-start gap-3">
-        <button onClick={() => router.push('/coaching')} className="text-mat-text-muted hover:text-mat-gold transition-colors mt-1 shrink-0">
-          <ChevronLeft size={18} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-mat-gold text-xs uppercase tracking-widest flex items-center gap-1.5">
-            <GraduationCap size={11} /> Coach Mode
-          </p>
-          {student ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-mat-muted border border-mat-border flex items-center justify-center text-mat-gold font-bold text-sm shrink-0 overflow-hidden">
-                {student.avatar
-                  ? <img src={student.avatar} alt={student.username} className="w-full h-full object-cover" />
-                  : student.username.slice(0, 2).toUpperCase()
-                }
-              </div>
-              <div>
-                <h1 className="font-display text-3xl tracking-wider text-mat-text uppercase">{student.username}</h1>
-                <p className={`text-sm font-semibold capitalize ${beltColor}`}>{student.display_belt}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="h-9 w-48 bg-mat-muted animate-pulse" />
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0 mt-1">
-          <button onClick={() => setShowAssignTech(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
-            <Plus size={11} /> Assign Technique
+      <div className="space-y-3">
+        {/* Row 1: back + student info + remove */}
+        <div className="flex items-start gap-3">
+          <button onClick={() => router.push('/coaching')} className="text-mat-text-muted hover:text-mat-gold transition-colors mt-1 shrink-0">
+            <ChevronLeft size={18} />
           </button>
-          <button onClick={() => setShowDrillingPlan(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
-            <ClipboardList size={11} /> Add Plan
-          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-mat-gold text-xs uppercase tracking-widest flex items-center gap-1.5">
+              <GraduationCap size={11} /> Coach Mode
+            </p>
+            {student ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-mat-muted border border-mat-border flex items-center justify-center text-mat-gold font-bold text-sm shrink-0 overflow-hidden">
+                  {student.avatar
+                    ? <img src={student.avatar} alt={student.username} className="w-full h-full object-cover" />
+                    : student.username.slice(0, 2).toUpperCase()
+                  }
+                </div>
+                <div>
+                  <h1 className="font-display text-3xl tracking-wider text-mat-text uppercase">{student.username}</h1>
+                  <p className={`text-sm font-semibold capitalize ${beltColor}`}>{student.display_belt}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="h-9 w-48 bg-mat-muted animate-pulse" />
+            )}
+          </div>
           <button
             onClick={() => { if (confirm(`Remove ${student?.username || 'this student'} as your student? This cannot be undone.`)) removeStudentMutation.mutate() }}
             disabled={removeStudentMutation.isPending}
-            className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
+            className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors mt-1 shrink-0"
             title="Remove student"
           >
             <UserMinus size={15} />
           </button>
         </div>
+        {/* Row 2: action buttons */}
+        <div className="flex gap-2">
+          <button onClick={() => setShowAssignTech(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 flex-1 justify-center">
+            <Plus size={11} /> Assign Technique
+          </button>
+          <button onClick={() => setShowDrillingPlan(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 flex-1 justify-center">
+            <ClipboardList size={11} /> Add Plan
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-mat-border">
+      <div className="flex border-b border-mat-border overflow-x-auto scrollbar-none">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
-            className={cn('flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors',
+            className={cn('flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap shrink-0',
               tab === key ? 'text-mat-gold border-mat-gold' : 'text-mat-text-muted border-transparent hover:text-mat-text')}>
             <Icon size={12} /> {label}
           </button>
@@ -631,7 +801,10 @@ export default function StudentDetailPage() {
                 const isEditing = noteSessionId === s.id
                 return (
                   <div key={s.id} className="bg-mat-card border border-mat-border">
-                    <div className="px-5 py-3 flex items-center justify-between">
+                    <div
+                      className="px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-mat-darker transition-colors"
+                      onClick={() => setViewSessionId(s.id)}
+                    >
                       <div>
                         <p className="text-mat-text text-sm font-medium">{s.title || s.session_type_display}</p>
                         <p className="text-mat-text-dim text-xs">{formatDate(s.date, 'MMM d, yyyy')}</p>
@@ -649,14 +822,8 @@ export default function StudentDetailPage() {
                           <p className="text-mat-text-dim text-xs">{s.round_count} rounds</p>
                         </div>
                         <button
-                          onClick={() => setViewSessionId(s.id)}
-                          className="p-1.5 text-mat-text-dim hover:text-mat-gold transition-colors"
-                          title="View full details / suggest edits"
-                        >
-                          <Eye size={13} />
-                        </button>
-                        <button
-                          onClick={() => {
+                          onClick={e => {
+                            e.stopPropagation()
                             if (isEditing) { setNoteSessionId(null) }
                             else { setNoteSessionId(s.id); setNoteText(existingNote?.note || '') }
                           }}
@@ -665,6 +832,7 @@ export default function StudentDetailPage() {
                         >
                           <MessageSquare size={13} />
                         </button>
+                        <ChevronRight size={13} className="text-mat-text-dim" />
                       </div>
                     </div>
 
@@ -730,7 +898,16 @@ export default function StudentDetailPage() {
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {techniques.map(t => (
-                <div key={t.id} className={cn('bg-mat-card border p-4 flex flex-col gap-1', t.coach_assignment_pending ? 'border-mat-gold/50 bg-mat-gold/5' : 'border-mat-border')}>
+                <button
+                  key={t.id}
+                  onClick={() => setViewTechnique(t)}
+                  className={cn(
+                    'bg-mat-card border p-4 flex flex-col gap-1 text-left w-full transition-colors',
+                    t.coach_assignment_pending
+                      ? 'border-mat-gold/50 bg-mat-gold/5 hover:bg-mat-gold/10'
+                      : 'border-mat-border hover:bg-mat-darker'
+                  )}
+                >
                   <div className="flex items-start justify-between">
                     <p className="text-mat-text font-semibold text-sm leading-tight">{t.name}</p>
                     {t.coach_assignment_pending && (
@@ -739,7 +916,7 @@ export default function StudentDetailPage() {
                   </div>
                   <p className="text-mat-text-dim text-xs">{POSITION_LABELS[t.position] || t.position}</p>
                   <p className="text-mat-text-muted text-xs capitalize">{t.type_display}</p>
-                </div>
+                </button>
               ))}
             </div>
           )}

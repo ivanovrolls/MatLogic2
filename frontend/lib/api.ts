@@ -149,6 +149,9 @@ export const coachingApi = {
   // Session notes (student)
   getMySessionNotes: (sessionId?: number) =>
     api.get('/coaching/session-notes/', { params: sessionId ? { session_id: sessionId } : {} }),
+  // Technique update (coach)
+  updateStudentTechnique: (studentId: number, techniqueId: number, data: object) =>
+    api.patch(`/coaching/students/${studentId}/techniques/${techniqueId}/`, data),
   // Session detail + edits (coach)
   getStudentSessionDetail: (studentId: number, sessionId: number) =>
     api.get(`/coaching/students/${studentId}/sessions/${sessionId}/`),
