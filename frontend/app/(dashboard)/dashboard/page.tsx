@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { sessionsApi, analyticsApi, socialApi } from '@/lib/api'
 import { DojoRoom, MyChallenges, ChallengeData } from '@/lib/types'
@@ -9,13 +8,11 @@ import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { format } from 'date-fns'
 import {
   Trophy, AlertTriangle, Lightbulb, CheckCircle2, X, Loader2,
-  Zap, ChevronDown, Users, Swords, Clock, CheckCheck, ChevronRight,
-  Database, BarChart2, CalendarDays, BookOpen, TrendingUp, Flame,
+  Zap, Swords, Clock, CheckCheck, ChevronRight,
+  Database, BarChart2, CalendarDays, BookOpen,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 // ── Progress bar ───────────────────────────────────────────────────────────────
 
@@ -31,9 +28,9 @@ function ProgressBar({ value, max, color = 'bg-mat-gold' }: { value: number; max
 // ── Insight card ───────────────────────────────────────────────────────────────
 
 const INSIGHT_CONFIG: Record<string, { icon: React.ElementType; color: string; borderColor: string; bg: string }> = {
-  warning: { icon: AlertTriangle, color: 'text-amber-400', borderColor: 'border-l-amber-400', bg: 'bg-amber-400/5' },
-  highlight: { icon: CheckCircle2, color: 'text-mat-green-light', borderColor: 'border-l-mat-green-light', bg: 'bg-mat-green-light/5' },
-  insight: { icon: Lightbulb, color: 'text-mat-gold', borderColor: 'border-l-mat-gold', bg: 'bg-mat-gold/5' },
+  warning:   { icon: AlertTriangle,  color: 'text-amber-400',       borderColor: 'border-l-amber-400',       bg: 'bg-amber-400/5'       },
+  highlight: { icon: CheckCircle2,   color: 'text-mat-green-light', borderColor: 'border-l-mat-green-light', bg: 'bg-mat-green-light/5' },
+  insight:   { icon: Lightbulb,      color: 'text-mat-gold',        borderColor: 'border-l-mat-gold',        bg: 'bg-mat-gold/5'        },
 }
 
 function InsightCard({ insight }: { insight: { type: string; title: string; detail: string; action?: string; _kind?: string } }) {
@@ -41,15 +38,13 @@ function InsightCard({ insight }: { insight: { type: string; title: string; deta
   const cfg = INSIGHT_CONFIG[kind] || INSIGHT_CONFIG.insight
   const Icon = cfg.icon
   return (
-    <div className={`border border-mat-border border-l-2 ${cfg.borderColor} ${cfg.bg} p-4 rounded-sm`}>
+    <div className={`border border-mat-border border-l-2 ${cfg.borderColor} ${cfg.bg} p-4`}>
       <div className="flex items-start gap-2.5">
         <Icon size={13} className={`${cfg.color} shrink-0 mt-0.5`} />
         <div className="min-w-0">
           <p className="text-mat-text text-sm font-semibold leading-snug">{insight.title}</p>
           <p className="text-mat-text-muted text-xs mt-1 leading-relaxed">{insight.detail}</p>
-          {insight.action && (
-            <p className={`${cfg.color} text-xs mt-1.5 font-medium`}>{insight.action}</p>
-          )}
+          {insight.action && <p className={`${cfg.color} text-xs mt-1.5 font-medium`}>{insight.action}</p>}
         </div>
       </div>
     </div>
@@ -92,10 +87,7 @@ function ChallengeCard({
   const fmt = (v: number | null | undefined) => v === null || v === undefined ? '—' : `${v}${unit}`
 
   return (
-    <div className={`border p-4 space-y-3 ${
-      isCompleted && challenge.won ? 'border-mat-gold/40 bg-mat-gold/5'
-        : 'border-mat-border bg-mat-panel'
-    }`}>
+    <div className={`border p-4 space-y-3 ${isCompleted && challenge.won ? 'border-mat-gold/40 bg-mat-gold/5' : 'border-mat-border bg-mat-panel'}`}>
       <div className="flex items-start gap-3">
         <div className="w-8 h-8 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
           {challenge.opponent.avatar
@@ -111,12 +103,9 @@ function ChallengeCard({
             </span>
           </div>
           <p className="text-mat-gold text-xs font-medium mt-0.5">
-            {challenge.challenge_type_display}
-            {challenge.duration_days && ` · ${challenge.duration_days}d`}
+            {challenge.challenge_type_display}{challenge.duration_days && ` · ${challenge.duration_days}d`}
           </p>
-          {challenge.message && (
-            <p className="text-mat-text-muted text-xs mt-1 italic">&ldquo;{challenge.message}&rdquo;</p>
-          )}
+          {challenge.message && <p className="text-mat-text-muted text-xs mt-1 italic">&ldquo;{challenge.message}&rdquo;</p>}
         </div>
         {isActive && challenge.days_left !== undefined && (
           <div className="text-right shrink-0">
@@ -176,76 +165,6 @@ function ChallengeCard({
   )
 }
 
-// ── Quick log panel ────────────────────────────────────────────────────────────
-
-function QuickLogExpanded({ onClose }: { onClose: () => void }) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const [sessionType, setSessionType] = useState('gi')
-  const [duration, setDuration] = useState(90)
-  const [title, setTitle] = useState('')
-
-  const mutation = useMutation({
-    mutationFn: (data: object) => sessionsApi.create(data),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['sessions'] })
-      queryClient.invalidateQueries({ queryKey: ['analytics'] })
-      toast.success('Session logged!')
-      router.push(`/sessions/${res.data.id}`)
-    },
-    onError: () => toast.error('Failed to log session.'),
-  })
-
-  const handleLog = () => {
-    mutation.mutate({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      session_type: sessionType,
-      duration,
-      title: title.trim() || undefined,
-    })
-  }
-
-  return (
-    <div className="bg-mat-card border border-mat-gold/40 border-t-2 border-t-mat-gold px-5 py-4 animate-slide-up" data-tutorial="quick-log">
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="mat-label">Type</label>
-          <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="mat-input w-36">
-            {[
-              { value: 'gi', label: 'Gi' },
-              { value: 'nogi', label: 'No-Gi' },
-              { value: 'open_mat', label: 'Open Mat' },
-              { value: 'drilling', label: 'Drilling' },
-              { value: 'wrestling', label: 'Wrestling' },
-              { value: 'fundamentals', label: 'Fundamentals' },
-              { value: 'competition', label: 'Competition' },
-            ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="mat-label">Duration (min)</label>
-          <input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="mat-input w-24" min={1} />
-        </div>
-        <div className="flex-1 min-w-32">
-          <label className="mat-label">Title (optional)</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} className="mat-input" placeholder="e.g. Friday night class" />
-        </div>
-        <button onClick={handleLog} disabled={mutation.isPending}
-          className="btn-primary px-6 py-2.5 flex items-center gap-2 text-sm disabled:opacity-50">
-          {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-          Log Now
-        </button>
-        <Link href="/sessions/new" className="btn-secondary px-4 py-2.5 text-sm">
-          Full Form
-        </Link>
-        <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors p-2.5">
-          <X size={14} />
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // ── Last trained card ──────────────────────────────────────────────────────────
 
 function LastTrainedCard({ session }: { session: any }) {
@@ -288,9 +207,7 @@ function LastTrainedCard({ session }: { session: any }) {
             </div>
           )}
         </div>
-        {session.title && (
-          <p className="text-mat-text-dim text-xs mt-2 italic">{session.title}</p>
-        )}
+        {session.title && <p className="text-mat-text-dim text-xs mt-2 italic">{session.title}</p>}
       </div>
       <Link href={`/sessions/${session.id}`} className="text-mat-gold text-xs mt-4 flex items-center gap-1 hover:underline self-start">
         View session details <ChevronRight size={10} />
@@ -299,16 +216,25 @@ function LastTrainedCard({ session }: { session: any }) {
   )
 }
 
-// ── Feature shortcut card ──────────────────────────────────────────────────────
+// ── Onboarding feature card ────────────────────────────────────────────────────
 
-function FeatureCard({ href, icon: Icon, label, desc, color = 'text-mat-gold' }: {
-  href: string; icon: React.ElementType; label: string; desc: string; color?: string
+function OnboardCard({ href, icon: Icon, label, desc, color = 'text-mat-gold', step }: {
+  href: string; icon: React.ElementType; label: string; desc: string; color?: string; step: string
 }) {
   return (
-    <Link href={href} className="group bg-mat-card border border-mat-border p-4 hover:border-mat-gold/50 transition-all block">
-      <Icon size={18} className={`${color} mb-3 group-hover:scale-110 transition-transform`} />
-      <p className="text-mat-text text-sm font-semibold mb-1">{label}</p>
-      <p className="text-mat-text-dim text-xs leading-relaxed">{desc}</p>
+    <Link href={href} className="group border border-mat-border bg-mat-card p-4 hover:border-mat-gold/50 transition-all block">
+      <div className="flex items-start gap-3">
+        <div className={`w-8 h-8 border border-mat-border flex items-center justify-center shrink-0 group-hover:border-mat-gold/50 transition-colors`}>
+          <Icon size={14} className={color} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-mat-text text-sm font-semibold leading-snug">{label}</p>
+          <p className="text-mat-text-dim text-xs leading-relaxed mt-1">{desc}</p>
+          <span className={`${color} text-xs mt-2 inline-flex items-center gap-1 group-hover:underline`}>
+            Get started <ChevronRight size={10} />
+          </span>
+        </div>
+      </div>
     </Link>
   )
 }
@@ -318,7 +244,7 @@ function FeatureCard({ href, icon: Icon, label, desc, color = 'text-mat-gold' }:
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
-  const [quickLogOpen, setQuickLogOpen] = useState(false)
+  const router = useRouter()
 
   const { data: recentSessions } = useQuery({
     queryKey: ['sessions', 'recent'],
@@ -333,12 +259,6 @@ export default function DashboardPage() {
   const { data: insights } = useQuery({
     queryKey: ['analytics', 'insights'],
     queryFn: () => analyticsApi.insights().then(r => r.data),
-  })
-
-  const { data: dojoData } = useQuery<DojoRoom | { detail: string }>({
-    queryKey: ['dojo'],
-    queryFn: () => socialApi.dojo().then(r => r.data),
-    enabled: !!user?.gym,
   })
 
   const { data: challengesData, refetch: refetchChallenges } = useQuery<MyChallenges>({
@@ -357,15 +277,28 @@ export default function DashboardPage() {
   })
 
   const allInsights = [
-    ...(insights?.warnings || []).map((i: any) => ({ ...i, _kind: 'warning' })),
+    ...(insights?.warnings  || []).map((i: any) => ({ ...i, _kind: 'warning'   })),
     ...(insights?.highlights || []).map((i: any) => ({ ...i, _kind: 'highlight' })),
-    ...(insights?.insights || []).map((i: any) => ({ ...i, _kind: 'insight' })),
+    ...(insights?.insights   || []).map((i: any) => ({ ...i, _kind: 'insight'   })),
   ]
 
   const pendingChallenges = challengesData?.pending_received?.length ?? 0
-  const activeChallenges = challengesData?.active?.length ?? 0
-
   const winRate = stats?.win_rate ?? 0
+
+  // Onboarding grid: show for new users and users inactive in the last 30 days
+  // "Active" = 5+ sessions in the past 30 days
+  const sessions30d: number = stats?.total_sessions ?? 0
+  const statsLoaded = stats !== undefined
+  const showOnboarding = statsLoaded && sessions30d < 5
+
+  // Returning-inactive label: logged before but nothing recent
+  const hasAnyHistory = (recentSessions?.length ?? 0) > 0
+  const onboardingTitle = hasAnyHistory && sessions30d === 0
+    ? 'Welcome Back'
+    : 'Get Started'
+  const onboardingSubtitle = hasAnyHistory && sessions30d === 0
+    ? 'You haven\'t logged a session in a while. Here\'s a refresher on what MatLogic can do.'
+    : 'Unlock everything MatLogic has to offer.'
 
   return (
     <div className="animate-fade-in space-y-5 max-w-5xl">
@@ -382,26 +315,18 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Big quick-log button */}
-        <button
-          onClick={() => setQuickLogOpen(o => !o)}
+        {/* Log session button — navigates to full form */}
+        <Link
+          href="/sessions/new"
           data-tutorial="quick-log"
-          className={cn(
-            'flex flex-col items-center justify-center gap-2 px-5 sm:px-8 border-2 transition-all shrink-0 min-w-[120px]',
-            quickLogOpen
-              ? 'bg-mat-gold text-mat-black border-mat-gold'
-              : 'bg-mat-card border-mat-gold text-mat-gold hover:bg-mat-gold hover:text-mat-black'
-          )}
+          className="flex flex-col items-center justify-center gap-2 px-5 sm:px-8 border-2 border-mat-gold bg-mat-card text-mat-gold hover:bg-mat-gold hover:text-mat-black transition-all shrink-0 min-w-[120px]"
         >
           <Zap size={22} />
           <span className="text-xs font-bold uppercase tracking-wider text-center leading-tight">
             Log Today&apos;s<br />Session
           </span>
-        </button>
+        </Link>
       </div>
-
-      {/* Quick log expanded */}
-      {quickLogOpen && <QuickLogExpanded onClose={() => setQuickLogOpen(false)} />}
 
       {/* ── Insights ─────────────────────────────────────────────────────────── */}
       <div className="bg-mat-card border border-mat-border" data-tutorial="insights">
@@ -432,13 +357,13 @@ export default function DashboardPage() {
       {/* ── Stats ────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard
-          label="Sessions"
+          label="Sessions (30d)"
           value={stats?.total_sessions ?? '—'}
           sub={`${stats?.total_hours ?? 0}h on the mat`}
           icon={BookOpen}
         />
         <StatCard
-          label="Rounds"
+          label="Rounds (30d)"
           value={stats?.total_rounds ?? '—'}
           sub={`${winRate}% win rate`}
           color={winRate >= 50 ? 'text-mat-green-light' : stats?.total_rounds > 0 ? 'text-mat-red-light' : 'text-mat-gold'}
@@ -460,39 +385,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* ── Getting started ───────────────────────────────────────────────────── */}
-      {stats !== undefined && stats?.total_sessions === 0 && (
-        <div className="bg-mat-card border border-mat-gold/30 p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-4 bg-mat-gold shrink-0" />
-            <h2 className="font-display text-lg tracking-wider text-mat-text uppercase">Getting Started</h2>
-          </div>
-          <p className="text-mat-text-muted text-xs">Three steps to get the most from MatLogic:</p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              { step: '01', label: 'Log your first session', desc: 'Record any training session to start building your history.', href: '/sessions/new', cta: 'Log Session' },
-              { step: '02', label: 'Build your Techniques', desc: 'Save moves you\'re drilling so you can track them over time.', href: '/techniques/new', cta: 'Add Technique' },
-              { step: '03', label: 'Set your weekly plan', desc: 'Define training goals for each day to build consistency.', href: '/planning', cta: 'Open Planner' },
-            ].map(({ step, label, desc, href, cta }) => (
-              <Link key={step} href={href} className="group border border-mat-border p-4 hover:border-mat-gold/50 transition-colors block">
-                <p className="font-display text-2xl text-mat-gold/30 group-hover:text-mat-gold/60 transition-colors mb-2">{step}</p>
-                <p className="text-mat-text text-sm font-medium mb-1">{label}</p>
-                <p className="text-mat-text-dim text-xs leading-relaxed mb-3">{desc}</p>
-                <span className="text-mat-gold text-xs group-hover:underline">{cta} →</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Last trained + Challenges ─────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-3 gap-4">
-        {/* Last trained */}
         <div className="lg:col-span-2">
           <LastTrainedCard session={recentSessions?.[0]} />
         </div>
 
-        {/* Challenges */}
         <div>
           {challengesData && (() => {
             const { pending_received, pending_sent, active, completed } = challengesData
@@ -544,79 +442,52 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Feature shortcuts ─────────────────────────────────────────────────── */}
-      <div>
-        <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Explore Features</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <FeatureCard
-            href="/techniques"
-            icon={Database}
-            label="Techniques"
-            desc="Build and browse your personal BJJ technique library."
-            color="text-purple-400"
-          />
-          <FeatureCard
-            href="/progress"
-            icon={BarChart2}
-            label="Analytics"
-            desc="Visualize training trends, sparring stats, and technique usage."
-            color="text-mat-gold"
-          />
-          <FeatureCard
-            href="/planning"
-            icon={CalendarDays}
-            label="Planner"
-            desc="Set weekly goals and plan your training schedule."
-            color="text-sky-400"
-          />
-          <FeatureCard
-            href="/sessions"
-            icon={BookOpen}
-            label="Sessions"
-            desc="Full training log with injuries, sparring, and competition history."
-            color="text-mat-green-light"
-          />
-        </div>
-      </div>
-
-      {/* ── Dojo mini-leaderboard ─────────────────────────────────────────────── */}
-      {dojoData && !('detail' in dojoData) && (dojoData as DojoRoom).members.length > 1 && (() => {
-        const dojo = dojoData as DojoRoom
-        const top = [...dojo.members].sort((a, b) => b.hours_month - a.hours_month).slice(0, 5)
-        return (
-          <div className="bg-mat-card border border-mat-border">
-            <div className="px-5 py-3.5 border-b border-mat-border flex items-center justify-between">
-              <h2 className="font-display text-base tracking-wider uppercase text-mat-text flex items-center gap-2">
-                <Users size={14} className="text-mat-gold" />
-                {dojo.gym} Dojo
-              </h2>
-              <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
-                Full Leaderboard <ChevronRight size={12} />
-              </Link>
+      {/* ── Onboarding grid — shown for new and returning-inactive users ──────── */}
+      {showOnboarding && (
+        <div className="bg-mat-card border border-mat-gold/30 p-5 space-y-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-1 h-4 bg-mat-gold shrink-0" />
+              <h2 className="font-display text-lg tracking-wider text-mat-text uppercase">{onboardingTitle}</h2>
             </div>
-            <div className="divide-y divide-mat-border">
-              {top.map((m, i) => (
-                <div key={m.id} className={`flex items-center gap-3 px-5 py-3 ${m.is_me ? 'bg-mat-gold/5' : ''}`}>
-                  <span className={`font-display text-base w-5 text-center shrink-0 ${i === 0 ? 'text-amber-400' : 'text-mat-text-dim'}`}>
-                    #{i + 1}
-                  </span>
-                  <div className="w-7 h-7 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
-                    {m.avatar
-                      ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
-                      : <span className="text-mat-gold font-bold text-xs">{m.username.slice(0, 2).toUpperCase()}</span>
-                    }
-                  </div>
-                  <span className={`flex-1 text-sm min-w-0 truncate ${m.is_me ? 'text-mat-gold font-medium' : 'text-mat-text'}`}>
-                    {m.username}{m.is_me ? ' (you)' : ''}
-                  </span>
-                  <span className="font-display text-mat-gold text-base shrink-0">{m.hours_month}h</span>
-                  <span className="text-mat-text-dim text-xs shrink-0">this month</span>
-                </div>
-              ))}
-            </div>
+            <p className="text-mat-text-muted text-xs pl-3">{onboardingSubtitle}</p>
           </div>
-        )
-      })()}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <OnboardCard
+              href="/sessions/new"
+              icon={BookOpen}
+              label="Log a training session"
+              desc="Record what you trained, how long, how many rounds, and your performance rating."
+              color="text-mat-green-light"
+              step="01"
+            />
+            <OnboardCard
+              href="/techniques"
+              icon={Database}
+              label="Build your technique library"
+              desc="Save moves you're drilling by position and type. Track how often you practice each one."
+              color="text-purple-400"
+              step="02"
+            />
+            <OnboardCard
+              href="/planning"
+              icon={CalendarDays}
+              label="Set a weekly training plan"
+              desc="Define goals and focus areas for each day of the week to stay consistent."
+              color="text-sky-400"
+              step="03"
+            />
+            <OnboardCard
+              href="/progress"
+              icon={BarChart2}
+              label="Check your analytics"
+              desc="See training trends, sparring stats, technique usage, and your full training calendar."
+              color="text-mat-gold"
+              step="04"
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   )

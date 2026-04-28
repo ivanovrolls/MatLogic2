@@ -39,8 +39,8 @@ const STEPS: Step[] = [
   },
   {
     icon: Zap,
-    title: 'Quick Log',
-    body: 'Hit the Quick Log bar to record a session in seconds without leaving the dashboard.',
+    title: 'Log a Session',
+    body: 'Hit the Log Today\'s Session button to jump straight to the full session form — date, type, duration, techniques, and more.',
     target: '[data-tutorial="quick-log"]',
     placement: 'bottom',
   },
