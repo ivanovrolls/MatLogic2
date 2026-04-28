@@ -52,12 +52,12 @@ export default function ProfilePage() {
     avatarMutation.mutate(file)
   }
 
-  const { register, handleSubmit, formState: { isDirty }, getValues, setValue, control } = useForm({
+  const { register, handleSubmit, formState: { isDirty }, getValues, setValue, reset, control } = useForm({
     defaultValues: {
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
       belt: user?.belt || 'white',
-      stripes: user?.stripes || 0,
+      stripes: user?.stripes ?? 0,
       gym_ref: user?.gym_ref_id ?? null,
       start_date: user?.start_date || '',
       weight_class: user?.weight_class || '',
@@ -98,6 +98,20 @@ export default function ProfilePage() {
     mutationFn: (data: object) => authApi.updateProfile(data),
     onSuccess: (res) => {
       updateUser(res.data)
+      reset({
+        first_name: res.data.first_name || '',
+        last_name: res.data.last_name || '',
+        belt: res.data.belt || 'white',
+        stripes: res.data.stripes ?? 0,
+        gym_ref: res.data.gym_ref_id ?? null,
+        start_date: res.data.start_date || '',
+        weight_class: res.data.weight_class || '',
+        bio: res.data.bio || '',
+        gender: res.data.gender || '',
+        height_cm: res.data.height_cm ?? '',
+        weight_kg: res.data.weight_kg ?? '',
+        is_public: res.data.is_public ?? true,
+      })
       toast.success('Profile updated.')
     },
     onError: () => toast.error('Update failed.'),
@@ -218,7 +232,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="mat-label">Stripes</label>
-              <input {...register('stripes')} type="number" min={0} max={4} className="mat-input" />
+              <input {...register('stripes', { valueAsNumber: true, min: 0, max: 4 })} type="number" min={0} max={4} className="mat-input" />
             </div>
           </div>
 
