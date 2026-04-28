@@ -4,10 +4,11 @@ import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { authApi, coachingApi } from '@/lib/api'
+import { useTutorialStore } from '@/stores/tutorialStore'
 import { GymPicker } from '@/components/GymPicker'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
-import { Loader2, Star, Camera, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX } from 'lucide-react'
+import { Loader2, Star, Camera, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX, HelpCircle } from 'lucide-react'
 import { BELT_COLORS, cn } from '@/lib/utils'
 import Link from 'next/link'
 import type { CoachRelationship } from '@/lib/types'
@@ -16,6 +17,7 @@ const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
+  const { open: openTutorial } = useTutorialStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
@@ -369,6 +371,20 @@ export default function ProfilePage() {
       </form>
 
       <CoachSection />
+
+      <div className="bg-mat-card border border-mat-border p-6 space-y-3">
+        <p className="text-mat-text-muted text-xs uppercase tracking-widest">Help</p>
+        <button
+          onClick={openTutorial}
+          className="flex items-center gap-3 text-mat-text-muted hover:text-mat-gold transition-colors text-sm"
+        >
+          <HelpCircle size={15} className="shrink-0" />
+          <div>
+            <p className="font-medium">Help Tour</p>
+            <p className="text-mat-text-dim text-xs mt-0.5">Replay the interactive walkthrough of MatLogic</p>
+          </div>
+        </button>
+      </div>
     </div>
   )
 }

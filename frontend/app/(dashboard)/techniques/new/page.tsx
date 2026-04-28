@@ -174,7 +174,7 @@ export default function NewTechniquePage() {
           >
             {mutation.isPending ? (
               <><Loader2 size={14} className="animate-spin" /> Saving...</>
-            ) : 'Add to Arsenal'}
+            ) : 'Add to Techniques'}
           </button>
           <Link href="/techniques" className="btn-secondary px-8 py-3">Cancel</Link>
         </div>

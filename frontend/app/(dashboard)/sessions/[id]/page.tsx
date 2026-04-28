@@ -6,8 +6,8 @@ import { sessionsApi, sparringApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap, CheckCircle2, X as XIcon } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap, CheckCircle2, X as XIcon, Video, Upload, Youtube } from 'lucide-react'
+import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
 import { useAuthStore } from '@/stores/authStore'
@@ -29,12 +29,122 @@ function RatingDisplay({ label, value }: { label: string; value: number | null }
   )
 }
 
+function RoundVideoSection({ round, onVideoSaved }: { round: SparringRound; onVideoSaved: () => void }) {
+  const queryClient = useQueryClient()
+  const [mode, setMode] = useState<'idle' | 'upload' | 'url'>('idle')
+  const [urlInput, setUrlInput] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => sparringApi.uploadVideo(round.id, file),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); onVideoSaved(); setMode('idle') },
+    onError: () => toast.error('Upload failed.'),
+  })
+
+  const saveUrlMutation = useMutation({
+    mutationFn: (url: string) => sparringApi.update(round.id, { video_url: url }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); onVideoSaved(); setMode('idle') },
+    onError: () => toast.error('Failed to save URL.'),
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: () => sparringApi.update(round.id, { video_file: null, video_url: '' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sparring'] }),
+    onError: () => toast.error('Failed to remove video.'),
+  })
+
+  if (round.youtube_embed_url) {
+    return (
+      <div className="space-y-2">
+        <div className="aspect-video w-full">
+          <iframe
+            src={round.youtube_embed_url}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
+          Remove video
+        </button>
+      </div>
+    )
+  }
+
+  if (round.video_file_url) {
+    return (
+      <div className="space-y-2">
+        <video src={round.video_file_url} controls className="w-full max-h-64 bg-black" />
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
+          Remove video
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {mode === 'idle' && (
+        <div className="flex gap-2">
+          <button onClick={() => setMode('upload')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
+            <Upload size={11} /> Upload File
+          </button>
+          <button onClick={() => setMode('url')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
+            <Youtube size={11} /> YouTube URL
+          </button>
+        </div>
+      )}
+      {mode === 'upload' && (
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f) }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploadMutation.isPending}
+            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {uploadMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
+            Choose file
+          </button>
+          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
+        </div>
+      )}
+      {mode === 'url' && (
+        <div className="flex items-center gap-2">
+          <input
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            className="mat-input text-xs flex-1"
+            placeholder="https://youtube.com/watch?v=..."
+            autoFocus
+          />
+          <button
+            onClick={() => saveUrlMutation.mutate(urlInput)}
+            disabled={!urlInput.trim() || saveUrlMutation.isPending}
+            className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+          >
+            {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
+          </button>
+          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlink: () => void }) {
   const [expanded, setExpanded] = useState(false)
+  const queryClient = useQueryClient()
 
   const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
   const hasSubs = r.submissions_attempted.length > 0 || r.submissions_hit.length > 0 || r.submissions_conceded.length > 0
   const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
+  const hasVideo = !!(r.youtube_embed_url || r.video_file_url)
 
   return (
     <div>
@@ -56,6 +166,7 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
             <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
             <span className="text-mat-text-muted text-xs">{r.duration_minutes}min</span>
             <span className="text-mat-text-dim text-xs">{r.is_gi ? 'Gi' : 'No-Gi'}</span>
+            {hasVideo && <Video size={11} className="text-mat-gold" />}
           </div>
         </div>
         <div className="flex items-center gap-2 ml-3 shrink-0">
@@ -163,6 +274,13 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
           {r.notes && (
             <p className="text-mat-text-dim text-xs italic leading-relaxed">{r.notes}</p>
           )}
+
+          <div className="pt-2 border-t border-mat-border">
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Video size={11} /> Video
+            </p>
+            <RoundVideoSection round={r} onVideoSaved={() => queryClient.invalidateQueries({ queryKey: ['sparring', 'session'] })} />
+          </div>
 
           {!hasPositions && !hasSubs && !hasCounts && !r.notes && (
             <p className="text-mat-text-dim text-xs">No additional details recorded.</p>

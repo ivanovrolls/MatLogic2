@@ -114,3 +114,32 @@ class CoachSessionEdit(models.Model):
 
     def __str__(self):
         return f"{self.coach.username} → {self.student.username}: edit on session {self.session_id}"
+
+
+class CoachRoundFeedback(models.Model):
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='round_feedback_given',
+        on_delete=models.CASCADE
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='round_feedback_received',
+        on_delete=models.CASCADE
+    )
+    round = models.ForeignKey(
+        'sparring.SparringRound',
+        related_name='coach_feedback',
+        on_delete=models.CASCADE
+    )
+    text_feedback = models.TextField(blank=True)
+    voice_note = models.FileField(upload_to='voice_notes/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['coach', 'round']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.coach.username} feedback on round {self.round_id}"

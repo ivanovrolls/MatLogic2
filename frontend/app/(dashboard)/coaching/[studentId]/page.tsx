@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { coachingApi } from '@/lib/api'
@@ -8,12 +8,12 @@ import { useCoachingStore } from '@/stores/coachingStore'
 import {
   ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen,
   Database, ClipboardList, MessageSquare, CheckCircle2, UserMinus,
-  Eye, Pencil, ChevronRight, Save,
+  Eye, Pencil, ChevronRight, Save, Mic, MicOff, Swords, Video, Send, Trash2,
 } from 'lucide-react'
-import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS } from '@/lib/utils'
+import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS, OUTCOME_COLORS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
+import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit, SparringRound, CoachRoundFeedback } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
 const TYPES = Object.entries(TYPE_LABELS)
@@ -173,6 +173,205 @@ function DrillingPlanModal({ studentId, onClose }: { studentId: number; onClose:
           <button onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancel</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Voice Note Recorder ────────────────────────────────────────────────────────
+
+function VoiceNoteRecorder({ onRecorded }: { onRecorded: (blob: Blob) => void }) {
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => () => { timerRef.current && clearInterval(timerRef.current) }, [])
+
+  const start = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      chunksRef.current = []
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        onRecorded(blob)
+        stream.getTracks().forEach(t => t.stop())
+      }
+      mr.start()
+      mediaRef.current = mr
+      setRecording(true)
+      setSeconds(0)
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
+    } catch {
+      toast.error('Microphone access denied.')
+    }
+  }
+
+  const stop = () => {
+    mediaRef.current?.stop()
+    timerRef.current && clearInterval(timerRef.current)
+    setRecording(false)
+  }
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  if (recording) {
+    return (
+      <button onClick={stop} className="flex items-center gap-2 text-xs text-mat-red-light border border-mat-red-light/40 px-3 py-1.5 hover:bg-mat-red-light/10 transition-colors">
+        <MicOff size={11} /> Stop {fmt(seconds)}
+      </button>
+    )
+  }
+
+  return (
+    <button onClick={start} className="flex items-center gap-2 text-xs text-mat-text-muted border border-mat-border px-3 py-1.5 hover:text-mat-gold hover:border-mat-gold transition-colors">
+      <Mic size={11} /> Record Voice Note
+    </button>
+  )
+}
+
+// ── Coach Round Feedback Panel ─────────────────────────────────────────────────
+
+function CoachRoundFeedbackPanel({ studentId, round }: { studentId: number; round: SparringRound }) {
+  const queryClient = useQueryClient()
+  const [text, setText] = useState('')
+  const [pendingVoice, setPendingVoice] = useState<Blob | null>(null)
+  const audioUrl = pendingVoice ? URL.createObjectURL(pendingVoice) : null
+
+  const { data: feedback, isLoading } = useQuery<CoachRoundFeedback | null>({
+    queryKey: ['coach-round-feedback', studentId, round.id],
+    queryFn: () => coachingApi.getRoundFeedback(studentId, round.id).then(r => r.data),
+  })
+
+  useEffect(() => {
+    if (feedback) setText(feedback.text_feedback)
+  }, [feedback])
+
+  const saveMutation = useMutation({
+    mutationFn: () => coachingApi.saveRoundFeedback(studentId, round.id, {
+      text_feedback: text,
+      ...(pendingVoice ? { voice_note: new File([pendingVoice], 'voice_note.webm', { type: 'audio/webm' }) } : {}),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-round-feedback', studentId, round.id] })
+      setPendingVoice(null)
+      toast.success('Feedback saved.')
+    },
+    onError: () => toast.error('Failed to save feedback.'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => coachingApi.deleteRoundFeedback(studentId, round.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coach-round-feedback', studentId, round.id] })
+      setText('')
+      toast.success('Feedback removed.')
+    },
+    onError: () => toast.error('Failed to remove feedback.'),
+  })
+
+  if (isLoading) return <div className="flex justify-center py-3"><Loader2 size={13} className="animate-spin text-mat-gold" /></div>
+
+  return (
+    <div className="space-y-2 mt-2">
+      {feedback?.voice_note_url && !pendingVoice && (
+        <div>
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">Voice Note</p>
+          <audio src={feedback.voice_note_url} controls className="w-full h-8" />
+        </div>
+      )}
+      {audioUrl && (
+        <div>
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">New Recording</p>
+          <audio src={audioUrl} controls className="w-full h-8" />
+        </div>
+      )}
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        className="mat-input resize-none w-full text-xs"
+        rows={3}
+        placeholder="Write feedback on this round..."
+      />
+      <div className="flex items-center gap-2 flex-wrap">
+        <VoiceNoteRecorder onRecorded={setPendingVoice} />
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || (!text.trim() && !pendingVoice)}
+          className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+        >
+          {saveMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Send size={11} />}
+          Save
+        </button>
+        {feedback && (
+          <button
+            onClick={() => { if (confirm('Remove feedback?')) deleteMutation.mutate() }}
+            className="text-xs text-mat-red-light/70 hover:text-mat-red-light transition-colors flex items-center gap-1"
+          >
+            <Trash2 size={10} /> Delete
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Session Rounds Panel ───────────────────────────────────────────────────────
+
+function SessionRoundsPanel({ studentId, sessionId }: { studentId: number; sessionId: number }) {
+  const [openRoundId, setOpenRoundId] = useState<number | null>(null)
+
+  const { data: rounds, isLoading } = useQuery<SparringRound[]>({
+    queryKey: ['coaching-student-rounds', studentId, sessionId],
+    queryFn: () => coachingApi.getStudentSessionRounds(studentId, sessionId).then(r => r.data),
+  })
+
+  if (isLoading) return <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-mat-gold" /></div>
+  if (!rounds || rounds.length === 0) return <p className="text-mat-text-dim text-xs py-4 text-center">No sparring rounds logged for this session.</p>
+
+  return (
+    <div className="space-y-2">
+      {rounds.map(r => {
+        const isOpen = openRoundId === r.id
+        const hasVideo = !!(r.youtube_embed_url || r.video_file_url)
+        return (
+          <div key={r.id} className="border border-mat-border bg-mat-darker">
+            <button
+              className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-mat-card transition-colors"
+              onClick={() => setOpenRoundId(isOpen ? null : r.id)}
+            >
+              <div className="flex items-center gap-3 flex-wrap text-left">
+                <span className={`text-xs font-bold uppercase ${OUTCOME_COLORS[r.outcome]}`}>{r.outcome}</span>
+                <span className="text-mat-text text-sm font-medium">{r.partner_name}</span>
+                <span className="text-mat-text-muted text-xs capitalize">{r.partner_belt}</span>
+                <span className="text-mat-text-dim text-xs">{r.duration_minutes}min</span>
+                {hasVideo && <Video size={10} className="text-mat-gold" />}
+              </div>
+              <ChevronRight size={12} className={`text-mat-text-dim transition-transform shrink-0 ml-2 ${isOpen ? 'rotate-90' : ''}`} />
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4 pt-1 border-t border-mat-border space-y-3">
+                {r.youtube_embed_url && (
+                  <div className="aspect-video w-full">
+                    <iframe src={r.youtube_embed_url} className="w-full h-full" allowFullScreen />
+                  </div>
+                )}
+                {r.video_file_url && !r.youtube_embed_url && (
+                  <video src={r.video_file_url} controls className="w-full max-h-52 bg-black" />
+                )}
+                <div className="border-t border-mat-border pt-3">
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                    <GraduationCap size={10} /> Coach Feedback
+                  </p>
+                  <CoachRoundFeedbackPanel studentId={studentId} round={r} />
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -400,6 +599,13 @@ function SessionDetailModal({
                 </div>
               </div>
             )}
+
+            <div className="border-t border-mat-border pt-4">
+              <p className="mat-label mb-2 flex items-center gap-1.5">
+                <Swords size={11} className="text-mat-red-light" /> Sparring Rounds
+              </p>
+              <SessionRoundsPanel studentId={studentId} sessionId={sessionId} />
+            </div>
 
             <div className="pt-1">
               <button
@@ -665,7 +871,7 @@ export default function StudentDetailPage() {
   const tabs: { key: Tab; label: string; icon: React.ElementType }[] = [
     { key: 'overview', label: 'Overview', icon: GraduationCap },
     { key: 'sessions', label: 'Sessions', icon: BookOpen },
-    { key: 'techniques', label: 'Arsenal', icon: Database },
+    { key: 'techniques', label: 'Techniques', icon: Database },
     { key: 'plans', label: 'Plans', icon: ClipboardList },
   ]
 

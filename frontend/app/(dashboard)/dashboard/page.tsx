@@ -2,21 +2,17 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { sessionsApi, analyticsApi, competitionApi, planningApi, socialApi } from '@/lib/api'
+import { sessionsApi, analyticsApi, socialApi } from '@/lib/api'
 import { DojoRoom, MyChallenges, ChallengeData } from '@/lib/types'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, getRatingColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { format } from 'date-fns'
 import {
-  format, subDays, addDays, parseISO, isSameDay, getDay, startOfDay,
-  startOfMonth, endOfMonth, addMonths, subMonths, isSameMonth, getDate,
-} from 'date-fns'
-import {
-  BookOpen, Target, TrendingUp, Plus, ChevronRight, ChevronLeft,
-  Flame, Trophy, AlertTriangle, Lightbulb, CheckCircle2, HeartPulse, X, Loader2,
-  Zap, ChevronDown, Users, Swords, Clock, CheckCheck,
+  Trophy, AlertTriangle, Lightbulb, CheckCircle2, X, Loader2,
+  Zap, ChevronDown, Users, Swords, Clock, CheckCheck, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import MyProfilePage from '../my-profile/page'
@@ -62,7 +58,6 @@ function ChallengeCard({
           ? 'border-mat-border bg-mat-panel'
           : 'border-mat-border bg-mat-panel'
     }`}>
-      {/* Header */}
       <div className="flex items-start gap-3">
         <div className="w-8 h-8 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
           {challenge.opponent.avatar
@@ -100,7 +95,6 @@ function ChallengeCard({
         )}
       </div>
 
-      {/* Progress bars for active / completed */}
       {(isActive || isCompleted) && (
         <div className="space-y-2">
           <div className="space-y-1">
@@ -135,7 +129,6 @@ function ChallengeCard({
         </div>
       )}
 
-      {/* Accept / Decline for pending received */}
       {isPending && !challenge.is_challenger && onAccept && onDecline && (
         <div className="flex gap-2 pt-1">
           <button
@@ -157,319 +150,10 @@ function ChallengeCard({
         </div>
       )}
 
-      {/* Waiting label for sent pending */}
       {isPending && challenge.is_challenger && (
         <p className="text-mat-text-dim text-xs flex items-center gap-1">
           <Clock size={10} /> Waiting for response…
         </p>
-      )}
-    </div>
-  )
-}
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-function TrainingCalendar({
-  sessions,
-  competitions,
-}: {
-  sessions: { date: string; id: number; session_type: string; session_type_display: string; duration: number }[]
-  competitions: { date: string; id: number; name: string; result: string; result_display: string }[]
-}) {
-  const today = startOfDay(new Date())
-  const minMonth = startOfMonth(subMonths(today, 12))
-  const maxMonth = startOfMonth(addMonths(today, 12))
-
-  const [viewedMonth, setViewedMonth] = useState(startOfMonth(today))
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
-  const [showAddComp, setShowAddComp] = useState(false)
-  const [newCompName, setNewCompName] = useState('')
-  const [newCompResult, setNewCompResult] = useState('')
-
-  const queryClient = useQueryClient()
-
-  const createCompMutation = useMutation({
-    mutationFn: (data: object) => competitionApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['competitions'] })
-      toast.success('Competition saved.')
-      setShowAddComp(false)
-      setNewCompName('')
-      setNewCompResult('')
-    },
-    onError: () => toast.error('Failed to save competition.'),
-  })
-
-  const changeMonth = (newMonth: Date) => {
-    setViewedMonth(newMonth)
-    setSelectedDay(null)
-    setShowAddComp(false)
-  }
-
-  const monthStart = startOfMonth(viewedMonth)
-  const monthEnd = endOfMonth(viewedMonth)
-
-  const dow = getDay(monthStart)
-  const mondayOffset = dow === 0 ? 6 : dow - 1
-  const gridStart = subDays(monthStart, mondayOffset)
-
-  const weeks: Date[][] = []
-  let cursor = gridStart
-  while (cursor <= monthEnd) {
-    const week: Date[] = []
-    for (let i = 0; i < 7; i++) {
-      week.push(cursor)
-      cursor = addDays(cursor, 1)
-    }
-    weeks.push(week)
-  }
-
-  const enrichedSessions = (sessions || []).map(s => ({ ...s, day: startOfDay(parseISO(s.date)) }))
-  const enrichedComps = (competitions || []).map(c => ({ ...c, day: startOfDay(parseISO(c.date)) }))
-
-  const getSessionsForDay = (day: Date) => enrichedSessions.filter(s => isSameDay(s.day, day))
-  const getCompsForDay = (day: Date) => enrichedComps.filter(c => isSameDay(c.day, day))
-
-  const canGoPrev = viewedMonth > minMonth
-  const canGoNext = viewedMonth < maxMonth
-
-  const daySessions = selectedDay ? getSessionsForDay(selectedDay) : []
-  const dayComps = selectedDay ? getCompsForDay(selectedDay) : []
-
-  return (
-    <div className="bg-mat-card border border-mat-border p-5">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-          <Flame size={15} className="text-mat-gold" />
-          Training Calendar — {format(viewedMonth, 'MMMM yyyy')}
-        </h2>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => changeMonth(subMonths(viewedMonth, 1))}
-            disabled={!canGoPrev}
-            className="p-1 text-mat-text-muted hover:text-mat-gold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft size={15} />
-          </button>
-          <button
-            onClick={() => changeMonth(startOfMonth(today))}
-            className="px-2 text-mat-text-muted hover:text-mat-gold text-xs transition-colors"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => changeMonth(addMonths(viewedMonth, 1))}
-            disabled={!canGoNext}
-            className="p-1 text-mat-text-muted hover:text-mat-gold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* Day labels */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {DAY_LABELS.map(d => (
-          <div key={d} className="text-center text-mat-text-muted text-[10px] uppercase">{d[0]}</div>
-        ))}
-      </div>
-
-      {/* Week rows */}
-      <div className="space-y-1">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 gap-1">
-            {week.map((day, di) => {
-              const inMonth = isSameMonth(day, viewedMonth)
-              const count = inMonth ? getSessionsForDay(day).length : 0
-              const hasComp = inMonth && getCompsForDay(day).length > 0
-              const isToday = isSameDay(day, today)
-              const isSelected = !!selectedDay && isSameDay(day, selectedDay)
-
-              let bg = inMonth ? 'bg-mat-panel hover:bg-mat-panel/80' : ''
-              if (inMonth && count === 1) bg = 'bg-mat-gold/30 hover:bg-mat-gold/40'
-              if (inMonth && count >= 2) bg = 'bg-mat-gold/60 hover:bg-mat-gold/70'
-
-              let borderCls = inMonth ? 'border-mat-border' : 'border-transparent'
-              if (inMonth && count === 1) borderCls = 'border-mat-gold/40'
-              if (inMonth && count >= 2) borderCls = 'border-mat-gold/60'
-              if (hasComp) borderCls = 'border-amber-500/70'
-
-              return (
-                <button
-                  key={di}
-                  onClick={() => {
-                    if (!inMonth) return
-                    if (isSelected) {
-                      setSelectedDay(null)
-                      setShowAddComp(false)
-                    } else {
-                      setSelectedDay(day)
-                      setShowAddComp(false)
-                    }
-                  }}
-                  disabled={!inMonth}
-                  className={[
-                    'relative h-8 flex flex-col items-start justify-start p-1 border rounded-[2px] transition-colors',
-                    bg, borderCls,
-                    isToday ? 'ring-1 ring-mat-gold' : '',
-                    isSelected ? 'ring-1 ring-white/40' : '',
-                    inMonth ? 'cursor-pointer' : 'cursor-default',
-                  ].join(' ')}
-                >
-                  <span className={`text-[9px] leading-none font-medium ${
-                    isToday ? 'text-mat-gold' : inMonth ? 'text-mat-text-muted' : 'text-transparent'
-                  }`}>
-                    {getDate(day)}
-                  </span>
-                  {hasComp && (
-                    <Trophy size={7} className="absolute bottom-0.5 right-0.5 text-amber-400" />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-5 mt-3">
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-mat-panel border border-mat-border rounded-[1px]" />
-          <span className="text-mat-text-dim text-xs">No training</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-mat-gold/30 border border-mat-gold/40 rounded-[1px]" />
-          <span className="text-mat-text-dim text-xs">1 session</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 bg-mat-gold/60 border border-mat-gold/60 rounded-[1px]" />
-          <span className="text-mat-text-dim text-xs">2+ sessions</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Trophy size={9} className="text-amber-400" />
-          <span className="text-mat-text-dim text-xs">Competition</span>
-        </div>
-      </div>
-
-      {/* Day detail panel */}
-      {selectedDay && (
-        <div className="mt-3 border-t border-mat-border pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-mat-text text-sm font-medium">
-              {format(selectedDay, 'EEEE, MMMM d')}
-            </span>
-            <button
-              onClick={() => { setSelectedDay(null); setShowAddComp(false) }}
-              className="text-mat-text-dim hover:text-mat-text transition-colors"
-            >
-              <X size={13} />
-            </button>
-          </div>
-
-          {/* Sessions */}
-          {daySessions.length > 0 && (
-            <div className="mb-2 space-y-1">
-              {daySessions.map((s: any) => (
-                <Link
-                  key={s.id}
-                  href={`/sessions/${s.id}`}
-                  className="flex items-center gap-2 text-xs text-mat-text-muted hover:text-mat-gold transition-colors"
-                >
-                  <BookOpen size={10} />
-                  <span className={SESSION_TYPE_COLORS[s.session_type] || 'text-mat-text-muted'}>
-                    {s.session_type_display}
-                  </span>
-                  <span>· {formatDuration(s.duration)}</span>
-                  <ChevronRight size={10} className="ml-auto" />
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Competitions */}
-          {dayComps.length > 0 && (
-            <div className="mb-2 space-y-1">
-              {dayComps.map((c: any) => (
-                <div key={c.id} className="flex items-center gap-2 text-xs text-amber-400">
-                  <Trophy size={10} />
-                  <span>{c.name}</span>
-                  {c.result_display && (
-                    <span className="text-mat-text-muted">· {c.result_display}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {daySessions.length === 0 && dayComps.length === 0 && (
-            <p className="text-mat-text-dim text-xs mb-2">No activity logged.</p>
-          )}
-
-          {/* Action buttons */}
-          {!showAddComp && (
-            <div className="flex gap-2 flex-wrap">
-              <Link
-                href={`/sessions/new?date=${format(selectedDay, 'yyyy-MM-dd')}`}
-                className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-              >
-                <Plus size={11} /> Log Session
-              </Link>
-              <button
-                onClick={() => setShowAddComp(true)}
-                className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
-              >
-                <Trophy size={11} /> Add Competition
-              </button>
-            </div>
-          )}
-
-          {/* Add competition mini-form */}
-          {showAddComp && (
-            <div className="space-y-2">
-              <input
-                className="mat-input text-xs"
-                placeholder="Competition name (e.g. IBJJF Pan Ams)"
-                value={newCompName}
-                onChange={e => setNewCompName(e.target.value)}
-              />
-              <select
-                className="mat-input text-xs"
-                value={newCompResult}
-                onChange={e => setNewCompResult(e.target.value)}
-              >
-                <option value="">— Result (leave blank if upcoming) —</option>
-                <option value="gold">Gold Medal</option>
-                <option value="silver">Silver Medal</option>
-                <option value="bronze">Bronze Medal</option>
-                <option value="participated">Participated</option>
-                <option value="withdrew">Withdrew</option>
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    createCompMutation.mutate({
-                      name: newCompName,
-                      date: format(selectedDay, 'yyyy-MM-dd'),
-                      result: newCompResult,
-                    })
-                  }
-                  disabled={!newCompName.trim() || createCompMutation.isPending}
-                  className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {createCompMutation.isPending && <Loader2 size={10} className="animate-spin" />}
-                  Save
-                </button>
-                <button
-                  onClick={() => { setShowAddComp(false); setNewCompName(''); setNewCompResult('') }}
-                  className="btn-secondary text-xs px-3 py-1.5"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       )}
     </div>
   )
@@ -608,6 +292,39 @@ function InsightCard({ insight }: { insight: { type: string; title: string; deta
   )
 }
 
+function LastTrainedCard({ session }: { session: any | undefined }) {
+  if (!session) {
+    return (
+      <div className="bg-mat-card border border-mat-border p-5 flex flex-col justify-center min-h-36">
+        <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-2">Last Trained</p>
+        <p className="text-mat-text-dim text-sm">No sessions logged yet.</p>
+        <Link href="/sessions/new" className="text-mat-gold text-xs mt-3 hover:underline">
+          Log your first session →
+        </Link>
+      </div>
+    )
+  }
+  return (
+    <div className="bg-mat-card border border-mat-border p-5">
+      <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-3">Last Trained</p>
+      <p className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[session.session_type] || 'text-mat-text-muted'}`}>
+        {session.session_type_display}
+      </p>
+      <p className="font-display text-3xl text-mat-gold mt-1">{formatDate(session.date)}</p>
+      <div className="text-mat-text-muted text-xs mt-2 space-y-0.5">
+        <p>{formatDuration(session.duration)}</p>
+        {session.round_count > 0 && <p>{session.round_count} rounds</p>}
+        {session.performance_rating && (
+          <p className={getRatingColor(session.performance_rating)}>{session.performance_rating}/5 performance</p>
+        )}
+      </div>
+      <Link href={`/sessions/${session.id}`} className="text-mat-gold text-xs mt-3 flex items-center gap-1 hover:underline">
+        View Session <ChevronRight size={10} />
+      </Link>
+    </div>
+  )
+}
+
 const TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'my-profile', label: 'My Profile' },
@@ -615,37 +332,12 @@ const TABS = [
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
-  const router = useRouter()
   const queryClient = useQueryClient()
   const [tab, setTab] = useState('overview')
-
-  const autoGenerateMutation = useMutation({
-    mutationFn: () => planningApi.autoGenerate(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plans'] })
-      toast.success('Weekly plan generated!')
-      router.push('/planning')
-    },
-    onError: (err: any) => {
-      const msg = err?.response?.data?.detail || 'Failed to generate plan.'
-      toast.error(msg)
-      if (msg.includes('already exists')) router.push('/planning')
-    },
-  })
 
   const { data: recentSessions } = useQuery({
     queryKey: ['sessions', 'recent'],
     queryFn: () => sessionsApi.recent().then(r => r.data),
-  })
-
-  const { data: calendarSessions } = useQuery({
-    queryKey: ['sessions', 'calendar'],
-    queryFn: () => sessionsApi.list({ page_size: 500 }).then(r => r.data?.results || r.data),
-  })
-
-  const { data: calendarCompetitions } = useQuery({
-    queryKey: ['competitions'],
-    queryFn: () => competitionApi.list().then(r => r.data?.results || r.data),
   })
 
   const { data: stats } = useQuery({
@@ -702,289 +394,187 @@ export default function DashboardPage() {
 
       {tab === 'overview' && (
       <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-mat-text-muted text-xs uppercase tracking-widest">Welcome back</p>
-          <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">
-            {user?.username || 'Athlete'}
-          </h1>
-          <p className="text-mat-text-muted text-sm capitalize mt-0.5">
-            {user?.display_belt} {user?.gym ? `· ${user.gym}` : ''}
-          </p>
-        </div>
-      </div>
-
-      {/* Quick Log */}
-      <QuickLogPanel />
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          label="Sessions (30d)"
-          value={stats?.total_sessions ?? '—'}
-          sub={`${stats?.total_hours ?? 0}h on the mat`}
-        />
-        <StatCard
-          label="Rounds (30d)"
-          value={stats?.total_rounds ?? '—'}
-          sub={`${stats?.win_rate ?? 0}% win rate`}
-          color={stats?.win_rate >= 50 ? 'text-mat-green-light' : 'text-mat-red-light'}
-        />
-        <StatCard
-          label="Techniques"
-          value={stats?.techniques_in_db ?? '—'}
-          sub="in your database"
-          color="text-purple-400"
-        />
-        <StatCard
-          label="Competitions"
-          value={stats?.competitions ?? '—'}
-          sub="lifetime"
-          color="text-amber-400"
-        />
-      </div>
-
-      {/* Getting Started — only shown when no sessions exist */}
-      {stats !== undefined && stats?.total_sessions === 0 && (
-        <div className="bg-mat-card border border-mat-gold/30 p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-4 bg-mat-gold" />
-            <h2 className="font-display text-lg tracking-wider text-mat-text uppercase">Getting Started</h2>
-          </div>
-          <p className="text-mat-text-muted text-xs">Three steps to get the most out of MatLogic:</p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {[
-              { step: '01', label: 'Log your first session', desc: 'Record a training session to start tracking your progress.', href: '/sessions/new', cta: 'Log Session' },
-              { step: '02', label: 'Build your Arsenal', desc: 'Save techniques you\'re drilling so you can track them over time.', href: '/techniques/new', cta: 'Add Technique' },
-              { step: '03', label: 'Set your weekly plan', desc: 'Define training goals for each day to build consistency.', href: '/planning', cta: 'Open Planner' },
-            ].map(({ step, label, desc, href, cta }) => (
-              <Link key={step} href={href} className="group border border-mat-border p-4 hover:border-mat-gold/50 transition-colors block">
-                <p className="font-display text-2xl text-mat-gold/30 group-hover:text-mat-gold/60 transition-colors mb-2">{step}</p>
-                <p className="text-mat-text text-sm font-medium mb-1">{label}</p>
-                <p className="text-mat-text-dim text-xs leading-relaxed mb-3">{desc}</p>
-                <span className="text-mat-gold text-xs group-hover:underline">{cta} →</span>
-              </Link>
-            ))}
+        {/* Header */}
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-mat-text-muted text-xs uppercase tracking-widest">Welcome back</p>
+            <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">
+              {user?.username || 'Athlete'}
+            </h1>
+            <p className="text-mat-text-muted text-sm capitalize mt-0.5">
+              {user?.display_belt} {user?.gym ? `· ${user.gym}` : ''}
+            </p>
           </div>
         </div>
-      )}
 
-      {/* Mini Dojo leaderboard */}
-      {dojoData && !('detail' in dojoData) && (dojoData as DojoRoom).members.length > 1 && (() => {
-        const dojo = dojoData as DojoRoom
-        const top = [...dojo.members]
-          .sort((a, b) => b.hours_month - a.hours_month)
-          .slice(0, 5)
-        return (
-          <div className="bg-mat-card border border-mat-border">
-            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
-              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                <Users size={15} className="text-mat-gold" />
-                {dojo.gym} Dojo
-              </h2>
-              <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
-                Full Leaderboard <ChevronRight size={12} />
-              </Link>
-            </div>
-            <div className="divide-y divide-mat-border">
-              {top.map((m, i) => (
-                <div
-                  key={m.id}
-                  className={`flex items-center gap-3 px-5 py-3 ${m.is_me ? 'bg-mat-gold/5' : ''}`}
-                >
-                  <span className={`font-display text-base w-5 text-center ${i === 0 ? 'text-amber-400' : 'text-mat-text-dim'}`}>
-                    #{i + 1}
-                  </span>
-                  <div className="w-7 h-7 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
-                    {m.avatar
-                      ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
-                      : <span className="text-mat-gold font-bold text-xs">{m.username.slice(0, 2).toUpperCase()}</span>
-                    }
-                  </div>
-                  <span className={`flex-1 text-sm ${m.is_me ? 'text-mat-gold font-medium' : 'text-mat-text'}`}>
-                    {m.username}{m.is_me ? ' (you)' : ''}
-                  </span>
-                  <span className="font-display text-mat-gold text-base">{m.hours_month}h</span>
-                  <span className="text-mat-text-dim text-xs">this month</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
+        {/* Quick Log */}
+        <QuickLogPanel />
 
-      {/* Main grid */}
-      <div className="grid lg:grid-cols-3 gap-4 items-stretch">
-
-        {/* Left 2/3 */}
-        <div className="lg:col-span-2 flex flex-col gap-4">
-
-          {/* Training Calendar */}
-          <div className="shrink-0" data-tutorial="calendar">
-            <TrainingCalendar
-              sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
-              competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
-            />
-          </div>
-
-          {/* Recent Sessions */}
-          <div className="flex-1 min-h-0 flex flex-col bg-mat-card border border-mat-border overflow-hidden">
-            <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between shrink-0">
-              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                <BookOpen size={15} className="text-mat-gold" />
-                Recent Sessions
-              </h2>
-              <Link href="/sessions" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
-                All Sessions <ChevronRight size={12} />
-              </Link>
-            </div>
-            <div className="divide-y divide-mat-border overflow-y-auto flex-1">
-              {recentSessions?.length === 0 && (
-                <div className="px-5 py-8 text-center text-mat-text-dim text-sm">
-                  No sessions logged yet.{' '}
-                  <Link href="/sessions/new" className="text-mat-gold hover:underline">Log your first one.</Link>
-                </div>
-              )}
-              {recentSessions?.map((s: any) => (
-                <Link
-                  key={s.id}
-                  href={`/sessions/${s.id}`}
-                  className="px-5 py-3.5 flex items-center justify-between hover:bg-mat-darker transition-colors group"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold uppercase ${SESSION_TYPE_COLORS[s.session_type] || 'text-mat-text-muted'}`}>
-                        {s.session_type_display}
-                      </span>
-                      {s.title && <span className="text-mat-text text-sm">{s.title}</span>}
-                    </div>
-                    <div className="text-mat-text-muted text-xs mt-0.5 flex items-center gap-3">
-                      <span>{formatDate(s.date)}</span>
-                      <span>{formatDuration(s.duration)}</span>
-                      {s.round_count > 0 && <span>{s.round_count} rounds</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {s.performance_rating && (
-                      <span className={`font-display text-xl ${getRatingColor(s.performance_rating)}`}>
-                        {s.performance_rating}/5
-                      </span>
-                    )}
-                    <ChevronRight size={14} className="text-mat-text-dim group-hover:text-mat-gold transition-colors" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Right 1/3 */}
-        <div className="flex flex-col gap-4">
-          {/* Challenges widget */}
-          {challengesData && (() => {
-            const { pending_received, pending_sent, active, completed } = challengesData
-            const total = pending_received.length + pending_sent.length + active.length + completed.length
-            return (
-              <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="challenges">
-                <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
-                  <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                    <Swords size={15} className="text-mat-gold" />
-                    Challenges
-                    {pending_received.length > 0 && (
-                      <span className="bg-mat-gold text-mat-black text-xs font-bold px-1.5 py-0.5 rounded-full">
-                        {pending_received.length}
-                      </span>
-                    )}
-                  </h2>
-                  <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs transition-colors">
-                    Dojo →
-                  </Link>
-                </div>
-                {total === 0 ? (
-                  <div className="px-5 py-5 text-center">
-                    <p className="text-mat-text-dim text-xs">Challenge a gym mate from the Dojo page.</p>
-                  </div>
-                ) : (
-                  <div className="p-4 space-y-3">
-                    {pending_received.map(c => (
-                      <ChallengeCard
-                        key={c.id}
-                        challenge={c}
-                        onAccept={() => respondMutation.mutate({ id: c.id, action: 'accept' })}
-                        onDecline={() => respondMutation.mutate({ id: c.id, action: 'decline' })}
-                        accepting={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'accept'}
-                        declining={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'decline'}
-                      />
-                    ))}
-                    {active.map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                    {pending_sent.map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                    {completed.slice(0, 2).map(c => <ChallengeCard key={c.id} challenge={c} />)}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          <div className="bg-mat-card border border-mat-border shrink-0">
+        {/* Insights — promoted to top */}
+        {allInsights.length > 0 && (
+          <div className="bg-mat-card border border-mat-border" data-tutorial="insights">
             <div className="px-5 py-4 border-b border-mat-border">
-              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text">
-                Quick Actions
+              <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                <Lightbulb size={15} className="text-mat-gold" />
+                Insights
               </h2>
             </div>
-            <div className="p-3 space-y-1.5">
-              {[
-                { href: '/sessions/new', label: 'Log Training Session', icon: BookOpen, color: 'text-mat-gold' },
-                { href: '/techniques/new', label: 'Add Technique', icon: Target, color: 'text-purple-400' },
-                { href: '/competition', label: 'Log Competition', icon: Trophy, color: 'text-amber-400' },
-                { href: '/sessions?tab=injuries', label: 'Log Injury', icon: HeartPulse, color: 'text-mat-red-light' },
-              ].map(({ href, label, icon: Icon, color }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-mat-darker transition-colors group"
-                >
-                  <Icon size={14} className={`${color} group-hover:scale-110 transition-transform shrink-0`} />
-                  <span className="text-mat-text-muted group-hover:text-mat-text text-sm transition-colors">{label}</span>
-                  <ChevronRight size={12} className="text-mat-text-dim group-hover:text-mat-gold ml-auto transition-colors" />
-                </Link>
+            <div className="p-4 grid sm:grid-cols-2 gap-3">
+              {allInsights.map((insight: any, i: number) => (
+                <InsightCard key={i} insight={insight} />
               ))}
-              <button
-                onClick={() => autoGenerateMutation.mutate()}
-                disabled={autoGenerateMutation.isPending}
-                className="flex items-center gap-3 px-3 py-2.5 hover:bg-mat-darker transition-colors group w-full text-left disabled:opacity-60"
-              >
-                {autoGenerateMutation.isPending
-                  ? <Loader2 size={14} className="text-mat-green-light animate-spin shrink-0" />
-                  : <TrendingUp size={14} className="text-mat-green-light group-hover:scale-110 transition-transform shrink-0" />
-                }
-                <span className="text-mat-text-muted group-hover:text-mat-text text-sm transition-colors">
-                  {autoGenerateMutation.isPending ? 'Generating...' : 'Auto-Generate Weekly Plan'}
-                </span>
-                <ChevronRight size={12} className="text-mat-text-dim group-hover:text-mat-gold ml-auto transition-colors" />
-              </button>
             </div>
           </div>
+        )}
 
-          {allInsights.length > 0 && (
-            <div className="bg-mat-card border border-mat-border shrink-0" data-tutorial="insights">
-              <div className="px-5 py-4 border-b border-mat-border">
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard
+            label="Sessions (30d)"
+            value={stats?.total_sessions ?? '—'}
+            sub={`${stats?.total_hours ?? 0}h on the mat`}
+          />
+          <StatCard
+            label="Rounds (30d)"
+            value={stats?.total_rounds ?? '—'}
+            sub={`${stats?.win_rate ?? 0}% win rate`}
+            color={stats?.win_rate >= 50 ? 'text-mat-green-light' : 'text-mat-red-light'}
+          />
+          <StatCard
+            label="Techniques"
+            value={stats?.techniques_in_db ?? '—'}
+            sub="in your database"
+            color="text-purple-400"
+          />
+          <StatCard
+            label="Competitions"
+            value={stats?.competitions ?? '—'}
+            sub="lifetime"
+            color="text-amber-400"
+          />
+        </div>
+
+        {/* Getting Started — only shown when no sessions exist */}
+        {stats !== undefined && stats?.total_sessions === 0 && (
+          <div className="bg-mat-card border border-mat-gold/30 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 bg-mat-gold" />
+              <h2 className="font-display text-lg tracking-wider text-mat-text uppercase">Getting Started</h2>
+            </div>
+            <p className="text-mat-text-muted text-xs">Three steps to get the most out of MatLogic:</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {[
+                { step: '01', label: 'Log your first session', desc: 'Record a training session to start tracking your progress.', href: '/sessions/new', cta: 'Log Session' },
+                { step: '02', label: 'Build your Techniques', desc: 'Save techniques you\'re drilling so you can track them over time.', href: '/techniques/new', cta: 'Add Technique' },
+                { step: '03', label: 'Set your weekly plan', desc: 'Define training goals for each day to build consistency.', href: '/planning', cta: 'Open Planner' },
+              ].map(({ step, label, desc, href, cta }) => (
+                <Link key={step} href={href} className="group border border-mat-border p-4 hover:border-mat-gold/50 transition-colors block">
+                  <p className="font-display text-2xl text-mat-gold/30 group-hover:text-mat-gold/60 transition-colors mb-2">{step}</p>
+                  <p className="text-mat-text text-sm font-medium mb-1">{label}</p>
+                  <p className="text-mat-text-dim text-xs leading-relaxed mb-3">{desc}</p>
+                  <span className="text-mat-gold text-xs group-hover:underline">{cta} →</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mini Dojo leaderboard */}
+        {dojoData && !('detail' in dojoData) && (dojoData as DojoRoom).members.length > 1 && (() => {
+          const dojo = dojoData as DojoRoom
+          const top = [...dojo.members]
+            .sort((a, b) => b.hours_month - a.hours_month)
+            .slice(0, 5)
+          return (
+            <div className="bg-mat-card border border-mat-border">
+              <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
                 <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
-                  <Lightbulb size={15} className="text-mat-gold" />
-                  Insights
+                  <Users size={15} className="text-mat-gold" />
+                  {dojo.gym} Dojo
                 </h2>
+                <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs flex items-center gap-1 transition-colors">
+                  Full Leaderboard <ChevronRight size={12} />
+                </Link>
               </div>
-              <div className="p-4 space-y-3">
-                {allInsights.map((insight: any, i: number) => (
-                  <InsightCard key={i} insight={insight} />
+              <div className="divide-y divide-mat-border">
+                {top.map((m, i) => (
+                  <div
+                    key={m.id}
+                    className={`flex items-center gap-3 px-5 py-3 ${m.is_me ? 'bg-mat-gold/5' : ''}`}
+                  >
+                    <span className={`font-display text-base w-5 text-center ${i === 0 ? 'text-amber-400' : 'text-mat-text-dim'}`}>
+                      #{i + 1}
+                    </span>
+                    <div className="w-7 h-7 bg-mat-muted border border-mat-border flex items-center justify-center shrink-0">
+                      {m.avatar
+                        ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
+                        : <span className="text-mat-gold font-bold text-xs">{m.username.slice(0, 2).toUpperCase()}</span>
+                      }
+                    </div>
+                    <span className={`flex-1 text-sm ${m.is_me ? 'text-mat-gold font-medium' : 'text-mat-text'}`}>
+                      {m.username}{m.is_me ? ' (you)' : ''}
+                    </span>
+                    <span className="font-display text-mat-gold text-base">{m.hours_month}h</span>
+                    <span className="text-mat-text-dim text-xs">this month</span>
+                  </div>
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          )
+        })()}
 
-      </div>
+        {/* Last Trained + Challenges */}
+        <div className="grid lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <LastTrainedCard session={recentSessions?.[0]} />
+          </div>
+
+          <div className="flex flex-col gap-4">
+            {challengesData && (() => {
+              const { pending_received, pending_sent, active, completed } = challengesData
+              const total = pending_received.length + pending_sent.length + active.length + completed.length
+              return (
+                <div className="bg-mat-card border border-mat-border" data-tutorial="challenges">
+                  <div className="px-5 py-4 border-b border-mat-border flex items-center justify-between">
+                    <h2 className="font-display text-lg tracking-wider uppercase text-mat-text flex items-center gap-2">
+                      <Swords size={15} className="text-mat-gold" />
+                      Challenges
+                      {pending_received.length > 0 && (
+                        <span className="bg-mat-gold text-mat-black text-xs font-bold px-1.5 py-0.5 rounded-full">
+                          {pending_received.length}
+                        </span>
+                      )}
+                    </h2>
+                    <Link href="/dojo" className="text-mat-text-muted hover:text-mat-gold text-xs transition-colors">
+                      Dojo →
+                    </Link>
+                  </div>
+                  {total === 0 ? (
+                    <div className="px-5 py-5 text-center">
+                      <p className="text-mat-text-dim text-xs">Challenge a gym mate from the Dojo page.</p>
+                    </div>
+                  ) : (
+                    <div className="p-4 space-y-3">
+                      {pending_received.map(c => (
+                        <ChallengeCard
+                          key={c.id}
+                          challenge={c}
+                          onAccept={() => respondMutation.mutate({ id: c.id, action: 'accept' })}
+                          onDecline={() => respondMutation.mutate({ id: c.id, action: 'decline' })}
+                          accepting={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'accept'}
+                          declining={respondMutation.isPending && respondMutation.variables?.id === c.id && respondMutation.variables?.action === 'decline'}
+                        />
+                      ))}
+                      {active.map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                      {pending_sent.map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                      {completed.slice(0, 2).map(c => <ChallengeCard key={c.id} challenge={c} />)}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
+        </div>
       </div>
       )}
     </div>

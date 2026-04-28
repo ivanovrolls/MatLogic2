@@ -232,6 +232,21 @@ export interface SparringRound {
   sweeps_completed: number
   takedowns_completed: number
   notes: string
+  video_file: string | null
+  video_file_url: string | null
+  video_url: string
+  youtube_embed_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CoachRoundFeedback {
+  id: number
+  coach_username: string
+  round: number
+  text_feedback: string
+  voice_note: string | null
+  voice_note_url: string | null
   created_at: string
   updated_at: string
 }

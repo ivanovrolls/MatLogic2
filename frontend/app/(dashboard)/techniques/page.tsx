@@ -74,7 +74,7 @@ export default function TechniquesPage() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-mat-text-muted text-xs uppercase tracking-widest">Your Arsenal</p>
+          <p className="text-mat-text-muted text-xs uppercase tracking-widest">Your Techniques</p>
           <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Techniques</h1>
         </div>
         <div className="flex items-center gap-2">

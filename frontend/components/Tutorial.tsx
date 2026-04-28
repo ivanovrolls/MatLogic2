@@ -67,9 +67,9 @@ const STEPS: Step[] = [
   },
   {
     icon: Database,
-    title: 'Arsenal',
+    title: 'Techniques',
     body: 'Your personal technique database. Save BJJ moves, tag them by position, and track how often you drill them.',
-    target: '[data-tutorial="nav-arsenal"]',
+    target: '[data-tutorial="nav-techniques"]',
     placement: 'right',
   },
   {

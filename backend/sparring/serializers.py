@@ -29,6 +29,8 @@ class SparringRoundSerializer(serializers.ModelSerializer):
     outcome_display = serializers.CharField(source='get_outcome_display', read_only=True)
     partner_belt_display = serializers.CharField(source='get_partner_belt_display', read_only=True)
     session_date = serializers.DateField(source='session.date', read_only=True)
+    video_file_url = serializers.SerializerMethodField()
+    youtube_embed_url = serializers.SerializerMethodField()
 
     class Meta:
         model = SparringRound
@@ -39,9 +41,33 @@ class SparringRoundSerializer(serializers.ModelSerializer):
             'dominant_positions', 'positions_conceded',
             'submissions_attempted', 'submissions_hit', 'submissions_conceded',
             'sweeps_completed', 'takedowns_completed',
-            'notes', 'created_at', 'updated_at'
+            'notes', 'video_file', 'video_url', 'video_file_url', 'youtube_embed_url',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_video_file_url(self, obj):
+        if not obj.video_file:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.video_file.url)
+        return obj.video_file.url
+
+    def get_youtube_embed_url(self, obj):
+        import re
+        if not obj.video_url:
+            return None
+        patterns = [
+            r'youtu\.be/([A-Za-z0-9_-]+)',
+            r'youtube\.com/watch\?v=([A-Za-z0-9_-]+)',
+            r'youtube\.com/embed/([A-Za-z0-9_-]+)',
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, obj.video_url)
+            if m:
+                return f'https://www.youtube.com/embed/{m.group(1)}'
+        return None
 
     def validate_dominant_positions(self, value):
         return _validate_position_list(value, 'dominant_positions')

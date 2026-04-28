@@ -10,21 +10,19 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, LogOut, Sun, Moon, HelpCircle, Swords, GraduationCap,
+  BarChart2, User, LogOut, Sun, Moon, Swords, GraduationCap,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
-import { useTutorialStore } from '@/stores/tutorialStore'
 import { NotificationCenter } from '@/components/NotificationCenter'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
   { href: '/dojo', label: 'Dojo', icon: Swords, tutorialId: 'nav-dojo' },
   { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
-  { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
+  { href: '/techniques', label: 'Techniques', icon: Database, tutorialId: 'nav-techniques' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
-  { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
 ]
 
 export function Header() {
@@ -34,7 +32,6 @@ export function Header() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
-  const { open: openTutorial } = useTutorialStore()
   const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
   const queryClient = useQueryClient()
 
@@ -193,12 +190,6 @@ export function Header() {
                 <GraduationCap size={16} /> Coach
               </button>
             )}
-            <button
-              onClick={() => { openTutorial(); setOpen(false) }}
-              className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
-            >
-              <HelpCircle size={16} /> Help Tour
-            </button>
             <button
               onClick={handleLogout}
               className="flex items-center gap-4 w-full px-4 py-3 text-mat-red-light text-sm"

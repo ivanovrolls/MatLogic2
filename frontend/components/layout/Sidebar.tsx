@@ -10,22 +10,20 @@ import { cn, BELT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, LogOut, ChevronRight, Swords,
-  Sun, Moon, HelpCircle, GraduationCap, X,
+  BarChart2, User, LogOut, ChevronRight, Swords,
+  Sun, Moon, GraduationCap, X,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
-import { useTutorialStore } from '@/stores/tutorialStore'
 import { NotificationCenter } from '@/components/NotificationCenter'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, tutorialId: 'nav-dashboard' },
   { href: '/dojo', label: 'Dojo', icon: Swords, tutorialId: 'nav-dojo' },
   { href: '/sessions', label: 'Sessions', icon: BookOpen, tutorialId: 'nav-sessions' },
-  { href: '/techniques', label: 'Arsenal', icon: Database, tutorialId: 'nav-arsenal' },
+  { href: '/techniques', label: 'Techniques', icon: Database, tutorialId: 'nav-techniques' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
-  { href: '/competition', label: 'Competition', icon: Trophy, tutorialId: 'nav-competition' },
 ]
 
 export function Sidebar() {
@@ -33,7 +31,6 @@ export function Sidebar() {
   const router = useRouter()
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
-  const { open: openTutorial } = useTutorialStore()
   const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
   const queryClient = useQueryClient()
   const [showCoachPrompt, setShowCoachPrompt] = useState(false)
@@ -208,13 +205,6 @@ export function Sidebar() {
           <User size={14} />
           <span>Profile Settings</span>
         </Link>
-        <button
-          onClick={openTutorial}
-          className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors hover:bg-mat-card"
-        >
-          <HelpCircle size={14} />
-          <span>Help Tour</span>
-        </button>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-red-light text-sm transition-colors hover:bg-mat-card"

@@ -168,6 +168,28 @@ export const coachingApi = {
   // Remove student (coach)
   removeStudent: (studentId: number) =>
     api.delete(`/coaching/students/${studentId}/remove/`),
+  // Sparring rounds for a student session (coach)
+  getStudentSessionRounds: (studentId: number, sessionId: number) =>
+    api.get(`/coaching/students/${studentId}/sessions/${sessionId}/rounds/`),
+  // Round feedback (coach)
+  getRoundFeedback: (studentId: number, roundId: number) =>
+    api.get(`/coaching/students/${studentId}/rounds/${roundId}/feedback/`),
+  saveRoundFeedback: (studentId: number, roundId: number, data: { text_feedback?: string; voice_note?: File }) => {
+    if (data.voice_note) {
+      const form = new FormData()
+      if (data.text_feedback !== undefined) form.append('text_feedback', data.text_feedback)
+      form.append('voice_note', data.voice_note)
+      return api.post(`/coaching/students/${studentId}/rounds/${roundId}/feedback/`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+    return api.post(`/coaching/students/${studentId}/rounds/${roundId}/feedback/`, data)
+  },
+  deleteRoundFeedback: (studentId: number, roundId: number) =>
+    api.delete(`/coaching/students/${studentId}/rounds/${roundId}/feedback/`),
+  // Round feedback (student)
+  getMyRoundFeedback: (roundId?: number) =>
+    api.get('/coaching/round-feedback/', { params: roundId ? { round_id: roundId } : {} }),
 }
 
 // ---- Sparring ----
@@ -178,6 +200,14 @@ export const sparringApi = {
   update: (id: number, data: object) => api.patch(`/sparring/${id}/`, data),
   delete: (id: number) => api.delete(`/sparring/${id}/`),
   stats: () => api.get('/sparring/stats/'),
+  uploadVideo: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('video_file', file)
+    return api.patch(`/sparring/${id}/`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  clearVideo: (id: number) => api.patch(`/sparring/${id}/`, { video_file: null, video_url: '' }),
 }
 
 // ---- Planning ----

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { analyticsApi, sparringApi, authApi } from '@/lib/api'
+import { analyticsApi, sparringApi, authApi, sessionsApi, competitionApi } from '@/lib/api'
 import { formatDate, OUTCOME_COLORS } from '@/lib/utils'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -10,8 +10,9 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts'
 import {
-  Loader2, TrendingUp, Swords, Target, ChevronDown, Weight, Plus, X,
+  Loader2, TrendingUp, Swords, Target, ChevronDown, Weight, Plus, X, CalendarDays,
 } from 'lucide-react'
+import { TrainingCalendar } from '@/components/TrainingCalendar'
 import type { SparringRound, WeightEntry } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
@@ -607,11 +608,31 @@ function SparringLogTab() {
   )
 }
 
+// ─── Calendar tab ─────────────────────────────────────────────────────────────
+
+function CalendarTab() {
+  const { data: calendarSessions } = useQuery({
+    queryKey: ['sessions', 'calendar'],
+    queryFn: () => sessionsApi.list({ page_size: 500 }).then(r => r.data?.results || r.data),
+  })
+  const { data: calendarCompetitions } = useQuery({
+    queryKey: ['competitions'],
+    queryFn: () => competitionApi.list().then(r => r.data?.results || r.data),
+  })
+  return (
+    <TrainingCalendar
+      sessions={Array.isArray(calendarSessions) ? calendarSessions : []}
+      competitions={Array.isArray(calendarCompetitions) ? calendarCompetitions : []}
+    />
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
   { value: 'analytics', label: 'Analytics' },
   { value: 'sparring', label: 'Sparring Log' },
+  { value: 'calendar', label: 'Calendar' },
 ]
 
 export default function AnalyticsPage() {
@@ -643,6 +664,7 @@ export default function AnalyticsPage() {
 
       {tab === 'analytics' && <AnalyticsTab />}
       {tab === 'sparring' && <SparringLogTab />}
+      {tab === 'calendar' && <CalendarTab />}
     </div>
   )
 }

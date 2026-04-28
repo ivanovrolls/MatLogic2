@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit
+from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit, CoachRoundFeedback
 
 User = get_user_model()
 
@@ -95,3 +95,21 @@ class CoachSessionEditSerializer(serializers.ModelSerializer):
         model = CoachSessionEdit
         fields = ['id', 'coach_username', 'session', 'status', 'proposed_changes', 'created_at', 'updated_at']
         read_only_fields = ['id', 'coach_username', 'status', 'created_at', 'updated_at']
+
+
+class CoachRoundFeedbackSerializer(serializers.ModelSerializer):
+    coach_username = serializers.CharField(source='coach.username', read_only=True)
+    voice_note_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CoachRoundFeedback
+        fields = ['id', 'coach_username', 'round', 'text_feedback', 'voice_note', 'voice_note_url', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'coach_username', 'created_at', 'updated_at']
+
+    def get_voice_note_url(self, obj):
+        if not obj.voice_note:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.voice_note.url)
+        return obj.voice_note.url

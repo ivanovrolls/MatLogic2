@@ -5,10 +5,11 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.db import OperationalError, ProgrammingError
 
-from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit
+from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit, CoachRoundFeedback
 from .serializers import (
     CoachRelationshipSerializer, StudentSummarySerializer,
     CoachDrillingPlanSerializer, CoachSessionNoteSerializer, CoachSessionEditSerializer,
+    CoachRoundFeedbackSerializer,
 )
 from notifications.models import InAppNotification
 
@@ -485,6 +486,84 @@ class DrillPlanCheckInView(APIView):
                 link='/coaching',
             )
         return Response(CoachDrillingPlanSerializer(plan).data)
+
+
+class CoachSessionRoundsView(APIView):
+    """Coach-side: list sparring rounds for a specific student session."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id, session_id):
+        try:
+            CoachRelationship.objects.get(coach=request.user, student_id=student_id, status='accepted')
+        except CoachRelationship.DoesNotExist:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from sparring.models import SparringRound
+        from sparring.serializers import SparringRoundSerializer
+        rounds = SparringRound.objects.filter(user_id=student_id, session_id=session_id)
+        return Response(SparringRoundSerializer(rounds, many=True, context={'request': request}).data)
+
+
+class CoachRoundFeedbackView(APIView):
+    """Coach-side: get or save feedback on a specific sparring round."""
+    permission_classes = [IsAuthenticated]
+
+    def _check_access(self, request, student_id):
+        try:
+            CoachRelationship.objects.get(coach=request.user, student_id=student_id, status='accepted')
+            return True
+        except CoachRelationship.DoesNotExist:
+            return False
+
+    def get(self, request, student_id, round_id):
+        if not self._check_access(request, student_id):
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        feedback = CoachRoundFeedback.objects.filter(coach=request.user, round_id=round_id).first()
+        if not feedback:
+            return Response(None)
+        return Response(CoachRoundFeedbackSerializer(feedback, context={'request': request}).data)
+
+    def post(self, request, student_id, round_id):
+        if not self._check_access(request, student_id):
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        from sparring.models import SparringRound
+        try:
+            round_obj = SparringRound.objects.get(pk=round_id, user_id=student_id)
+        except SparringRound.DoesNotExist:
+            return Response({'detail': 'Round not found.'}, status=status.HTTP_404_NOT_FOUND)
+        feedback, created = CoachRoundFeedback.objects.get_or_create(
+            coach=request.user, round=round_obj,
+            defaults={'student_id': student_id}
+        )
+        if 'text_feedback' in request.data:
+            feedback.text_feedback = request.data['text_feedback']
+        if 'voice_note' in request.FILES:
+            if feedback.voice_note:
+                feedback.voice_note.delete(save=False)
+            feedback.voice_note = request.FILES['voice_note']
+        feedback.student_id = student_id
+        feedback.save()
+        return Response(
+            CoachRoundFeedbackSerializer(feedback, context={'request': request}).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request, student_id, round_id):
+        if not self._check_access(request, student_id):
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+        CoachRoundFeedback.objects.filter(coach=request.user, round_id=round_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StudentRoundFeedbackView(APIView):
+    """Student-side: view coach feedback on their own sparring rounds."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        round_id = request.query_params.get('round_id')
+        qs = CoachRoundFeedback.objects.filter(student=request.user)
+        if round_id:
+            qs = qs.filter(round_id=round_id)
+        return Response(CoachRoundFeedbackSerializer(qs, many=True, context={'request': request}).data)
 
 
 class StudentDrillingPlansView(APIView):
