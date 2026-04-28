@@ -720,8 +720,9 @@ function SequenceCard({ sequence, techniques, onDelete }: {
               </button>
             </>
           )}
-          <ChevronDown size={13} className={cn('text-mat-text-dim transition-transform ml-1', expanded ? 'rotate-180' : '')} />
         </div>
+        {/* Outside stopPropagation div so clicking it bubbles to the header toggle */}
+        <ChevronDown size={13} className={cn('text-mat-text-dim transition-transform ml-2 shrink-0', expanded ? 'rotate-180' : '')} />
       </div>
 
       {expanded && (
