@@ -204,7 +204,7 @@ function SessionDetailModal({
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState<Record<string, string | number | null>>({})
 
-  const { data, isLoading } = useQuery<{ session: TrainingSession; pending_edit: CoachSessionEdit | null }>({
+  const { data, isLoading, isError } = useQuery<{ session: TrainingSession; pending_edit: CoachSessionEdit | null }>({
     queryKey: ['coaching-student-session', studentId, sessionId],
     queryFn: () => coachingApi.getStudentSessionDetail(studentId, sessionId).then(r => r.data),
   })
@@ -263,6 +263,8 @@ function SessionDetailModal({
 
         {isLoading ? (
           <div className="flex justify-center py-12"><Loader2 size={20} className="animate-spin text-mat-gold" /></div>
+        ) : isError ? (
+          <p className="text-mat-text-dim text-sm py-8 text-center">Failed to load session. Please try again.</p>
         ) : !session ? (
           <p className="text-mat-text-dim text-sm py-8 text-center">Session not found.</p>
         ) : editMode ? (
@@ -427,8 +429,8 @@ function TechniqueDetailModal({
   onClose: () => void
   onUpdated: () => void
 }) {
-  const canEdit = technique.coach_assignment_pending
-  const [editing, setEditing] = useState(canEdit)
+  const canEdit = !!technique.coach_assigned_by_username
+  const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     name: technique.name,
     position: technique.position,
@@ -454,7 +456,7 @@ function TechniqueDetailModal({
       <div className="bg-mat-card border border-mat-border w-full max-w-md p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">
-            {editing && canEdit ? 'Edit Technique' : 'Technique Details'}
+            {editing ? 'Edit Technique' : 'Technique Details'}
           </h2>
           <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
         </div>
@@ -466,7 +468,7 @@ function TechniqueDetailModal({
           </div>
         )}
 
-        {editing && canEdit ? (
+        {editing ? (
           <div className="space-y-4">
             <div>
               <label className="mat-label">Technique Name *</label>
@@ -559,7 +561,7 @@ function TechniqueDetailModal({
             <div className="flex gap-3 pt-2">
               {canEdit && (
                 <button onClick={() => setEditing(true)} className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 text-sm">
-                  <Pencil size={13} /> Edit Technique
+                  <Pencil size={13} /> Edit
                 </button>
               )}
               <button onClick={onClose} className={cn('py-2.5 flex-1 text-sm', canEdit ? 'btn-secondary' : 'btn-primary')}>Close</button>
@@ -733,9 +735,9 @@ export default function StudentDetailPage() {
       <div className="flex border-b border-mat-border overflow-x-auto scrollbar-none">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
-            className={cn('flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium uppercase tracking-wider border-b-2 transition-colors whitespace-nowrap shrink-0',
+            className={cn('flex items-center gap-1 px-2.5 py-2 text-[10px] font-medium uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap shrink-0',
               tab === key ? 'text-mat-gold border-mat-gold' : 'text-mat-text-muted border-transparent hover:text-mat-text')}>
-            <Icon size={12} /> {label}
+            <Icon size={11} /> {label}
           </button>
         ))}
       </div>

@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
+from django.db import OperationalError, ProgrammingError
 
 from .models import CoachRelationship, CoachDrillingPlan, CoachSessionNote, CoachSessionEdit
 from .serializers import (
@@ -346,9 +347,12 @@ class CoachSessionDetailView(APIView):
             session_obj = TrainingSession.objects.get(pk=session_id, user=student)
         except TrainingSession.DoesNotExist:
             return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
-        pending_edit = CoachSessionEdit.objects.filter(
-            coach=request.user, session=session_obj, status='pending'
-        ).first()
+        try:
+            pending_edit = CoachSessionEdit.objects.filter(
+                coach=request.user, session=session_obj, status='pending'
+            ).first()
+        except (OperationalError, ProgrammingError):
+            pending_edit = None
         return Response({
             'session': TrainingSessionSerializer(session_obj, context={'request': request}).data,
             'pending_edit': CoachSessionEditSerializer(pending_edit).data if pending_edit else None,
