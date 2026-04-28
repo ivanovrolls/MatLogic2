@@ -436,12 +436,12 @@ def insights(request):
 
     # ── Technique database gaps ───────────────────────────────────────────────
     techniques = user.techniques.filter(is_active=True)
-    if techniques.count() < 10:
+    if techniques.count() < 3:
         insights_list.append({
             'type': 'technique_gap',
             'title': 'Build out your technique database',
-            'detail': f'You have {techniques.count()} techniques logged. A richer database helps you spot patterns.',
-            'action': 'Add at least 3 techniques per position you train regularly.',
+            'detail': f'You have {techniques.count()} technique{"s" if techniques.count() != 1 else ""} logged. A richer database helps you spot patterns and track progress.',
+            'action': 'Add techniques from positions you train regularly.',
         })
 
     # ── Planning usage ────────────────────────────────────────────────────────

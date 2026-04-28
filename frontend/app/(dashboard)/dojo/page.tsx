@@ -43,8 +43,8 @@ function BeltBar({ belt }: { belt: string }) {
 
 function RankBadge({ rank, isMe }: { rank: number; isMe: boolean }) {
   if (rank === 1) return <span className="font-display text-amber-400 text-lg w-6 text-center">#1</span>
-  if (rank === 2) return <span className="font-display text-slate-300 text-base w-6 text-center">#2</span>
-  if (rank === 3) return <span className="font-display text-amber-600 text-base w-6 text-center">#3</span>
+  if (rank === 2) return <span className="font-display text-mat-text text-base w-6 text-center">#2</span>
+  if (rank === 3) return <span className="font-display text-mat-text-muted text-base w-6 text-center">#3</span>
   return (
     <span className={`font-display text-sm w-6 text-center ${isMe ? 'text-mat-gold' : 'text-mat-text-dim'}`}>
       #{rank}
@@ -303,7 +303,7 @@ function LeaderboardRow({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        <p className={`font-display text-xl ${member.is_me ? 'text-mat-gold' : rank <= 3 ? 'text-mat-text' : 'text-mat-text-muted'}`}>
+        <p className={`font-display text-xl ${member.is_me ? 'text-mat-gold' : rank <= 3 ? 'text-mat-gold' : 'text-mat-text'}`}>
           {value}
         </p>
         {!member.is_me && (
