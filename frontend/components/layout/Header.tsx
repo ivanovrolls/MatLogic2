@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoachingStore } from '@/stores/coachingStore'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function Header() {
   const { theme, toggleTheme } = useThemeStore()
   const { open: openTutorial } = useTutorialStore()
   const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
+  const queryClient = useQueryClient()
 
   const handleEnterCoachMode = () => {
     enterCoachMode()
@@ -44,7 +46,9 @@ export function Header() {
   }
 
   const handleLogout = async () => {
+    exitCoachMode()
     await logout()
+    queryClient.clear()
     toast.success('Logged out.')
     router.push('/login')
     setOpen(false)

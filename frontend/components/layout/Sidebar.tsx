@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoachingStore } from '@/stores/coachingStore'
 import { cn, BELT_COLORS } from '@/lib/utils'
@@ -34,10 +35,13 @@ export function Sidebar() {
   const { theme, toggleTheme } = useThemeStore()
   const { open: openTutorial } = useTutorialStore()
   const { isCoachMode, enterCoachMode, exitCoachMode } = useCoachingStore()
+  const queryClient = useQueryClient()
   const [showCoachPrompt, setShowCoachPrompt] = useState(false)
 
   const handleLogout = async () => {
+    exitCoachMode()
     await logout()
+    queryClient.clear()
     toast.success('Logged out.')
     router.push('/login')
   }
