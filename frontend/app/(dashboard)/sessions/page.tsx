@@ -680,8 +680,8 @@ function CompetitionsTab() {
 
 const TABS = [
   { value: 'sessions', label: 'Sessions' },
-  { value: 'injuries', label: 'Injuries' },
   { value: 'competitions', label: 'Competitions' },
+  { value: 'injuries', label: 'Injuries' },
 ]
 
 export default function SessionsPage() {

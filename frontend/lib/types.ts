@@ -137,6 +137,33 @@ export interface TechniqueChain {
   updated_at: string
 }
 
+export interface SequenceNode {
+  id: number
+  technique: TechniqueMinimal
+  grid_col: number
+  grid_row: number
+}
+
+export interface SequenceArrow {
+  id: number
+  from_node: number
+  to_node: number
+  color: string
+  label: string
+}
+
+export interface Sequence {
+  id: number
+  name: string
+  description: string
+  nodes: SequenceNode[]
+  arrows: SequenceArrow[]
+  coach_assigned_by_username: string | null
+  coach_assignment_pending: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ---- Sparring ----
 export type Outcome = 'win' | 'loss' | 'draw'
 export type PartnerBelt = 'white' | 'blue' | 'purple' | 'brown' | 'black' | 'unknown'

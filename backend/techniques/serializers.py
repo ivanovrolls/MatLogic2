@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Technique, TechniqueChain, ChainEntry
+from .models import Technique, TechniqueChain, ChainEntry, Sequence, SequenceNode, SequenceArrow
 
 
 class TechniqueSerializer(serializers.ModelSerializer):
@@ -54,6 +54,42 @@ class TechniqueChainSerializer(serializers.ModelSerializer):
 
     def get_technique_count(self, obj):
         return obj.entries.count()
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class SequenceNodeSerializer(serializers.ModelSerializer):
+    technique = TechniqueMinimalSerializer(read_only=True)
+
+    class Meta:
+        model = SequenceNode
+        fields = ['id', 'technique', 'grid_col', 'grid_row']
+
+
+class SequenceArrowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SequenceArrow
+        fields = ['id', 'from_node', 'to_node', 'color', 'label']
+
+
+class SequenceSerializer(serializers.ModelSerializer):
+    nodes = SequenceNodeSerializer(many=True, read_only=True)
+    arrows = SequenceArrowSerializer(many=True, read_only=True)
+    coach_assigned_by_username = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Sequence
+        fields = [
+            'id', 'name', 'description', 'nodes', 'arrows',
+            'coach_assigned_by_username', 'coach_assignment_pending',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'coach_assigned_by_username', 'coach_assignment_pending']
+
+    def get_coach_assigned_by_username(self, obj):
+        return obj.coach_assigned_by.username if obj.coach_assigned_by else None
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user

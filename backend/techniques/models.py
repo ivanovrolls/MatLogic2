@@ -102,3 +102,56 @@ class ChainEntry(models.Model):
 
     def __str__(self):
         return f"{self.chain.name} - Step {self.order}: {self.technique.name}"
+
+
+class Sequence(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sequences'
+    )
+    coach_assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='coach_assigned_sequences'
+    )
+    coach_assignment_pending = models.BooleanField(default=False)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
+class SequenceNode(models.Model):
+    sequence = models.ForeignKey(Sequence, on_delete=models.CASCADE, related_name='nodes')
+    technique = models.ForeignKey(Technique, on_delete=models.CASCADE, related_name='sequence_nodes')
+    grid_col = models.PositiveSmallIntegerField()
+    grid_row = models.PositiveSmallIntegerField()
+
+    class Meta:
+        unique_together = ['sequence', 'grid_col', 'grid_row']
+        ordering = ['grid_row', 'grid_col']
+
+    def __str__(self):
+        return f"{self.sequence.name} – {self.technique.name} @ ({self.grid_col},{self.grid_row})"
+
+
+class SequenceArrow(models.Model):
+    sequence = models.ForeignKey(Sequence, on_delete=models.CASCADE, related_name='arrows')
+    from_node = models.ForeignKey(SequenceNode, on_delete=models.CASCADE, related_name='outgoing_arrows')
+    to_node = models.ForeignKey(SequenceNode, on_delete=models.CASCADE, related_name='incoming_arrows')
+    color = models.CharField(max_length=20, default='#EAB308')
+    label = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        unique_together = ['from_node', 'to_node']
+
+    def __str__(self):
+        return f"{self.sequence.name}: {self.from_node.technique.name} → {self.to_node.technique.name}"

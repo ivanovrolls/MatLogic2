@@ -3,17 +3,17 @@
 import { useState, useRef, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { coachingApi } from '@/lib/api'
+import { coachingApi, techniquesApi } from '@/lib/api'
 import { useCoachingStore } from '@/stores/coachingStore'
 import {
   ChevronLeft, Loader2, Plus, X, GraduationCap, BookOpen,
   Database, ClipboardList, MessageSquare, CheckCircle2, UserMinus,
-  Eye, Pencil, ChevronRight, Save, Mic, MicOff, Swords, Video, Send, Trash2,
+  Eye, Pencil, ChevronRight, Save, Mic, MicOff, Swords, Video, Send, Trash2, ArrowRight,
 } from 'lucide-react'
 import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS, OUTCOME_COLORS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit, SparringRound, CoachRoundFeedback } from '@/lib/types'
+import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit, SparringRound, CoachRoundFeedback, Sequence } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
 const TYPES = Object.entries(TYPE_LABELS)
@@ -93,6 +93,70 @@ function AssignTechniqueModal({ studentId, onClose }: { studentId: number; onClo
             className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50">
             {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
             Assign Technique
+          </button>
+          <button onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancel</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Assign Sequence Modal ──────────────────────────────────────────────────────
+
+function AssignSequenceModal({ studentId, onClose }: { studentId: number; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+
+  const { data: seqData, isLoading } = useQuery({
+    queryKey: ['my-sequences-for-assign'],
+    queryFn: () => techniquesApi.listSequences().then(r => r.data?.results || r.data),
+  })
+  const sequences: Sequence[] = Array.isArray(seqData) ? seqData.filter((s: Sequence) => !s.coach_assignment_pending) : []
+
+  const mutation = useMutation({
+    mutationFn: () => coachingApi.assignSequence(studentId, selectedId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['coaching-student', studentId] })
+      toast.success('Sequence assigned.')
+      onClose()
+    },
+    onError: () => toast.error('Failed to assign sequence.'),
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 mat-overlay flex items-center justify-center p-4">
+      <div className="bg-mat-card border border-mat-border w-full max-w-sm p-6 space-y-5 animate-slide-up max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between shrink-0">
+          <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">Assign Sequence</h2>
+          <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
+        </div>
+        <p className="text-mat-text-dim text-xs shrink-0">Select one of your sequences to assign to this student.</p>
+        <div className="overflow-y-auto flex-1 space-y-1">
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 size={16} className="animate-spin text-mat-gold" /></div>
+          ) : sequences.length === 0 ? (
+            <p className="text-mat-text-dim text-sm text-center py-6">No sequences in your library yet. Create one first in Techniques → Sequences.</p>
+          ) : sequences.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setSelectedId(s.id)}
+              className={cn(
+                'w-full text-left px-4 py-3 border transition-colors',
+                selectedId === s.id ? 'border-mat-gold bg-mat-gold/10' : 'border-mat-border hover:border-mat-gold/50'
+              )}
+            >
+              <p className="text-mat-text font-medium text-sm">{s.name}</p>
+              <p className="text-mat-text-dim text-xs mt-0.5">{s.nodes.length} technique{s.nodes.length !== 1 ? 's' : ''}</p>
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <button
+            onClick={() => mutation.mutate()}
+            disabled={!selectedId || mutation.isPending}
+            className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {mutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Assign Sequence
           </button>
           <button onClick={onClose} className="btn-secondary flex-1 py-2.5">Cancel</button>
         </div>
@@ -791,6 +855,7 @@ export default function StudentDetailPage() {
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('overview')
   const [showAssignTech, setShowAssignTech] = useState(false)
+  const [showAssignSeq, setShowAssignSeq] = useState(false)
   const [showDrillingPlan, setShowDrillingPlan] = useState(false)
   const [viewSessionId, setViewSessionId] = useState<number | null>(null)
   const [viewTechnique, setViewTechnique] = useState<Technique | null>(null)
@@ -878,6 +943,7 @@ export default function StudentDetailPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       {showAssignTech && <AssignTechniqueModal studentId={id} onClose={() => setShowAssignTech(false)} />}
+      {showAssignSeq && <AssignSequenceModal studentId={id} onClose={() => setShowAssignSeq(false)} />}
       {showDrillingPlan && <DrillingPlanModal studentId={id} onClose={() => setShowDrillingPlan(false)} />}
       {viewSessionId && <SessionDetailModal studentId={id} sessionId={viewSessionId} onClose={() => setViewSessionId(null)} />}
       {viewTechnique && (
@@ -927,9 +993,12 @@ export default function StudentDetailPage() {
           </button>
         </div>
         {/* Row 2: action buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setShowAssignTech(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 flex-1 justify-center">
             <Plus size={11} /> Assign Technique
+          </button>
+          <button onClick={() => setShowAssignSeq(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 flex-1 justify-center">
+            <ArrowRight size={11} /> Assign Sequence
           </button>
           <button onClick={() => setShowDrillingPlan(true)} className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 flex-1 justify-center">
             <ClipboardList size={11} /> Add Plan

@@ -119,6 +119,18 @@ export const techniquesApi = {
     api.post(`/techniques/chains/${chainId}/add_technique/`, data),
   removeFromChain: (chainId: number, entryId: number) =>
     api.delete(`/techniques/chains/${chainId}/remove_technique/`, { data: { entry_id: entryId } }),
+  // Sequences
+  listSequences: () => api.get('/techniques/sequences/'),
+  getSequence: (id: number) => api.get(`/techniques/sequences/${id}/`),
+  createSequence: (data: object) => api.post('/techniques/sequences/', data),
+  updateSequence: (id: number, data: object) => api.patch(`/techniques/sequences/${id}/`, data),
+  deleteSequence: (id: number) => api.delete(`/techniques/sequences/${id}/`),
+  addSequenceNode: (id: number, data: object) => api.post(`/techniques/sequences/${id}/add-node/`, data),
+  removeSequenceNode: (id: number, nodeId: number) => api.delete(`/techniques/sequences/${id}/remove-node/`, { data: { node_id: nodeId } }),
+  addSequenceArrow: (id: number, data: object) => api.post(`/techniques/sequences/${id}/add-arrow/`, data),
+  updateSequenceArrow: (id: number, arrowId: number, data: object) => api.patch(`/techniques/sequences/${id}/update-arrow/`, { arrow_id: arrowId, ...data }),
+  removeSequenceArrow: (id: number, arrowId: number) => api.delete(`/techniques/sequences/${id}/remove-arrow/`, { data: { arrow_id: arrowId } }),
+  respondToCoachSequence: (id: number, action: 'accept' | 'decline') => api.post(`/techniques/sequences/${id}/respond-coach/`, { action }),
 }
 
 // ---- Coaching ----
@@ -137,6 +149,8 @@ export const coachingApi = {
     api.get(`/coaching/students/${studentId}/`, { params: type ? { type } : {} }),
   assignTechnique: (studentId: number, data: object) =>
     api.post(`/coaching/students/${studentId}/assign-technique/`, data),
+  assignSequence: (studentId: number, sequenceId: number) =>
+    api.post(`/coaching/students/${studentId}/assign-sequence/`, { sequence_id: sequenceId }),
   getStudentDrillingPlans: (studentId: number) =>
     api.get(`/coaching/students/${studentId}/drilling-plans/`),
   createDrillingPlan: (studentId: number, data: object) =>

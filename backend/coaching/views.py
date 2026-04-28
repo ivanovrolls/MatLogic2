@@ -149,6 +149,92 @@ class StudentDataView(APIView):
             })
 
 
+class AssignSequenceView(APIView):
+    """Coach-side: assign a sequence to a student by deep-copying it."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_id):
+        try:
+            CoachRelationship.objects.get(
+                coach=request.user, student_id=student_id, status='accepted'
+            )
+        except CoachRelationship.DoesNotExist:
+            return Response({'detail': 'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
+
+        from techniques.models import Technique, Sequence, SequenceNode, SequenceArrow
+        from techniques.serializers import SequenceSerializer
+
+        try:
+            student = User.objects.get(pk=student_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Student not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        sequence_id = request.data.get('sequence_id')
+        try:
+            source = Sequence.objects.get(id=sequence_id, user=request.user)
+        except Sequence.DoesNotExist:
+            return Response({'detail': 'Sequence not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        new_seq = Sequence.objects.create(
+            user=student,
+            coach_assigned_by=request.user,
+            coach_assignment_pending=True,
+            name=source.name,
+            description=source.description,
+        )
+
+        # Map old node IDs to new node IDs
+        node_id_map = {}
+        for node in source.nodes.all():
+            # Find or create matching technique for the student
+            student_tech = Technique.objects.filter(
+                user=student, name__iexact=node.technique.name
+            ).first()
+            if not student_tech:
+                student_tech = Technique.objects.create(
+                    user=student,
+                    coach_assigned_by=request.user,
+                    coach_assignment_pending=True,
+                    name=node.technique.name,
+                    position=node.technique.position,
+                    technique_type=node.technique.technique_type,
+                    description=node.technique.description,
+                    notes=node.technique.notes,
+                    difficulty=node.technique.difficulty,
+                    tags=node.technique.tags,
+                    video_url=node.technique.video_url,
+                )
+            new_node = SequenceNode.objects.create(
+                sequence=new_seq,
+                technique=student_tech,
+                grid_col=node.grid_col,
+                grid_row=node.grid_row,
+            )
+            node_id_map[node.id] = new_node
+
+        for arrow in source.arrows.all():
+            from_new = node_id_map.get(arrow.from_node_id)
+            to_new = node_id_map.get(arrow.to_node_id)
+            if from_new and to_new:
+                SequenceArrow.objects.create(
+                    sequence=new_seq,
+                    from_node=from_new,
+                    to_node=to_new,
+                    color=arrow.color,
+                    label=arrow.label,
+                )
+
+        InAppNotification.objects.create(
+            user=student,
+            type='coach',
+            title=f'Coach assigned a sequence: {new_seq.name}',
+            message='Review and accept or decline it from your Techniques library.',
+            link='/techniques?tab=sequences',
+        )
+
+        return Response(SequenceSerializer(new_seq, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
 class AssignTechniqueView(APIView):
     """Coach-side: create a pending technique in a student's arsenal."""
     permission_classes = [IsAuthenticated]
