@@ -34,7 +34,7 @@ export interface User {
 export type Belt = 'white' | 'blue' | 'purple' | 'brown' | 'black'
 
 // ---- Training Sessions ----
-export type SessionType = 'gi' | 'nogi' | 'open_mat' | 'competition' | 'drilling' | 'wrestling' | 'fundamentals'
+export type SessionType = 'gi' | 'nogi' | 'open_mat' | 'competition' | 'drilling' | 'standup_grappling' | 'wrestling' | 'fundamentals'
 
 export type BlockType = 'warmup' | 'drilling' | 'technique' | 'sparring' | 'conditioning' | 'cool_down'
 
@@ -74,6 +74,10 @@ export interface TrainingSession {
   round_count: number
   technique_count?: number
   session_blocks?: SessionBlock[]
+  video_file: string | null
+  video_url: string
+  video_file_url: string | null
+  youtube_embed_url: string | null
   created_at: string
   updated_at: string
 }

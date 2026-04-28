@@ -16,12 +16,13 @@ import { cn } from '@/lib/utils'
 
 const SESSION_TYPES = [
   { value: '', label: 'All Types' },
-  { value: 'gi', label: 'Gi' },
-  { value: 'nogi', label: 'No-Gi' },
+  { value: 'gi', label: 'Taught Class - Gi' },
+  { value: 'nogi', label: 'Taught Class - No-Gi' },
   { value: 'open_mat', label: 'Open Mat' },
-  { value: 'drilling', label: 'Drilling' },
-  { value: 'wrestling', label: 'Wrestling' },
-  { value: 'fundamentals', label: 'Fundamentals' },
+  { value: 'drilling', label: 'Drilling Only' },
+  { value: 'standup_grappling', label: 'Standup Grappling' },
+  { value: 'competition', label: 'Competition Class' },
+  { value: 'coaching', label: 'Coaching' },
 ]
 
 function RatingDots({ rating }: { rating: number | null }) {

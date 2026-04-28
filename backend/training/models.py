@@ -2,11 +2,14 @@ from django.db import models
 from django.conf import settings
 
 SESSION_TYPE_CHOICES = [
-    ('gi', 'Gi'),
-    ('nogi', 'No-Gi'),
+    ('gi', 'Taught Class - Gi'),
+    ('nogi', 'Taught Class - No-Gi'),
     ('open_mat', 'Open Mat'),
-    ('competition', 'Competition'),
+    ('competition', 'Competition Class'),
     ('drilling', 'Drilling Only'),
+    ('standup_grappling', 'Standup Grappling'),
+    ('coaching', 'Coaching'),
+    # Legacy values kept for backward-compat with existing records
     ('wrestling', 'Wrestling / Takedowns'),
     ('fundamentals', 'Fundamentals Class'),
 ]
@@ -34,6 +37,8 @@ class TrainingSession(models.Model):
     )
     instructor = models.CharField(max_length=200, blank=True)
     gym_location = models.CharField(max_length=200, blank=True)
+    video_file = models.FileField(upload_to='session_videos/', null=True, blank=True)
+    video_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

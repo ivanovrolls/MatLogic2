@@ -6,12 +6,11 @@ import { sessionsApi, sparringApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, Flame, GraduationCap, CheckCircle2, X as XIcon, Video, Upload, Youtube } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, GraduationCap, CheckCircle2, X as XIcon, Video, Upload, Youtube } from 'lucide-react'
 import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
-import { useAuthStore } from '@/stores/authStore'
-import { estimateCalories, estimateCaloriesFromBlocks, BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
+import { BLOCK_LABELS } from '@/lib/calories'
 import type { BlockType } from '@/lib/types'
 
 function RatingDisplay({ label, value }: { label: string; value: number | null }) {
@@ -75,6 +74,114 @@ function RoundVideoSection({ round, onVideoSaved }: { round: SparringRound; onVi
     return (
       <div className="space-y-2">
         <video src={round.video_file_url} controls className="w-full max-h-64 bg-black" />
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
+          Remove video
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {mode === 'idle' && (
+        <div className="flex gap-2">
+          <button onClick={() => setMode('upload')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
+            <Upload size={11} /> Upload File
+          </button>
+          <button onClick={() => setMode('url')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
+            <Youtube size={11} /> YouTube URL
+          </button>
+        </div>
+      )}
+      {mode === 'upload' && (
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f) }}
+          />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploadMutation.isPending}
+            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {uploadMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
+            Choose file
+          </button>
+          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
+        </div>
+      )}
+      {mode === 'url' && (
+        <div className="flex items-center gap-2">
+          <input
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            className="mat-input text-xs flex-1"
+            placeholder="https://youtube.com/watch?v=..."
+            autoFocus
+          />
+          <button
+            onClick={() => saveUrlMutation.mutate(urlInput)}
+            disabled={!urlInput.trim() || saveUrlMutation.isPending}
+            className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
+          >
+            {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
+          </button>
+          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SessionVideoSection({ session, onSaved }: { session: TrainingSession; onSaved: () => void }) {
+  const queryClient = useQueryClient()
+  const [mode, setMode] = useState<'idle' | 'upload' | 'url'>('idle')
+  const [urlInput, setUrlInput] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => sessionsApi.uploadVideo(session.id, file),
+    onSuccess: () => { onSaved(); setMode('idle') },
+    onError: () => toast.error('Upload failed.'),
+  })
+
+  const saveUrlMutation = useMutation({
+    mutationFn: (url: string) => sessionsApi.update(session.id, { video_url: url }),
+    onSuccess: () => { onSaved(); setMode('idle') },
+    onError: () => toast.error('Failed to save URL.'),
+  })
+
+  const clearMutation = useMutation({
+    mutationFn: () => sessionsApi.update(session.id, { video_file: null, video_url: '' }),
+    onSuccess: () => onSaved(),
+    onError: () => toast.error('Failed to remove video.'),
+  })
+
+  if (session.youtube_embed_url) {
+    return (
+      <div className="space-y-2">
+        <div className="aspect-video w-full">
+          <iframe
+            src={session.youtube_embed_url}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
+          Remove video
+        </button>
+      </div>
+    )
+  }
+
+  if (session.video_file_url) {
+    return (
+      <div className="space-y-2">
+        <video src={session.video_file_url} controls className="w-full max-h-64 bg-black" />
         <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
           Remove video
         </button>
@@ -295,7 +402,6 @@ export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { user } = useAuthStore()
   const [showLinkPicker, setShowLinkPicker] = useState(false)
   const [roundSearch, setRoundSearch] = useState('')
 
@@ -374,18 +480,7 @@ export default function SessionDetailPage() {
   }
 
   const sparringRounds: SparringRound[] = Array.isArray(rounds) ? rounds : []
-  const sparringMinutes = sparringRounds.reduce((sum, r) => sum + (r.duration_minutes || 0), 0)
   const hasBlocks = session?.session_blocks && session.session_blocks.length > 0
-  const calories = session && user?.weight_kg
-    ? hasBlocks
-      ? estimateCaloriesFromBlocks(session.session_blocks!, user.weight_kg)
-      : estimateCalories({
-          sessionType: session.session_type,
-          durationMinutes: session.duration,
-          weightKg: user.weight_kg,
-          sparringMinutes,
-        })
-    : null
   const allRoundsArr: SparringRound[] = Array.isArray(allRounds) ? allRounds : []
 
   // Rounds not already linked to this session
@@ -514,54 +609,9 @@ export default function SessionDetailPage() {
           </div>
         )}
 
-        {(session.performance_rating || session.energy_level) && (
-          <div className="grid grid-cols-2 gap-5 mt-4 pt-4 border-t border-mat-border">
-            <RatingDisplay label="Performance" value={session.performance_rating} />
-            <RatingDisplay label="Energy Level" value={session.energy_level} />
-          </div>
-        )}
-
-        {calories != null && (
+        {session.performance_rating && (
           <div className="mt-4 pt-4 border-t border-mat-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-mat-text-muted text-xs uppercase tracking-widest">
-                <Flame size={12} className="text-mat-gold" />
-                Est. Calories Burned
-                <span className="text-mat-text-dim normal-case tracking-normal font-normal">
-                  {hasBlocks ? '(block-based)' : sparringMinutes > 0 ? `(incl. ${sparringMinutes}min sparring)` : ''}
-                </span>
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="font-display text-3xl text-mat-gold">{calories.toLocaleString()}</span>
-                <span className="text-mat-text-muted text-xs">kcal</span>
-              </div>
-            </div>
-            {hasBlocks && (
-              <div className="mt-2 space-y-1">
-                {session!.session_blocks!.map((b, i) => {
-                  const kcal = user?.weight_kg
-                    ? Math.round((BLOCK_MET[b.block_type] ?? 5) * user.weight_kg * (b.duration_minutes / 60))
-                    : null
-                  return (
-                    <div key={i} className="flex items-center justify-between text-xs text-mat-text-muted">
-                      <span>{BLOCK_LABELS[b.block_type]} · {b.duration_minutes}min</span>
-                      {kcal != null && <span className="text-mat-text-dim">{kcal} kcal</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {session && !user?.weight_kg && (
-          <div className="mt-4 pt-4 border-t border-mat-border">
-            <p className="text-mat-text-dim text-xs flex items-center gap-1.5">
-              <Flame size={11} />
-              <span>
-                Add your weight in <a href="/profile" className="text-mat-gold hover:underline">Profile</a> to see estimated calories burned.
-              </span>
-            </p>
+            <RatingDisplay label="Perceived Performance" value={session.performance_rating} />
           </div>
         )}
       </div>
@@ -575,6 +625,14 @@ export default function SessionDetailPage() {
           </p>
         </div>
       )}
+
+      {/* Session video */}
+      <div className="bg-mat-card border border-mat-border p-6">
+        <h3 className="font-display text-lg tracking-wider text-mat-text uppercase mb-4 flex items-center gap-2">
+          <Video size={14} className="text-mat-gold" /> Session Video
+        </h3>
+        <SessionVideoSection session={session} onSaved={() => queryClient.invalidateQueries({ queryKey: ['session', id] })} />
+      </div>
 
       {/* Session structure blocks */}
       {hasBlocks && (

@@ -83,6 +83,11 @@ export const sessionsApi = {
   delete: (id: number) => api.delete(`/sessions/${id}/`),
   recent: () => api.get('/sessions/recent/'),
   stats: () => api.get('/sessions/stats/'),
+  uploadVideo: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('video_file', file)
+    return api.patch(`/sessions/${id}/`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }
 
 // ---- Session Templates ----

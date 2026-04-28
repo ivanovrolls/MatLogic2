@@ -14,7 +14,19 @@ import Link from 'next/link'
 import type { TechniqueMinimal, SessionTemplate, SessionBlock, BlockType, PartnerBelt, Outcome } from '@/lib/types'
 import { SESSION_TYPE_COLORS } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { BLOCK_LABELS, BLOCK_MET } from '@/lib/calories'
+import { BLOCK_LABELS } from '@/lib/calories'
+
+// ── Session type options ──────────────────────────────────────────────────────
+
+const SESSION_TYPES = [
+  { value: 'gi', label: 'Taught Class - Gi' },
+  { value: 'nogi', label: 'Taught Class - No-Gi' },
+  { value: 'open_mat', label: 'Open Mat' },
+  { value: 'drilling', label: 'Drilling Only' },
+  { value: 'standup_grappling', label: 'Standup Grappling' },
+  { value: 'competition', label: 'Competition Class' },
+  { value: 'coaching', label: 'Coaching' },
+]
 
 // ── Session block builder ─────────────────────────────────────────────────────
 
@@ -411,14 +423,114 @@ function RoundCard({
   )
 }
 
+// ── Techniques section ────────────────────────────────────────────────────────
+
+interface SelectedTechnique {
+  id: number | null  // null = free-text (not in arsenal)
+  name: string
+  position?: string
+}
+
+function TechniquesSection({
+  selected,
+  onChange,
+  arsenal,
+}: {
+  selected: SelectedTechnique[]
+  onChange: (v: SelectedTechnique[]) => void
+  arsenal: TechniqueMinimal[]
+}) {
+  const [search, setSearch] = useState('')
+
+  const filtered = arsenal.filter(t =>
+    t.name.toLowerCase().includes(search.toLowerCase()) &&
+    !selected.find(s => s.id === t.id)
+  )
+
+  const addFromArsenal = (t: TechniqueMinimal) => {
+    onChange([...selected, { id: t.id, name: t.name, position: t.position }])
+    setSearch('')
+  }
+
+  const addFreeText = () => {
+    const name = search.trim()
+    if (!name || selected.find(s => s.name.toLowerCase() === name.toLowerCase())) return
+    onChange([...selected, { id: null, name }])
+    setSearch('')
+  }
+
+  const remove = (idx: number) => onChange(selected.filter((_, i) => i !== idx))
+
+  const showAddNew = search.trim() && !arsenal.find(
+    t => t.name.toLowerCase() === search.trim().toLowerCase()
+  ) && !selected.find(
+    s => s.name.toLowerCase() === search.trim().toLowerCase()
+  )
+
+  return (
+    <div className="space-y-4">
+      <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Techniques Worked</h3>
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selected.map((t, i) => (
+            <div key={i} className="flex items-center gap-2 bg-mat-panel border border-mat-gold/30 px-3 py-1.5 text-xs">
+              <span className="text-mat-gold font-medium">{t.name}</span>
+              {t.id === null && (
+                <span className="text-mat-text-dim text-xs">(new)</span>
+              )}
+              <button type="button" onClick={() => remove(i)} className="text-mat-text-dim hover:text-mat-red-light transition-colors">
+                <X size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              if (filtered.length > 0) addFromArsenal(filtered[0])
+              else if (showAddNew) addFreeText()
+            }
+          }}
+          className="mat-input"
+          placeholder="Search your techniques or type a new name..."
+        />
+        {search && (filtered.length > 0 || showAddNew) && (
+          <div className="absolute top-full left-0 right-0 z-10 bg-mat-panel border border-mat-border max-h-48 overflow-y-auto">
+            {filtered.slice(0, 8).map((t: TechniqueMinimal) => (
+              <button key={t.id} type="button" onClick={() => addFromArsenal(t)}
+                className="w-full text-left px-4 py-2.5 hover:bg-mat-darker text-sm flex items-center gap-3 transition-colors">
+                <span className="text-mat-text">{t.name}</span>
+                <span className="text-mat-text-dim text-xs capitalize">{t.position}</span>
+              </button>
+            ))}
+            {showAddNew && (
+              <button type="button" onClick={addFreeText}
+                className="w-full text-left px-4 py-2.5 hover:bg-mat-darker text-sm flex items-center gap-2 transition-colors border-t border-mat-border">
+                <Plus size={11} className="text-mat-gold shrink-0" />
+                <span className="text-mat-text-muted">Add <span className="text-mat-text font-medium">"{search.trim()}"</span> as new technique</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Form schema ───────────────────────────────────────────────────────────────
+
 const schema = z.object({
   date: z.string(),
-  session_type: z.enum(['gi', 'nogi', 'open_mat', 'competition', 'drilling', 'wrestling', 'fundamentals']),
+  session_type: z.enum(['gi', 'nogi', 'open_mat', 'competition', 'drilling', 'standup_grappling', 'coaching', 'wrestling', 'fundamentals']),
   duration: z.coerce.number().min(1, 'Enter duration'),
   title: z.string().optional(),
   notes: z.string().optional(),
   performance_rating: z.coerce.number().min(1).max(5).optional().nullable(),
-  energy_level: z.coerce.number().min(1).max(5).optional().nullable(),
   instructor: z.string().optional(),
   gym_location: z.string().optional(),
 })
@@ -456,8 +568,7 @@ export default function NewSessionPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
-  const [selectedTechniques, setSelectedTechniques] = useState<TechniqueMinimal[]>([])
-  const [techSearch, setTechSearch] = useState('')
+  const [selectedTechniques, setSelectedTechniques] = useState<SelectedTechnique[]>([])
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [saveAsTemplate, setSaveAsTemplate] = useState(false)
   const [templateTitle, setTemplateTitle] = useState('')
@@ -472,15 +583,13 @@ export default function NewSessionPage() {
       session_type: 'gi',
       duration: 90,
       performance_rating: null,
-      energy_level: null,
     },
   })
 
   const performanceRating = watch('performance_rating')
-  const energyLevel = watch('energy_level')
   const watchedType = watch('session_type')
 
-  const { data: techniques } = useQuery({
+  const { data: arsenal } = useQuery({
     queryKey: ['techniques', 'all'],
     queryFn: () => techniquesApi.list({ page_size: 200 }).then(r => r.data.results || r.data),
   })
@@ -493,7 +602,6 @@ export default function NewSessionPage() {
     enabled: showTemplatePicker || !!templateIdParam,
   })
 
-  // Auto-load template from URL param once data is available
   const [autoLoaded, setAutoLoaded] = useState(false)
   if (templateIdParam && !autoLoaded && Array.isArray(templates)) {
     const tmpl = (templates as SessionTemplate[]).find(t => t.id === Number(templateIdParam))
@@ -503,15 +611,10 @@ export default function NewSessionPage() {
       setValue('instructor', tmpl.instructor)
       setValue('gym_location', tmpl.gym_location)
       setValue('notes', tmpl.notes)
-      setSelectedTechniques(tmpl.techniques)
+      setSelectedTechniques(tmpl.techniques.map(t => ({ id: t.id, name: t.name, position: t.position })))
       setAutoLoaded(true)
     }
   }
-
-  const filteredTechs = (techniques || []).filter((t: TechniqueMinimal) =>
-    t.name.toLowerCase().includes(techSearch.toLowerCase()) &&
-    !selectedTechniques.find(s => s.id === t.id)
-  )
 
   const createTemplateMutation = useMutation({
     mutationFn: (data: object) => templatesApi.create(data),
@@ -529,6 +632,7 @@ export default function NewSessionPage() {
     onSuccess: async (res) => {
       const sessionId = res.data.id
       const sessionDate = res.data.date
+
       if (draftRounds.length > 0) {
         await Promise.all(
           draftRounds.map(r =>
@@ -553,6 +657,7 @@ export default function NewSessionPage() {
           )
         )
       }
+
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
       queryClient.invalidateQueries({ queryKey: ['sparring'] })
       toast.success('Session logged.')
@@ -567,21 +672,35 @@ export default function NewSessionPage() {
     setValue('instructor', tmpl.instructor)
     setValue('gym_location', tmpl.gym_location)
     setValue('notes', tmpl.notes)
-    setSelectedTechniques(tmpl.techniques)
+    setSelectedTechniques(tmpl.techniques.map(t => ({ id: t.id, name: t.name, position: t.position })))
     setShowTemplatePicker(false)
     toast.success(`Loaded "${tmpl.title}"`)
   }
 
   const blocksTotalMinutes = sessionBlocks.reduce((s, b) => s + b.duration_minutes, 0)
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
+    // Create any free-text techniques that don't exist yet
+    const resolvedTechniques = await Promise.all(
+      selectedTechniques.map(async t => {
+        if (t.id !== null) return t.id
+        const res = await techniquesApi.create({
+          name: t.name,
+          position: 'other',
+          technique_type: 'control',
+        })
+        return res.data.id as number
+      })
+    )
+
     const effectiveDuration = sessionMode === 'structured' && blocksTotalMinutes > 0
       ? blocksTotalMinutes
       : data.duration
+
     mutation.mutate({
       ...data,
       duration: effectiveDuration,
-      techniques_worked_ids: selectedTechniques.map(t => t.id),
+      techniques_worked_ids: resolvedTechniques,
       session_blocks: sessionMode === 'structured' ? sessionBlocks : [],
     })
   }
@@ -596,7 +715,7 @@ export default function NewSessionPage() {
       notes: values.notes || '',
       instructor: values.instructor || '',
       gym_location: values.gym_location || '',
-      technique_ids: selectedTechniques.map(t => t.id),
+      technique_ids: selectedTechniques.filter(t => t.id !== null).map(t => t.id),
     })
   }
 
@@ -665,15 +784,7 @@ export default function NewSessionPage() {
             <div>
               <label className="mat-label">Type</label>
               <select {...register('session_type')} className="mat-input">
-                {[
-                  { value: 'gi', label: 'Gi' },
-                  { value: 'nogi', label: 'No-Gi' },
-                  { value: 'open_mat', label: 'Open Mat' },
-                  { value: 'drilling', label: 'Drilling' },
-                  { value: 'wrestling', label: 'Wrestling' },
-                  { value: 'fundamentals', label: 'Fundamentals' },
-                  { value: 'competition', label: 'Competition' },
-                ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {SESSION_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
@@ -700,7 +811,7 @@ export default function NewSessionPage() {
               {errors.duration && <p className="text-mat-red-light text-xs mt-1">{errors.duration.message}</p>}
             </div>
             <div>
-              <label className="mat-label">Title (optional)</label>
+              <label className="mat-label">Title <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('title')} className="mat-input" placeholder="e.g. Friday night class" />
             </div>
           </div>
@@ -732,7 +843,7 @@ export default function NewSessionPage() {
 
             {sessionMode === 'simple' && (
               <p className="text-mat-text-dim text-xs">
-                The whole session is logged as one type. Switch to Structured to break it into activity blocks for accurate calorie tracking.
+                The whole session is logged as one type. Switch to Structured to break it into activity blocks.
               </p>
             )}
 
@@ -743,19 +854,20 @@ export default function NewSessionPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mat-label">Instructor (optional)</label>
+              <label className="mat-label">Instructor <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('instructor')} className="mat-input" placeholder="Coach name" />
             </div>
             <div>
-              <label className="mat-label">Location (optional)</label>
+              <label className="mat-label">Location <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('gym_location')} className="mat-input" placeholder="Gym" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <RatingPicker label="Performance (1-5)" value={performanceRating ?? null} onChange={(v) => setValue('performance_rating', v)} />
-            <RatingPicker label="Energy Level (1-5)" value={energyLevel ?? null} onChange={(v) => setValue('energy_level', v)} />
-          </div>
+          <RatingPicker
+            label="Perceived Performance (1–5)"
+            value={performanceRating ?? null}
+            onChange={(v) => setValue('performance_rating', v)}
+          />
 
           <div>
             <label className="mat-label">Session Notes</label>
@@ -764,34 +876,12 @@ export default function NewSessionPage() {
         </div>
 
         {/* Techniques */}
-        <div className="bg-mat-card border border-mat-border p-6 space-y-4">
-          <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Techniques Worked</h3>
-          {selectedTechniques.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {selectedTechniques.map(t => (
-                <div key={t.id} className="flex items-center gap-2 bg-mat-panel border border-mat-gold/30 px-3 py-1.5 text-xs">
-                  <span className="text-mat-gold font-medium">{t.name}</span>
-                  <button type="button" onClick={() => setSelectedTechniques(prev => prev.filter(x => x.id !== t.id))} className="text-mat-text-dim hover:text-mat-red-light transition-colors">
-                    <X size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="relative">
-            <input value={techSearch} onChange={e => setTechSearch(e.target.value)} className="mat-input" placeholder="Search your techniques..." />
-            {techSearch && filteredTechs.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-10 bg-mat-panel border border-mat-border max-h-48 overflow-y-auto">
-                {filteredTechs.slice(0, 8).map((t: TechniqueMinimal) => (
-                  <button key={t.id} type="button" onClick={() => { setSelectedTechniques(prev => [...prev, t]); setTechSearch('') }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-mat-darker text-sm flex items-center gap-3 transition-colors">
-                    <span className="text-mat-text">{t.name}</span>
-                    <span className="text-mat-text-dim text-xs capitalize">{t.position}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="bg-mat-card border border-mat-border p-6">
+          <TechniquesSection
+            selected={selectedTechniques}
+            onChange={setSelectedTechniques}
+            arsenal={arsenal || []}
+          />
         </div>
 
         {/* Sparring rounds */}

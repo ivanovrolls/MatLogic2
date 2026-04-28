@@ -12,18 +12,33 @@ import { ChevronLeft, Loader2, Plus, X } from 'lucide-react'
 import Link from 'next/link'
 import type { TechniqueMinimal, TrainingSession } from '@/lib/types'
 
+const SESSION_TYPES = [
+  { value: 'gi', label: 'Taught Class - Gi' },
+  { value: 'nogi', label: 'Taught Class - No-Gi' },
+  { value: 'open_mat', label: 'Open Mat' },
+  { value: 'drilling', label: 'Drilling Only' },
+  { value: 'standup_grappling', label: 'Standup Grappling' },
+  { value: 'competition', label: 'Competition Class' },
+  { value: 'coaching', label: 'Coaching' },
+]
+
 const schema = z.object({
   date: z.string(),
-  session_type: z.enum(['gi', 'nogi', 'open_mat', 'competition', 'drilling', 'wrestling', 'fundamentals']),
+  session_type: z.enum(['gi', 'nogi', 'open_mat', 'competition', 'drilling', 'standup_grappling', 'coaching', 'wrestling', 'fundamentals']),
   duration: z.coerce.number().min(1, 'Enter duration'),
   title: z.string().optional(),
   notes: z.string().optional(),
   performance_rating: z.coerce.number().min(1).max(5).optional().nullable(),
-  energy_level: z.coerce.number().min(1).max(5).optional().nullable(),
   instructor: z.string().optional(),
   gym_location: z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
+
+interface SelectedTechnique {
+  id: number | null
+  name: string
+  position?: string
+}
 
 function RatingPicker({ label, value, onChange }: {
   label: string
@@ -57,7 +72,7 @@ export default function EditSessionPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [selectedTechniques, setSelectedTechniques] = useState<TechniqueMinimal[]>([])
+  const [selectedTechniques, setSelectedTechniques] = useState<SelectedTechnique[]>([])
   const [techSearch, setTechSearch] = useState('')
 
   const { data: session, isLoading } = useQuery<TrainingSession>({
@@ -78,29 +93,42 @@ export default function EditSessionPage() {
         title: session.title || '',
         notes: session.notes || '',
         performance_rating: session.performance_rating,
-        energy_level: session.energy_level,
         instructor: session.instructor || '',
         gym_location: session.gym_location || '',
       })
-      setSelectedTechniques(session.techniques_worked)
+      setSelectedTechniques(session.techniques_worked.map(t => ({
+        id: t.id,
+        name: t.name,
+        position: t.position,
+      })))
     }
   }, [session, reset])
 
   const performanceRating = watch('performance_rating')
-  const energyLevel = watch('energy_level')
 
-  const { data: techniques } = useQuery({
+  const { data: arsenal } = useQuery({
     queryKey: ['techniques', 'all'],
     queryFn: () => techniquesApi.list({ page_size: 200 }).then(r => r.data.results || r.data),
   })
 
-  const filteredTechs = (techniques || []).filter((t: TechniqueMinimal) =>
+  const filteredArsenal = (arsenal || []).filter((t: TechniqueMinimal) =>
     t.name.toLowerCase().includes(techSearch.toLowerCase()) &&
     !selectedTechniques.find(s => s.id === t.id)
   )
 
+  const showAddNew = techSearch.trim() &&
+    !(arsenal || []).find((t: TechniqueMinimal) => t.name.toLowerCase() === techSearch.trim().toLowerCase()) &&
+    !selectedTechniques.find(s => s.name.toLowerCase() === techSearch.trim().toLowerCase())
+
+  const addFreeText = () => {
+    const name = techSearch.trim()
+    if (!name) return
+    setSelectedTechniques(prev => [...prev, { id: null, name }])
+    setTechSearch('')
+  }
+
   const mutation = useMutation({
-    mutationFn: (data: object) => sessionsApi.update(Number(id), data),
+    mutationFn: async (data: object) => sessionsApi.update(Number(id), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] })
       queryClient.invalidateQueries({ queryKey: ['session', id] })
@@ -110,10 +138,22 @@ export default function EditSessionPage() {
     onError: () => toast.error('Failed to update session.'),
   })
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
+    const resolvedTechniques = await Promise.all(
+      selectedTechniques.map(async t => {
+        if (t.id !== null) return t.id
+        const res = await techniquesApi.create({
+          name: t.name,
+          position: 'other',
+          technique_type: 'control',
+        })
+        return res.data.id as number
+      })
+    )
+
     mutation.mutate({
       ...data,
-      techniques_worked_ids: selectedTechniques.map(t => t.id),
+      techniques_worked_ids: resolvedTechniques,
     })
   }
 
@@ -143,15 +183,7 @@ export default function EditSessionPage() {
             <div>
               <label className="mat-label">Type</label>
               <select {...register('session_type')} className="mat-input">
-                {[
-                  { value: 'gi', label: 'Gi' },
-                  { value: 'nogi', label: 'No-Gi' },
-                  { value: 'open_mat', label: 'Open Mat' },
-                  { value: 'drilling', label: 'Drilling' },
-                  { value: 'wrestling', label: 'Wrestling' },
-                  { value: 'fundamentals', label: 'Fundamentals' },
-                  { value: 'competition', label: 'Competition' },
-                ].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {SESSION_TYPES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
@@ -163,34 +195,27 @@ export default function EditSessionPage() {
               {errors.duration && <p className="text-mat-red-light text-xs mt-1">{errors.duration.message}</p>}
             </div>
             <div>
-              <label className="mat-label">Title (optional)</label>
+              <label className="mat-label">Title <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('title')} className="mat-input" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mat-label">Instructor (optional)</label>
+              <label className="mat-label">Instructor <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('instructor')} className="mat-input" />
             </div>
             <div>
-              <label className="mat-label">Location (optional)</label>
+              <label className="mat-label">Location <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
               <input {...register('gym_location')} className="mat-input" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <RatingPicker
-              label="Performance (1-5)"
-              value={performanceRating ?? null}
-              onChange={v => setValue('performance_rating', v)}
-            />
-            <RatingPicker
-              label="Energy Level (1-5)"
-              value={energyLevel ?? null}
-              onChange={v => setValue('energy_level', v)}
-            />
-          </div>
+          <RatingPicker
+            label="Perceived Performance (1–5)"
+            value={performanceRating ?? null}
+            onChange={v => setValue('performance_rating', v)}
+          />
 
           <div>
             <label className="mat-label">Session Notes</label>
@@ -202,12 +227,13 @@ export default function EditSessionPage() {
           <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Techniques Worked</h3>
           {selectedTechniques.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {selectedTechniques.map(t => (
-                <div key={t.id} className="flex items-center gap-2 bg-mat-panel border border-mat-gold/30 px-3 py-1.5 text-xs">
+              {selectedTechniques.map((t, i) => (
+                <div key={i} className="flex items-center gap-2 bg-mat-panel border border-mat-gold/30 px-3 py-1.5 text-xs">
                   <span className="text-mat-gold font-medium">{t.name}</span>
+                  {t.id === null && <span className="text-mat-text-dim">(new)</span>}
                   <button
                     type="button"
-                    onClick={() => setSelectedTechniques(prev => prev.filter(x => x.id !== t.id))}
+                    onClick={() => setSelectedTechniques(prev => prev.filter((_, j) => j !== i))}
                     className="text-mat-text-dim hover:text-mat-red-light transition-colors"
                   >
                     <X size={11} />
@@ -220,22 +246,43 @@ export default function EditSessionPage() {
             <input
               value={techSearch}
               onChange={e => setTechSearch(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (filteredArsenal.length > 0) {
+                    setSelectedTechniques(prev => [...prev, { id: filteredArsenal[0].id, name: filteredArsenal[0].name, position: filteredArsenal[0].position }])
+                    setTechSearch('')
+                  } else if (showAddNew) {
+                    addFreeText()
+                  }
+                }
+              }}
               className="mat-input"
-              placeholder="Search your techniques..."
+              placeholder="Search your techniques or type a new name..."
             />
-            {techSearch && filteredTechs.length > 0 && (
+            {techSearch && (filteredArsenal.length > 0 || showAddNew) && (
               <div className="absolute top-full left-0 right-0 z-10 bg-mat-panel border border-mat-border max-h-48 overflow-y-auto">
-                {filteredTechs.slice(0, 8).map((t: TechniqueMinimal) => (
+                {filteredArsenal.slice(0, 8).map((t: TechniqueMinimal) => (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => { setSelectedTechniques(prev => [...prev, t]); setTechSearch('') }}
+                    onClick={() => {
+                      setSelectedTechniques(prev => [...prev, { id: t.id, name: t.name, position: t.position }])
+                      setTechSearch('')
+                    }}
                     className="w-full text-left px-4 py-2.5 hover:bg-mat-darker text-sm flex items-center gap-3 transition-colors"
                   >
                     <span className="text-mat-text">{t.name}</span>
                     <span className="text-mat-text-dim text-xs capitalize">{t.position}</span>
                   </button>
                 ))}
+                {showAddNew && (
+                  <button type="button" onClick={addFreeText}
+                    className="w-full text-left px-4 py-2.5 hover:bg-mat-darker text-sm flex items-center gap-2 transition-colors border-t border-mat-border">
+                    <Plus size={11} className="text-mat-gold shrink-0" />
+                    <span className="text-mat-text-muted">Add <span className="text-mat-text font-medium">"{techSearch.trim()}"</span> as new technique</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

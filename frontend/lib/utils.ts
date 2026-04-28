@@ -64,11 +64,12 @@ export const TYPE_LABELS: Record<string, string> = {
 }
 
 export const SESSION_TYPE_LABELS: Record<string, string> = {
-  gi: 'Gi',
-  nogi: 'No-Gi',
+  gi: 'Taught Class - Gi',
+  nogi: 'Taught Class - No-Gi',
   open_mat: 'Open Mat',
-  competition: 'Competition',
+  competition: 'Competition Class',
   drilling: 'Drilling',
+  standup_grappling: 'Standup Grappling',
   wrestling: 'Wrestling',
   fundamentals: 'Fundamentals',
 }
@@ -79,6 +80,7 @@ export const SESSION_TYPE_COLORS: Record<string, string> = {
   open_mat: 'text-mat-green-light',
   competition: 'text-mat-red-light',
   drilling: 'text-purple-400',
+  standup_grappling: 'text-orange-400',
   wrestling: 'text-orange-400',
   fundamentals: 'text-cyan-400',
 }

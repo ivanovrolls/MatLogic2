@@ -15,6 +15,8 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
         required=False
     )
     round_count = serializers.ReadOnlyField()
+    video_file_url = serializers.SerializerMethodField()
+    youtube_embed_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingSession
@@ -22,9 +24,33 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
             'id', 'date', 'session_type', 'session_type_display', 'duration',
             'title', 'notes', 'performance_rating', 'energy_level',
             'techniques_worked', 'techniques_worked_ids', 'instructor',
-            'gym_location', 'round_count', 'created_at', 'updated_at'
+            'gym_location', 'round_count', 'video_file', 'video_url',
+            'video_file_url', 'youtube_embed_url', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'video_file_url', 'youtube_embed_url', 'created_at', 'updated_at']
+
+    def get_video_file_url(self, obj):
+        if not obj.video_file:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.video_file.url)
+        return obj.video_file.url
+
+    def get_youtube_embed_url(self, obj):
+        import re
+        if not obj.video_url:
+            return None
+        patterns = [
+            r'youtu\.be/([A-Za-z0-9_-]+)',
+            r'youtube\.com/watch\?v=([A-Za-z0-9_-]+)',
+            r'youtube\.com/embed/([A-Za-z0-9_-]+)',
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, obj.video_url)
+            if m:
+                return f'https://www.youtube.com/embed/{m.group(1)}'
+        return None
 
     def create(self, validated_data):
         techniques = validated_data.pop('techniques_worked', [])

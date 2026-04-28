@@ -84,9 +84,9 @@ body {
   }
 
   .mat-input {
-    @apply bg-mat-dark border border-mat-border text-mat-text placeholder:text-mat-text-dim
+    @apply appearance-none bg-mat-dark border border-mat-border text-mat-text placeholder:text-mat-text-dim
            focus:outline-none focus:border-mat-gold focus:ring-1 focus:ring-mat-gold
-           px-3 py-2 text-sm w-full transition-colors duration-150;
+           px-3 py-2 text-sm w-full transition-colors duration-150 rounded-none;
   }
 
   .mat-label {
