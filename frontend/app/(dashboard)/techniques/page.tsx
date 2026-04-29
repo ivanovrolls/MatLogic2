@@ -8,6 +8,7 @@ import { POSITION_LABELS, TYPE_LABELS, cn } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { Plus, Search, Trash2, Loader2, Pencil, X, ArrowRight, Check, ChevronDown, GraduationCap } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import type { Technique, Sequence, SequenceNode, SequenceArrow } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
@@ -176,7 +177,7 @@ function TechniquesTab() {
                           <Pencil size={12} />
                         </Link>
                         <button
-                          onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
+                          onClick={async () => { if (await confirm('Delete this technique?')) deleteMutation.mutate(t.id) }}
                           className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
                         >
                           <Trash2 size={12} />
@@ -713,7 +714,7 @@ function SequenceCard({ sequence, techniques, onDelete }: {
                 <Pencil size={13} />
               </button>
               <button
-                onClick={() => { if (confirm('Delete this sequence?')) onDelete() }}
+                onClick={async () => { if (await confirm('Delete this sequence?')) onDelete() }}
                 className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
               >
                 <Trash2 size={13} />

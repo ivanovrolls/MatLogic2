@@ -7,6 +7,7 @@ import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_C
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, GraduationCap, CheckCircle2, X as XIcon, Video, Upload, Youtube } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
@@ -479,9 +480,9 @@ export default function SessionDetailPage() {
     return <div className="text-mat-text-muted py-20 text-center">Session not found.</div>
   }
 
-  const sparringRounds: SparringRound[] = Array.isArray(rounds) ? rounds : []
+  const sparringRounds: SparringRound[] = (rounds as any)?.results ?? (Array.isArray(rounds) ? rounds : [])
   const hasBlocks = session?.session_blocks && session.session_blocks.length > 0
-  const allRoundsArr: SparringRound[] = Array.isArray(allRounds) ? allRounds : []
+  const allRoundsArr: SparringRound[] = (allRounds as any)?.results ?? (Array.isArray(allRounds) ? allRounds : [])
 
   // Rounds not already linked to this session
   const linkedIds = new Set(sparringRounds.map(r => r.id))
@@ -512,7 +513,7 @@ export default function SessionDetailPage() {
             <Pencil size={12} /> Edit
           </Link>
           <button
-            onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate() }}
+            onClick={async () => { if (await confirm('Delete this session?')) deleteMutation.mutate() }}
             className="btn-ghost text-mat-red-light hover:text-mat-red p-2"
           >
             <Trash2 size={14} />
@@ -759,7 +760,7 @@ export default function SessionDetailPage() {
               <SessionRoundRow
                 key={r.id}
                 round={r}
-                onUnlink={() => { if (confirm('Remove this round from the session?')) unlinkMutation.mutate(r.id) }}
+                onUnlink={async () => { if (await confirm('Remove this round from the session?')) unlinkMutation.mutate(r.id) }}
               />
             ))}
           </div>

@@ -8,6 +8,10 @@
   --font-bebas: 'Bebas Neue', Impact, sans-serif;
   --font-inter: 'Inter', system-ui, sans-serif;
 
+  /* Safe area insets for Capacitor / notched devices */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+
   /* Dark theme (default) */
   --mat-black: #080808;
   --mat-darker: #0d0d0d;
@@ -179,6 +183,23 @@ body {
 .nav-item:hover::after,
 .nav-item.active::after {
   width: 100%;
+}
+
+/* Capacitor / notch safe area — mobile header grows to sit below status bar */
+header.app-header {
+  padding-top: max(0.75rem, var(--sat));
+}
+
+/* Main content offset matches the taller header on notched devices */
+@media (max-width: 1023px) {
+  main.app-main {
+    padding-top: max(3.5rem, calc(2.75rem + var(--sat)));
+  }
+}
+
+/* Bottom nav / home indicator safe area */
+.safe-bottom {
+  padding-bottom: max(0.5rem, var(--sab));
 }
 
 /* Gold accent bar */

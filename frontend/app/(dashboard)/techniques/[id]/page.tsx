@@ -7,6 +7,7 @@ import { formatDate, POSITION_LABELS, TYPE_LABELS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { ChevronLeft, Trash2, ExternalLink, Target, Loader2, Play, Pencil, GraduationCap, Check, X } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import type { Technique } from '@/lib/types'
 import { coachingApi } from '@/lib/api'
 
@@ -151,7 +152,7 @@ export default function TechniqueDetailPage() {
               <Pencil size={12} /> Edit
             </Link>
             <button
-              onClick={() => { if (confirm('Delete this technique?')) deleteMutation.mutate() }}
+              onClick={async () => { if (await confirm('Delete this technique?')) deleteMutation.mutate() }}
               className="text-mat-text-dim hover:text-mat-red-light transition-colors p-2"
             >
               <Trash2 size={14} />

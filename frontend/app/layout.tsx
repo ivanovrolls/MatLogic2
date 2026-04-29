@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 import { ServiceWorkerRegistrar } from '@/components/ServiceWorkerRegistrar'
@@ -8,6 +8,13 @@ export const metadata: Metadata = {
   description: 'Track, analyse, and sharpen your Brazilian Jiu-Jitsu game.',
   icons: { icon: '/favicon.ico' },
   manifest: '/manifest.json',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#c9a227',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

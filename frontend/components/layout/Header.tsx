@@ -98,7 +98,7 @@ export function Header() {
         </div>
       )}
 
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-mat-darker border-b border-mat-border px-4 py-3 flex items-center justify-between">
+      <header className="app-header lg:hidden fixed top-0 left-0 right-0 z-30 bg-mat-darker border-b border-mat-border px-4 pb-3 flex items-center justify-between">
         <Link href="/dashboard" className="font-display text-xl tracking-widest">
           <span className="text-mat-gold">MAT</span>
           <span className="text-mat-text">LOGIC</span>

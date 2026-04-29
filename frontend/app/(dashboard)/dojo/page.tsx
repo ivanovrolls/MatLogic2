@@ -309,7 +309,7 @@ function LeaderboardRow({
         {!member.is_me && (
           <button
             onClick={() => onChallenge(member)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 px-2.5 py-1 border border-mat-gold text-mat-gold text-xs hover:bg-mat-gold hover:text-mat-black transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 border border-mat-gold text-mat-gold text-xs hover:bg-mat-gold hover:text-mat-black transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           >
             <Swords size={10} /> Challenge
           </button>

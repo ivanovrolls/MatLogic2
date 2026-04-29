@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { Tutorial } from '@/components/Tutorial'
 import { PushPrompt } from '@/components/PushPrompt'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useTutorialStore } from '@/stores/tutorialStore'
 import { Loader2, User } from 'lucide-react'
 
@@ -195,6 +196,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
+
+    // Android hardware back button — navigate back or exit the app
+    const setupBackButton = async () => {
+      try {
+        const { App } = await import('@capacitor/app')
+        App.addListener('backButton', ({ canGoBack }) => {
+          if (canGoBack) {
+            window.history.back()
+          } else {
+            App.exitApp()
+          }
+        })
+      } catch {
+        // Not running inside Capacitor — ignore
+      }
+    }
+    setupBackButton()
   }, [isAuthenticated, router, fetchProfile])
 
   const needsBodyMetrics = user && (!user.gender || user.height_cm == null || user.weight_kg == null)
@@ -211,7 +229,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-mat-black">
       <Sidebar />
       <Header />
-      <main className="lg:ml-56 pt-14 lg:pt-0 min-h-screen">
+      <main className="app-main lg:ml-56 lg:pt-0 min-h-screen">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6">
           {children}
         </div>
@@ -219,6 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {needsBodyMetrics && <ProfileSetupModal />}
       <Tutorial />
       <PushPrompt />
+      <ConfirmDialog />
     </div>
   )
 }

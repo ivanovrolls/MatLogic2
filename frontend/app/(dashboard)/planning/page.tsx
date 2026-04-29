@@ -9,8 +9,9 @@ import { format, parseISO, isThisWeek, isPast, addDays } from 'date-fns'
 import {
   Plus, CalendarDays, CheckCircle2, Circle, Loader2,
   Target, ChevronDown, Trophy, Pencil, Trash2, X, Dumbbell,
-  Sparkles, HelpCircle, BookMarked, GraduationCap,
+  Sparkles, HelpCircle, BookMarked, GraduationCap, Check,
 } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import Link from 'next/link'
 import type { WeeklyPlan, WeeklyPlanTemplate, TechniqueMinimal, ChecklistItem, DrillItem, CoachDrillingPlan } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -226,6 +227,8 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
   const [showAddDayDrill, setShowAddDayDrill] = useState(false)
   const [addDayIndex, setAddDayIndex] = useState(0)
   const [addDayDrills, setAddDayDrills] = useState<DrillItem[]>([])
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [templateNameInput, setTemplateNameInput] = useState('')
 
   const queryClient = useQueryClient()
   const complete = isPlanComplete(plan)
@@ -309,10 +312,14 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
   }
 
   const saveAsTemplate = () => {
-    const name = window.prompt('Template name:', plan.title || 'My Plan Template')
-    if (!name?.trim()) return
-    planningApi.saveAsTemplate(plan.id, { title: name.trim() })
-      .then(() => toast.success('Saved as template.'))
+    setTemplateNameInput(plan.title || 'My Plan Template')
+    setShowSaveTemplate(true)
+  }
+
+  const confirmSaveAsTemplate = () => {
+    if (!templateNameInput.trim()) return
+    planningApi.saveAsTemplate(plan.id, { title: templateNameInput.trim() })
+      .then(() => { toast.success('Saved as template.'); setShowSaveTemplate(false) })
       .catch(() => toast.error('Failed to save template.'))
   }
 
@@ -356,7 +363,7 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
             {editing ? <X size={13} /> : <Pencil size={13} />}
           </button>
           <button
-            onClick={() => { if (confirm('Delete this plan?')) deleteMutation.mutate() }}
+            onClick={async () => { if (await confirm('Delete this plan?')) deleteMutation.mutate() }}
             className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors"
           >
             <Trash2 size={13} />
@@ -368,6 +375,23 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
           )}
         </div>
       </div>
+
+      {showSaveTemplate && (
+        <div className="border-t border-mat-border px-6 py-4 flex items-center gap-2 bg-mat-darker">
+          <input
+            value={templateNameInput}
+            onChange={e => setTemplateNameInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') confirmSaveAsTemplate(); if (e.key === 'Escape') setShowSaveTemplate(false) }}
+            className="mat-input flex-1 text-sm"
+            placeholder="Template name..."
+            autoFocus
+          />
+          <button onClick={confirmSaveAsTemplate} disabled={!templateNameInput.trim()} className="btn-primary text-xs px-3 py-2 flex items-center gap-1 disabled:opacity-40">
+            <Check size={11} /> Save
+          </button>
+          <button onClick={() => setShowSaveTemplate(false)} className="btn-secondary text-xs px-3 py-2">Cancel</button>
+        </div>
+      )}
 
       <Collapsible open={open}>
         <div className="px-6 pb-6 space-y-4 border-t border-mat-border pt-4">
@@ -482,7 +506,7 @@ function PlanCard({ plan, defaultOpen, onToggleItem, allTechniques }: {
                       <div key={cl.id} className="relative group/cl">
                         <ChecklistWidget checklist={cl} onToggle={onToggleItem} />
                         <button
-                          onClick={() => { if (confirm('Remove this checklist?')) deleteChecklistMutation.mutate(cl.id) }}
+                          onClick={async () => { if (await confirm('Remove this checklist?')) deleteChecklistMutation.mutate(cl.id) }}
                           className="absolute top-2 right-2 text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover/cl:opacity-100 transition-all"
                         >
                           <X size={11} />
@@ -686,6 +710,7 @@ export default function PlanningPage() {
   const [techSearch, setTechSearch] = useState('')
   const [pastOpen, setPastOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
+  const [autoGenHelpOpen, setAutoGenHelpOpen] = useState(false)
   const [weekStartInput, setWeekStartInput] = useState(format(getWeekStart(), 'yyyy-MM-dd'))
   const [drillMode, setDrillMode] = useState<'weekly' | 'daily'>('weekly')
   const [weeklyDrills, setWeeklyDrills] = useState<DrillItem[]>([])
@@ -825,7 +850,7 @@ export default function PlanningPage() {
           <h1 className="font-display text-2xl sm:text-4xl tracking-wider text-mat-text uppercase">Weekly Planner</h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <div className="relative group">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => autoGenerateMutation.mutate()}
               disabled={autoGenerateMutation.isPending}
@@ -837,15 +862,21 @@ export default function PlanningPage() {
               }
               Auto-Generate Plan
             </button>
-            <div className="absolute right-0 top-full mt-1 z-20 hidden group-hover:block w-64 bg-mat-panel border border-mat-border p-3 shadow-lg pointer-events-none">
-              <div className="flex items-start gap-2">
-                <HelpCircle size={12} className="text-mat-gold mt-0.5 shrink-0" />
-                <p className="text-mat-text-muted text-xs leading-relaxed">
-                  Auto-generates this week's plan based on your training insights — conceded submissions become defense drills, conceded positions become escape work. Matched techniques from your arsenal are linked automatically.
-                </p>
-              </div>
-            </div>
+            <button
+              onClick={() => setAutoGenHelpOpen(v => !v)}
+              className="text-mat-text-dim hover:text-mat-gold transition-colors p-1.5"
+              title="What does this do?"
+            >
+              <HelpCircle size={14} />
+            </button>
           </div>
+          {autoGenHelpOpen && (
+            <div className="w-full bg-mat-panel border border-mat-border p-3 mt-1">
+              <p className="text-mat-text-muted text-xs leading-relaxed">
+                Auto-generates this week's plan based on your training insights — conceded submissions become defense drills, conceded positions become escape work. Matched techniques from your arsenal are linked automatically.
+              </p>
+            </div>
+          )}
           <button onClick={() => setShowNewPlan(!showNewPlan)} className="btn-primary px-4 py-2.5 flex items-center gap-2 text-xs">
             <Plus size={14} /> {showNewPlan ? 'Cancel' : 'New Plan'}
           </button>
@@ -886,7 +917,7 @@ export default function PlanningPage() {
                       Use
                     </button>
                     <button
-                      onClick={() => { if (confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
+                      onClick={async () => { if (await confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
                       className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
                     >
                       <Trash2 size={13} />

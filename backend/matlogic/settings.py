@@ -140,6 +140,55 @@ CORS_ALLOWED_ORIGINS = config(
 ).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF trusted origins (needed for Django admin + browsable API over HTTPS)
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:3000'
+).split(',')
+
+# Database connection pooling
+DATABASES['default']['CONN_MAX_AGE'] = config('CONN_MAX_AGE', default=60, cast=int)
+
+# ── Production security ───────────────────────────────────────────────────────
+if not DEBUG:
+    # Heroku / Railway / Render terminate TLS at their load balancer and forward
+    # requests as plain HTTP. This tells Django to trust their header.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# ── Media / file storage ──────────────────────────────────────────────────────
+# Local disk is fine for development but ephemeral on most PaaS hosts.
+# Set USE_S3=True in production and supply the credentials below.
+# Compatible with AWS S3, Cloudflare R2, Backblaze B2, or any S3-compatible service.
+USE_S3 = config('USE_S3', default=False, cast=bool)
+
+if USE_S3:
+    STORAGES = {
+        'default': {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME      = config('AWS_S3_REGION_NAME', default='auto')
+    AWS_ACCESS_KEY_ID       = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY   = config('AWS_SECRET_ACCESS_KEY')
+    AWS_S3_ENDPOINT_URL     = config('AWS_S3_ENDPOINT_URL', default='') or None
+    AWS_S3_CUSTOM_DOMAIN    = config('AWS_S3_CUSTOM_DOMAIN', default='') or None
+    AWS_DEFAULT_ACL         = None   # Use bucket policy for access control
+    AWS_S3_FILE_OVERWRITE   = False
+    AWS_QUERYSTRING_AUTH    = False  # Public-read bucket (avatars, post images, videos)
+
+    if AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+    elif AWS_S3_ENDPOINT_URL:
+        MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/'
+    else:
+        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/'
+
 # Web Push (VAPID)
 # Generate keys with: python manage.py generate_vapid_keys
 VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='').replace('\\n', '\n')

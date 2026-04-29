@@ -13,6 +13,7 @@ import {
 import { cn, BELT_COLORS, POSITION_LABELS, TYPE_LABELS, SESSION_TYPE_COLORS, OUTCOME_COLORS } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 import toast from 'react-hot-toast'
+import { confirm } from '@/lib/confirm'
 import type { StudentSummary, TrainingSession, Technique, CoachDrillingPlan, CoachDrill, CoachSessionNote, CoachSessionEdit, SparringRound, CoachRoundFeedback, Sequence } from '@/lib/types'
 
 const POSITIONS = Object.entries(POSITION_LABELS)
@@ -371,7 +372,7 @@ function CoachRoundFeedbackPanel({ studentId, round }: { studentId: number; roun
         </button>
         {feedback && (
           <button
-            onClick={() => { if (confirm('Remove feedback?')) deleteMutation.mutate() }}
+            onClick={async () => { if (await confirm('Remove feedback?')) deleteMutation.mutate() }}
             className="text-xs text-mat-red-light/70 hover:text-mat-red-light transition-colors flex items-center gap-1"
           >
             <Trash2 size={10} /> Delete
@@ -984,7 +985,7 @@ export default function StudentDetailPage() {
             )}
           </div>
           <button
-            onClick={() => { if (confirm(`Remove ${student?.username || 'this student'} as your student? This cannot be undone.`)) removeStudentMutation.mutate() }}
+            onClick={async () => { if (await confirm(`Remove ${student?.username || 'this student'} as your student? This cannot be undone.`)) removeStudentMutation.mutate() }}
             disabled={removeStudentMutation.isPending}
             className="p-1.5 text-mat-text-dim hover:text-mat-red-light transition-colors mt-1 shrink-0"
             title="Remove student"
@@ -1134,7 +1135,7 @@ export default function StudentDetailPage() {
                           </button>
                           {existingNote && (
                             <button
-                              onClick={() => { if (confirm('Remove this note?')) deleteNoteMutation.mutate(s.id) }}
+                              onClick={async () => { if (await confirm('Remove this note?')) deleteNoteMutation.mutate(s.id) }}
                               disabled={deleteNoteMutation.isPending}
                               className="text-xs px-3 py-1.5 border border-mat-red-light/30 text-mat-red-light hover:bg-mat-red-light/10 transition-colors"
                             >

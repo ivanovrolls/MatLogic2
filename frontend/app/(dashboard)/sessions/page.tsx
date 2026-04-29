@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { Plus, Search, Trash2, ChevronRight, Loader2, BookTemplate, ChevronDown, ChevronUp, HeartPulse, AlertTriangle, CheckCircle2, Pencil, GraduationCap, Trophy, Check, X } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import { format } from 'date-fns'
 import type { TrainingSession, SessionTemplate, InjuryLog, InjurySeverity, InjuryStatus, CoachSessionEdit, Competition, CompetitionMatch } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -118,7 +119,7 @@ function SessionsTab() {
                     <div className="flex items-center gap-2">
                       <Link href={`/sessions/new?template=${tmpl.id}`} className="btn-secondary text-xs px-3 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">Use</Link>
                       <button
-                        onClick={() => { if (confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
+                        onClick={async () => { if (await confirm('Delete this template?')) deleteTemplateMutation.mutate(tmpl.id) }}
                         className="text-mat-text-dim hover:text-mat-red-light opacity-0 group-hover:opacity-100 transition-all p-1"
                       >
                         <Trash2 size={13} />
@@ -199,7 +200,7 @@ function SessionsTab() {
                       </Link>
                     )}
                     <button
-                      onClick={() => { if (confirm('Delete this session?')) deleteMutation.mutate(s.id) }}
+                      onClick={async () => { if (await confirm('Delete this session?')) deleteMutation.mutate(s.id) }}
                       className="text-mat-text-dim hover:text-mat-red-light transition-colors opacity-0 group-hover:opacity-100 p-1"
                     >
                       <Trash2 size={13} />
@@ -411,7 +412,7 @@ function InjuriesTab() {
               </p>
               {active.map(injury => editingId === injury.id
                 ? <InjuryForm key={injury.id} initial={injury} onSave={d => updateMutation.mutate({ id: injury.id, data: d })} onCancel={() => setEditingId(null)} isPending={updateMutation.isPending} />
-                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={() => { if (confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
+                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={async () => { if (await confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
               )}
             </div>
           )}
@@ -422,7 +423,7 @@ function InjuriesTab() {
               </p>
               {resolved.map(injury => editingId === injury.id
                 ? <InjuryForm key={injury.id} initial={injury} onSave={d => updateMutation.mutate({ id: injury.id, data: d })} onCancel={() => setEditingId(null)} isPending={updateMutation.isPending} />
-                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={() => { if (confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
+                : <InjuryCard key={injury.id} injury={injury} onEdit={() => { setEditingId(injury.id); setShowForm(false) }} onDelete={async () => { if (await confirm('Delete?')) deleteMutation.mutate(injury.id) }} />
               )}
             </div>
           )}
@@ -515,7 +516,7 @@ function CompetitionCard({ comp }: { comp: Competition }) {
           <button onClick={e => { e.stopPropagation(); editing ? setEditing(false) : openEdit() }} className="text-mat-text-dim hover:text-mat-gold transition-colors p-1">
             {editing ? <X size={14} /> : <Pencil size={14} />}
           </button>
-          <button onClick={e => { e.stopPropagation(); if (confirm('Delete this competition?')) deleteMutation.mutate() }} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1">
+          <button onClick={async e => { e.stopPropagation(); if (await confirm('Delete this competition?')) deleteMutation.mutate() }} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1">
             <Trash2 size={14} />
           </button>
           <button onClick={() => !editing && setExpanded(!expanded)} className="text-mat-text-dim p-1">

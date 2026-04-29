@@ -7,6 +7,7 @@ import { formatDate, RESULT_COLORS } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 import { Plus, Trophy, Loader2, ChevronDown, ChevronUp, Pencil, Trash2, Check, X } from 'lucide-react'
+import { confirm } from '@/lib/confirm'
 import type { Competition, CompetitionMatch } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -91,7 +92,7 @@ function CompetitionCard({ comp }: { comp: Competition }) {
           <button onClick={e => { e.stopPropagation(); editing ? setEditing(false) : openEdit() }} className="text-mat-text-dim hover:text-mat-gold transition-colors p-1">
             {editing ? <X size={14} /> : <Pencil size={14} />}
           </button>
-          <button onClick={e => { e.stopPropagation(); if (confirm('Delete this competition?')) deleteMutation.mutate() }} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1">
+          <button onClick={async e => { e.stopPropagation(); if (await confirm('Delete this competition?')) deleteMutation.mutate() }} className="text-mat-text-dim hover:text-mat-red-light transition-colors p-1">
             <Trash2 size={14} />
           </button>
           <button onClick={() => !editing && setExpanded(!expanded)} className="text-mat-text-dim p-1">
