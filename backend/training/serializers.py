@@ -15,7 +15,6 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
         required=False
     )
     round_count = serializers.ReadOnlyField()
-    video_file_url = serializers.SerializerMethodField()
     youtube_embed_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -24,18 +23,10 @@ class TrainingSessionSerializer(serializers.ModelSerializer):
             'id', 'date', 'session_type', 'session_type_display', 'duration',
             'title', 'notes', 'performance_rating', 'energy_level',
             'techniques_worked', 'techniques_worked_ids', 'instructor',
-            'gym_location', 'round_count', 'video_file', 'video_url',
-            'video_file_url', 'youtube_embed_url', 'created_at', 'updated_at'
+            'gym_location', 'round_count', 'video_url',
+            'youtube_embed_url', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'video_file_url', 'youtube_embed_url', 'created_at', 'updated_at']
-
-    def get_video_file_url(self, obj):
-        if not obj.video_file:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.video_file.url)
-        return obj.video_file.url
+        read_only_fields = ['id', 'youtube_embed_url', 'created_at', 'updated_at']
 
     def get_youtube_embed_url(self, obj):
         import re

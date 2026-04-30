@@ -400,7 +400,7 @@ function SessionRoundsPanel({ studentId, sessionId }: { studentId: number; sessi
     <div className="space-y-2">
       {rounds.map(r => {
         const isOpen = openRoundId === r.id
-        const hasVideo = !!(r.youtube_embed_url || r.video_file_url)
+        const hasVideo = !!(r.youtube_embed_url || r.video_url)
         return (
           <div key={r.id} className="border border-mat-border bg-mat-darker">
             <button
@@ -423,8 +423,10 @@ function SessionRoundsPanel({ studentId, sessionId }: { studentId: number; sessi
                     <iframe src={r.youtube_embed_url} className="w-full h-full" allowFullScreen />
                   </div>
                 )}
-                {r.video_file_url && !r.youtube_embed_url && (
-                  <video src={r.video_file_url} controls className="w-full max-h-52 bg-black" />
+                {r.video_url && !r.youtube_embed_url && (
+                  <a href={r.video_url} target="_blank" rel="noopener noreferrer" className="text-mat-gold text-xs hover:underline break-all">
+                    {r.video_url}
+                  </a>
                 )}
                 <div className="border-t border-mat-border pt-3">
                   <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1 flex items-center gap-1.5">

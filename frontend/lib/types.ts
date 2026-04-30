@@ -74,9 +74,7 @@ export interface TrainingSession {
   round_count: number
   technique_count?: number
   session_blocks?: SessionBlock[]
-  video_file: string | null
   video_url: string
-  video_file_url: string | null
   youtube_embed_url: string | null
   created_at: string
   updated_at: string
@@ -263,8 +261,6 @@ export interface SparringRound {
   sweeps_completed: number
   takedowns_completed: number
   notes: string
-  video_file: string | null
-  video_file_url: string | null
   video_url: string
   youtube_embed_url: string | null
   created_at: string

@@ -6,9 +6,9 @@ import { sessionsApi, sparringApi, coachingApi } from '@/lib/api'
 import { formatDate, formatDuration, SESSION_TYPE_COLORS, OUTCOME_COLORS, BELT_COLORS } from '@/lib/utils'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, GraduationCap, CheckCircle2, X as XIcon, Video, Upload, Youtube } from 'lucide-react'
+import { ChevronLeft, Trash2, Pencil, Swords, Plus, Loader2, Link2, ChevronDown, GraduationCap, CheckCircle2, X as XIcon, Video } from 'lucide-react'
 import { confirm } from '@/lib/confirm'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { TrainingSession, SparringRound, CoachSessionNote, CoachSessionEdit } from '@/lib/types'
 import { BLOCK_LABELS } from '@/lib/calories'
@@ -31,25 +31,18 @@ function RatingDisplay({ label, value }: { label: string; value: number | null }
 
 function RoundVideoSection({ round, onVideoSaved }: { round: SparringRound; onVideoSaved: () => void }) {
   const queryClient = useQueryClient()
-  const [mode, setMode] = useState<'idle' | 'upload' | 'url'>('idle')
-  const [urlInput, setUrlInput] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => sparringApi.uploadVideo(round.id, file),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); onVideoSaved(); setMode('idle') },
-    onError: () => toast.error('Upload failed.'),
-  })
+  const [editing, setEditing] = useState(false)
+  const [urlInput, setUrlInput] = useState(round.video_url || '')
 
   const saveUrlMutation = useMutation({
     mutationFn: (url: string) => sparringApi.update(round.id, { video_url: url }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); onVideoSaved(); setMode('idle') },
-    onError: () => toast.error('Failed to save URL.'),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); onVideoSaved(); setEditing(false) },
+    onError: () => toast.error('Failed to save link.'),
   })
 
   const clearMutation = useMutation({
-    mutationFn: () => sparringApi.update(round.id, { video_file: null, video_url: '' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sparring'] }),
+    mutationFn: () => sparringApi.update(round.id, { video_url: '' }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['sparring'] }); setUrlInput('') },
     onError: () => toast.error('Failed to remove video.'),
   })
 
@@ -71,93 +64,58 @@ function RoundVideoSection({ round, onVideoSaved }: { round: SparringRound; onVi
     )
   }
 
-  if (round.video_file_url) {
+  if (round.video_url && !editing) {
     return (
-      <div className="space-y-2">
-        <video src={round.video_file_url} controls className="w-full max-h-64 bg-black" />
-        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
-          Remove video
-        </button>
+      <div className="flex items-center gap-2">
+        <a href={round.video_url} target="_blank" rel="noopener noreferrer" className="text-mat-gold text-xs hover:underline truncate flex-1">
+          {round.video_url}
+        </a>
+        <button onClick={() => setEditing(true)} className="text-xs text-mat-text-dim hover:text-mat-gold transition-colors shrink-0">Edit</button>
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors shrink-0">Remove</button>
       </div>
     )
   }
 
-  return (
-    <div className="space-y-2">
-      {mode === 'idle' && (
-        <div className="flex gap-2">
-          <button onClick={() => setMode('upload')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
-            <Upload size={11} /> Upload File
-          </button>
-          <button onClick={() => setMode('url')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
-            <Youtube size={11} /> YouTube URL
-          </button>
-        </div>
-      )}
-      {mode === 'upload' && (
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f) }}
-          />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploadMutation.isPending}
-            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {uploadMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
-            Choose file
-          </button>
-          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
-        </div>
-      )}
-      {mode === 'url' && (
-        <div className="flex items-center gap-2">
-          <input
-            value={urlInput}
-            onChange={e => setUrlInput(e.target.value)}
-            className="mat-input text-xs flex-1"
-            placeholder="https://youtube.com/watch?v=..."
-            autoFocus
-          />
-          <button
-            onClick={() => saveUrlMutation.mutate(urlInput)}
-            disabled={!urlInput.trim() || saveUrlMutation.isPending}
-            className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
-          >
-            {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
-          </button>
-          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
-        </div>
-      )}
-    </div>
-  )
+  if (editing || !round.video_url) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          value={urlInput}
+          onChange={e => setUrlInput(e.target.value)}
+          className="mat-input text-xs flex-1"
+          placeholder="YouTube, Instagram Reels, or any video URL…"
+          autoFocus={editing}
+        />
+        <button
+          onClick={() => saveUrlMutation.mutate(urlInput)}
+          disabled={!urlInput.trim() || saveUrlMutation.isPending}
+          className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50 shrink-0"
+        >
+          {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
+        </button>
+        {editing && (
+          <button onClick={() => setEditing(false)} className="text-xs text-mat-text-dim hover:text-mat-text shrink-0">Cancel</button>
+        )}
+      </div>
+    )
+  }
+
+  return null
 }
 
 function SessionVideoSection({ session, onSaved }: { session: TrainingSession; onSaved: () => void }) {
-  const queryClient = useQueryClient()
-  const [mode, setMode] = useState<'idle' | 'upload' | 'url'>('idle')
-  const [urlInput, setUrlInput] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  const uploadMutation = useMutation({
-    mutationFn: (file: File) => sessionsApi.uploadVideo(session.id, file),
-    onSuccess: () => { onSaved(); setMode('idle') },
-    onError: () => toast.error('Upload failed.'),
-  })
+  const [editing, setEditing] = useState(false)
+  const [urlInput, setUrlInput] = useState(session.video_url || '')
 
   const saveUrlMutation = useMutation({
     mutationFn: (url: string) => sessionsApi.update(session.id, { video_url: url }),
-    onSuccess: () => { onSaved(); setMode('idle') },
-    onError: () => toast.error('Failed to save URL.'),
+    onSuccess: () => { onSaved(); setEditing(false) },
+    onError: () => toast.error('Failed to save link.'),
   })
 
   const clearMutation = useMutation({
-    mutationFn: () => sessionsApi.update(session.id, { video_file: null, video_url: '' }),
-    onSuccess: () => onSaved(),
+    mutationFn: () => sessionsApi.update(session.id, { video_url: '' }),
+    onSuccess: () => { onSaved(); setUrlInput('') },
     onError: () => toast.error('Failed to remove video.'),
   })
 
@@ -179,67 +137,36 @@ function SessionVideoSection({ session, onSaved }: { session: TrainingSession; o
     )
   }
 
-  if (session.video_file_url) {
+  if (session.video_url && !editing) {
     return (
-      <div className="space-y-2">
-        <video src={session.video_file_url} controls className="w-full max-h-64 bg-black" />
-        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors">
-          Remove video
-        </button>
+      <div className="flex items-center gap-2">
+        <a href={session.video_url} target="_blank" rel="noopener noreferrer" className="text-mat-gold text-xs hover:underline truncate flex-1">
+          {session.video_url}
+        </a>
+        <button onClick={() => setEditing(true)} className="text-xs text-mat-text-dim hover:text-mat-gold transition-colors shrink-0">Edit</button>
+        <button onClick={() => clearMutation.mutate()} className="text-xs text-mat-text-dim hover:text-mat-red-light transition-colors shrink-0">Remove</button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2">
-      {mode === 'idle' && (
-        <div className="flex gap-2">
-          <button onClick={() => setMode('upload')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
-            <Upload size={11} /> Upload File
-          </button>
-          <button onClick={() => setMode('url')} className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border px-3 py-1.5">
-            <Youtube size={11} /> YouTube URL
-          </button>
-        </div>
-      )}
-      {mode === 'upload' && (
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f) }}
-          />
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploadMutation.isPending}
-            className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {uploadMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : <Upload size={11} />}
-            Choose file
-          </button>
-          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
-        </div>
-      )}
-      {mode === 'url' && (
-        <div className="flex items-center gap-2">
-          <input
-            value={urlInput}
-            onChange={e => setUrlInput(e.target.value)}
-            className="mat-input text-xs flex-1"
-            placeholder="https://youtube.com/watch?v=..."
-            autoFocus
-          />
-          <button
-            onClick={() => saveUrlMutation.mutate(urlInput)}
-            disabled={!urlInput.trim() || saveUrlMutation.isPending}
-            className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50"
-          >
-            {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
-          </button>
-          <button onClick={() => setMode('idle')} className="text-xs text-mat-text-dim hover:text-mat-text">Cancel</button>
-        </div>
+    <div className="flex items-center gap-2">
+      <input
+        value={urlInput}
+        onChange={e => setUrlInput(e.target.value)}
+        className="mat-input text-xs flex-1"
+        placeholder="YouTube, Instagram Reels, or any video URL…"
+        autoFocus={editing}
+      />
+      <button
+        onClick={() => saveUrlMutation.mutate(urlInput)}
+        disabled={!urlInput.trim() || saveUrlMutation.isPending}
+        className="btn-primary text-xs px-3 py-1.5 disabled:opacity-50 shrink-0"
+      >
+        {saveUrlMutation.isPending ? <Loader2 size={11} className="animate-spin" /> : 'Save'}
+      </button>
+      {editing && (
+        <button onClick={() => setEditing(false)} className="text-xs text-mat-text-dim hover:text-mat-text shrink-0">Cancel</button>
       )}
     </div>
   )
@@ -252,7 +179,7 @@ function SessionRoundRow({ round: r, onUnlink }: { round: SparringRound; onUnlin
   const hasPositions = r.dominant_positions.length > 0 || r.positions_conceded.length > 0
   const hasSubs = r.submissions_attempted.length > 0 || r.submissions_hit.length > 0 || r.submissions_conceded.length > 0
   const hasCounts = r.sweeps_completed > 0 || r.takedowns_completed > 0
-  const hasVideo = !!(r.youtube_embed_url || r.video_file_url)
+  const hasVideo = !!(r.youtube_embed_url || r.video_url)
 
   return (
     <div>

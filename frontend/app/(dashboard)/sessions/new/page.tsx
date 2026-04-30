@@ -157,6 +157,7 @@ interface DraftRound {
   submissions_hit: string[]
   submissions_conceded: string[]
   notes: string
+  video_url: string
 }
 
 function MultiChipInput({
@@ -324,7 +325,7 @@ function RoundForm({
         className="flex items-center gap-1 text-mat-text-dim hover:text-mat-text text-xs transition-colors"
       >
         <ChevronDown size={11} className={cn('transition-transform', showDetails ? 'rotate-180' : '')} />
-        {showDetails ? 'Hide details' : 'Add submissions & notes'}
+        {showDetails ? 'Hide details' : 'Add submissions, notes & video'}
       </button>
 
       {showDetails && (
@@ -354,6 +355,15 @@ function RoundForm({
               onChange={e => patch({ notes: e.target.value })}
               className="mat-input text-sm"
               placeholder="What happened in this round?"
+            />
+          </div>
+          <div>
+            <label className="mat-label">Video Link <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
+            <input
+              value={draft.video_url}
+              onChange={e => patch({ video_url: e.target.value })}
+              className="mat-input text-sm"
+              placeholder="YouTube, Instagram Reels, or any video URL…"
             />
           </div>
         </div>
@@ -533,6 +543,7 @@ const schema = z.object({
   performance_rating: z.coerce.number().min(1).max(5).optional().nullable(),
   instructor: z.string().optional(),
   gym_location: z.string().optional(),
+  video_url: z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -653,6 +664,7 @@ export default function NewSessionPage() {
               sweeps_completed: 0,
               takedowns_completed: 0,
               notes: r.notes,
+              video_url: r.video_url,
             })
           )
         )
@@ -873,6 +885,11 @@ export default function NewSessionPage() {
             <label className="mat-label">Session Notes</label>
             <textarea {...register('notes')} rows={4} className="mat-input resize-none" placeholder="What did you work on? What clicked? What needs improvement?" />
           </div>
+
+          <div>
+            <label className="mat-label">Video Link <span className="text-mat-text-dim font-normal normal-case tracking-normal">(optional)</span></label>
+            <input {...register('video_url')} className="mat-input" placeholder="YouTube, Instagram Reels, or any video URL…" />
+          </div>
         </div>
 
         {/* Techniques */}
@@ -918,6 +935,7 @@ export default function NewSessionPage() {
               submissions_hit: [],
               submissions_conceded: [],
               notes: '',
+              video_url: '',
             }}
             isGiDefault={watchedType === 'gi'}
             saveLabel="Add Round"

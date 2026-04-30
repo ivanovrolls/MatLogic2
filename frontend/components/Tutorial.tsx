@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   X, ChevronRight, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, Trophy, User, Zap, HelpCircle, Flame, Lightbulb, Swords, Users,
+  BarChart2, User, Zap, HelpCircle, Lightbulb, Swords, Users,
 } from 'lucide-react'
 import { useTutorialStore } from '@/stores/tutorialStore'
 
@@ -33,7 +33,7 @@ const STEPS: Step[] = [
   {
     icon: LayoutDashboard,
     title: 'Dashboard',
-    body: 'Your home base. See training stats, a monthly calendar heatmap, recent sessions, and quick-action shortcuts.',
+    body: 'Your home base. See training stats, AI-powered insights, recent sessions, active challenges, and quick-action shortcuts.',
     target: '[data-tutorial="nav-dashboard"]',
     placement: 'right',
   },
@@ -42,13 +42,6 @@ const STEPS: Step[] = [
     title: 'Log a Session',
     body: 'Hit the Log Today\'s Session button to jump straight to the full session form — date, type, duration, techniques, and more.',
     target: '[data-tutorial="quick-log"]',
-    placement: 'bottom',
-  },
-  {
-    icon: Flame,
-    title: 'Training Calendar',
-    body: 'Your monthly training heatmap. Days with sessions glow gold — click any day to see what you trained, add a session, or log a competition.',
-    target: '[data-tutorial="calendar"]',
     placement: 'bottom',
   },
   {
@@ -61,7 +54,7 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: 'Sessions',
-    body: 'Log full training sessions with duration, type, and notes. The Injuries tab here lets you track and monitor anything affecting your training.',
+    body: 'Log full training sessions with duration, type, and notes. The Injuries tab tracks what\'s affecting your training, and the Competitions tab is where you log tournament results and match breakdowns.',
     target: '[data-tutorial="nav-sessions"]',
     placement: 'right',
   },
@@ -82,15 +75,8 @@ const STEPS: Step[] = [
   {
     icon: BarChart2,
     title: 'Analytics',
-    body: 'Visualize training volume, technique usage, and sparring trends. The Sparring Log tab shows a full read-only history of all your rounds.',
+    body: 'Visualize training volume, technique usage, and sparring trends. The Calendar tab shows your monthly training heatmap, and the Sparring Log tab has a full history of your rounds.',
     target: '[data-tutorial="nav-analytics"]',
-    placement: 'right',
-  },
-  {
-    icon: Trophy,
-    title: 'Competition',
-    body: 'Log tournament results, match-by-match breakdowns, and outcomes. Keep a complete competitive record.',
-    target: '[data-tutorial="nav-competition"]',
     placement: 'right',
   },
   {

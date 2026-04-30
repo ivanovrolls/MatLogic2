@@ -52,13 +52,6 @@ export const authApi = {
   logout: (refresh: string) => api.post('/auth/logout/', { refresh }),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (data: object) => api.patch('/auth/profile/', data),
-  uploadAvatar: (file: File) => {
-    const form = new FormData()
-    form.append('avatar', file)
-    return api.patch('/auth/profile/', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
   // Weight tracking
   listWeight: () => api.get('/auth/weight/'),
   addWeight: (data: object) => api.post('/auth/weight/', data),
@@ -83,11 +76,6 @@ export const sessionsApi = {
   delete: (id: number) => api.delete(`/sessions/${id}/`),
   recent: () => api.get('/sessions/recent/'),
   stats: () => api.get('/sessions/stats/'),
-  uploadVideo: (id: number, file: File) => {
-    const form = new FormData()
-    form.append('video_file', file)
-    return api.patch(`/sessions/${id}/`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
-  },
 }
 
 // ---- Session Templates ----
@@ -219,14 +207,6 @@ export const sparringApi = {
   update: (id: number, data: object) => api.patch(`/sparring/${id}/`, data),
   delete: (id: number) => api.delete(`/sparring/${id}/`),
   stats: () => api.get('/sparring/stats/'),
-  uploadVideo: (id: number, file: File) => {
-    const form = new FormData()
-    form.append('video_file', file)
-    return api.patch(`/sparring/${id}/`, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
-  clearVideo: (id: number) => api.patch(`/sparring/${id}/`, { video_file: null, video_url: '' }),
 }
 
 // ---- Planning ----

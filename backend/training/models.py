@@ -37,7 +37,6 @@ class TrainingSession(models.Model):
     )
     instructor = models.CharField(max_length=200, blank=True)
     gym_location = models.CharField(max_length=200, blank=True)
-    video_file = models.FileField(upload_to='session_videos/', null=True, blank=True)
     video_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

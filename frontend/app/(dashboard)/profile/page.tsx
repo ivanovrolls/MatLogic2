@@ -2,15 +2,16 @@
 
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { authApi, coachingApi } from '@/lib/api'
 import { useTutorialStore } from '@/stores/tutorialStore'
 import { GymPicker } from '@/components/GymPicker'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
-import { Loader2, Star, Camera, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX, HelpCircle } from 'lucide-react'
+import { Loader2, Star, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX, HelpCircle } from 'lucide-react'
 import { BELT_COLORS, cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { CoachRelationship } from '@/lib/types'
 
 const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
@@ -18,8 +19,7 @@ const BELTS = ['white', 'blue', 'purple', 'brown', 'black'] as const
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
   const { open: openTutorial } = useTutorialStore()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const router = useRouter()
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
   const [heightFt, setHeightFt] = useState(() => {
     if (!user?.height_cm) return ''
@@ -34,23 +34,6 @@ export default function ProfilePage() {
     if (!user?.weight_kg) return ''
     return (user.weight_kg * 2.2046).toFixed(1)
   })
-
-  const avatarMutation = useMutation({
-    mutationFn: (file: File) => authApi.uploadAvatar(file),
-    onSuccess: (res) => {
-      updateUser(res.data)
-      setAvatarPreview(null)
-      toast.success('Profile picture updated.')
-    },
-    onError: () => toast.error('Failed to upload picture.'),
-  })
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setAvatarPreview(URL.createObjectURL(file))
-    avatarMutation.mutate(file)
-  }
 
   const { register, handleSubmit, formState: { isDirty }, getValues, setValue, reset, control } = useForm({
     defaultValues: {
@@ -140,38 +123,18 @@ export default function ProfilePage() {
           <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Profile</h1>
         </div>
 
-        {/* Avatar upload */}
-        <div className="relative shrink-0">
-          <div
-            className="w-20 h-20 rounded-full bg-mat-muted border-2 border-mat-border overflow-hidden flex items-center justify-center cursor-pointer group"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {(avatarPreview || user?.avatar) ? (
-              <img
-                src={avatarPreview || user!.avatar!}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+        {/* Avatar display */}
+        <div className="shrink-0">
+          <div className="w-20 h-20 rounded-full bg-mat-muted border-2 border-mat-border overflow-hidden flex items-center justify-center">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <span className="text-mat-gold font-bold text-2xl select-none">
                 {user?.username.slice(0, 2).toUpperCase()}
               </span>
             )}
-            <div className="absolute inset-0 bg-mat-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-              {avatarMutation.isPending
-                ? <Loader2 size={18} className="text-white animate-spin" />
-                : <Camera size={18} className="text-white" />
-              }
-            </div>
           </div>
           <p className="text-mat-text text-sm font-medium text-center mt-2">{user.username}</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
         </div>
       </div>
 
@@ -389,7 +352,7 @@ export default function ProfilePage() {
       <div className="bg-mat-card border border-mat-border p-6 space-y-3">
         <p className="text-mat-text-muted text-xs uppercase tracking-widest">Help</p>
         <button
-          onClick={openTutorial}
+          onClick={() => { openTutorial(); router.push('/dashboard') }}
           className="flex items-center gap-3 text-mat-text-muted hover:text-mat-gold transition-colors text-sm"
         >
           <HelpCircle size={15} className="shrink-0" />

@@ -62,7 +62,6 @@ class SparringRound(models.Model):
     takedowns_completed = models.IntegerField(default=0)
 
     notes = models.TextField(blank=True)
-    video_file = models.FileField(upload_to='sparring_videos/', null=True, blank=True)
     video_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

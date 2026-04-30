@@ -29,7 +29,6 @@ class SparringRoundSerializer(serializers.ModelSerializer):
     outcome_display = serializers.CharField(source='get_outcome_display', read_only=True)
     partner_belt_display = serializers.CharField(source='get_partner_belt_display', read_only=True)
     session_date = serializers.DateField(source='session.date', read_only=True)
-    video_file_url = serializers.SerializerMethodField()
     youtube_embed_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -41,18 +40,10 @@ class SparringRoundSerializer(serializers.ModelSerializer):
             'dominant_positions', 'positions_conceded',
             'submissions_attempted', 'submissions_hit', 'submissions_conceded',
             'sweeps_completed', 'takedowns_completed',
-            'notes', 'video_file', 'video_url', 'video_file_url', 'youtube_embed_url',
+            'notes', 'video_url', 'youtube_embed_url',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-    def get_video_file_url(self, obj):
-        if not obj.video_file:
-            return None
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(obj.video_file.url)
-        return obj.video_file.url
+        read_only_fields = ['id', 'youtube_embed_url', 'created_at', 'updated_at']
 
     def get_youtube_embed_url(self, obj):
         import re
