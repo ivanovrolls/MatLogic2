@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   BarChart2, User, LogOut, ChevronRight, Swords,
-  Sun, Moon, GraduationCap, X, Settings,
+  Sun, Moon, GraduationCap, X,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -147,8 +147,15 @@ export function Sidebar() {
           )
         })}
 
-        {/* Coach Mode */}
+        {/* Coach Mode + Light Mode */}
         <div className="border-t border-mat-border mt-2 pt-2">
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-3 px-5 py-2.5 text-sm text-mat-text-muted hover:text-mat-gold hover:bg-mat-card border-l-2 border-transparent transition-all w-full"
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            <span className="font-medium tracking-wide">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
           {isCoachMode ? (
             <>
               <Link
@@ -186,26 +193,6 @@ export function Sidebar() {
       {/* Footer */}
       <div className="border-t border-mat-border py-3 px-2">
         <AndroidInstallButton className="flex items-center gap-3 w-full px-3 py-2 text-mat-gold text-sm hover:bg-mat-card transition-colors" />
-        <button
-          onClick={toggleTheme}
-          className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-gold text-sm transition-colors hover:bg-mat-card"
-        >
-          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-        </button>
-        <Link
-          href="/profile"
-          data-tutorial="nav-profile"
-          className={cn(
-            'flex items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-mat-card border-l-2',
-            pathname === '/profile'
-              ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
-              : 'text-mat-text-muted hover:text-mat-text border-transparent'
-          )}
-        >
-          <Settings size={14} />
-          <span>Profile Settings</span>
-        </Link>
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2 text-mat-text-muted hover:text-mat-red-light text-sm transition-colors hover:bg-mat-card"

@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, User, LogOut, Sun, Moon, Swords, GraduationCap, Settings,
+  BarChart2, User, LogOut, Sun, Moon, Swords, GraduationCap,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -144,6 +144,7 @@ export function Header() {
             })}
             <div className="divider" />
             <AndroidInstallButton className="flex items-center gap-4 w-full px-4 py-3 text-mat-gold text-sm" />
+            <div className="divider" />
             <button
               onClick={() => { toggleTheme(); setOpen(false) }}
               className="flex items-center gap-4 w-full px-4 py-3 text-mat-text-muted text-sm border-l-2 border-transparent"
@@ -151,20 +152,6 @@ export function Header() {
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
               {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
             </button>
-            <Link
-              href="/profile"
-              data-tutorial="nav-profile"
-              onClick={() => setOpen(false)}
-              className={cn(
-                'flex items-center gap-4 px-4 py-3 text-sm border-l-2',
-                pathname === '/profile'
-                  ? 'text-mat-gold bg-mat-gold/5 border-mat-gold'
-                  : 'text-mat-text-muted border-transparent'
-              )}
-            >
-              <Settings size={16} /> Profile Settings
-            </Link>
-            <div className="divider" />
             {isCoachMode ? (
               <>
                 <Link
