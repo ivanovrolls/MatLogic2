@@ -52,6 +52,11 @@ export const authApi = {
   logout: (refresh: string) => api.post('/auth/logout/', { refresh }),
   getProfile: () => api.get('/auth/profile/'),
   updateProfile: (data: object) => api.patch('/auth/profile/', data),
+  uploadAvatar: (file: File) => {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    return api.patch('/auth/profile/', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
   // Weight tracking
   listWeight: () => api.get('/auth/weight/'),
   addWeight: (data: object) => api.post('/auth/weight/', data),

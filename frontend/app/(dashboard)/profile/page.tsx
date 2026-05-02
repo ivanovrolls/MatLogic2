@@ -2,13 +2,13 @@
 
 import { Controller, useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { authApi, coachingApi } from '@/lib/api'
 import { useTutorialStore } from '@/stores/tutorialStore'
 import { GymPicker } from '@/components/GymPicker'
 import { useAuthStore } from '@/stores/authStore'
 import toast from 'react-hot-toast'
-import { Loader2, Star, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX, HelpCircle } from 'lucide-react'
+import { Loader2, Star, Globe, Lock, Shield, GraduationCap, X, Check, UserCheck, UserX, HelpCircle, Camera } from 'lucide-react'
 import { BELT_COLORS, cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -20,6 +20,7 @@ export default function ProfilePage() {
   const { user, updateUser } = useAuthStore()
   const { open: openTutorial } = useTutorialStore()
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [units, setUnits] = useState<'metric' | 'imperial'>('metric')
   const [heightFt, setHeightFt] = useState(() => {
     if (!user?.height_cm) return ''
@@ -100,6 +101,12 @@ export default function ProfilePage() {
     onError: () => toast.error('Update failed.'),
   })
 
+  const avatarMutation = useMutation({
+    mutationFn: (file: File) => authApi.uploadAvatar(file),
+    onSuccess: (res) => { updateUser(res.data); toast.success('Photo updated.') },
+    onError: () => toast.error('Upload failed.'),
+  })
+
   const onSubmit = (data: any) => {
     if (units === 'imperial') {
       const ft = parseFloat(heightFt || '0')
@@ -123,18 +130,39 @@ export default function ProfilePage() {
           <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">Profile</h1>
         </div>
 
-        {/* Avatar display */}
-        <div className="shrink-0">
-          <div className="w-20 h-20 rounded-full bg-mat-muted border-2 border-mat-border overflow-hidden flex items-center justify-center">
-            {user?.avatar ? (
-              <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+        {/* Avatar upload */}
+        <div className="shrink-0 text-center">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="relative w-20 h-20 rounded-full bg-mat-muted border-2 border-mat-border overflow-hidden flex items-center justify-center group"
+          >
+            {avatarMutation.isPending ? (
+              <Loader2 size={20} className="animate-spin text-mat-gold" />
             ) : (
-              <span className="text-mat-gold font-bold text-2xl select-none">
-                {user?.username.slice(0, 2).toUpperCase()}
-              </span>
+              <>
+                {user?.avatar
+                  ? <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
+                  : <span className="text-mat-gold font-bold text-2xl select-none">{user?.username.slice(0, 2).toUpperCase()}</span>
+                }
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Camera size={18} className="text-white" />
+                </div>
+              </>
             )}
-          </div>
-          <p className="text-mat-text text-sm font-medium text-center mt-2">{user.username}</p>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) avatarMutation.mutate(file)
+              e.target.value = ''
+            }}
+          />
+          <p className="text-mat-text text-sm font-medium mt-2">{user.username}</p>
         </div>
       </div>
 
