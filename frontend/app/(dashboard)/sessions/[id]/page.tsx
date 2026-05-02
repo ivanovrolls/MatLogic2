@@ -606,10 +606,15 @@ export default function SessionDetailPage() {
             <h3 className="font-display text-lg tracking-wider text-mat-text uppercase">Coach Feedback</h3>
           </div>
           <div className="divide-y divide-mat-border">
-            {coachNotes.map(note => (
-              <div key={note.id} className="px-6 py-4">
-                <p className="text-mat-gold text-xs font-semibold mb-2">{note.coach_username}</p>
-                <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap">{note.note}</p>
+            {coachNotes.filter(note => note.note || note.voice_note_url).map(note => (
+              <div key={note.id} className="px-6 py-4 space-y-2">
+                <p className="text-mat-gold text-xs font-semibold">{note.coach_username}</p>
+                {note.voice_note_url && (
+                  <audio src={note.voice_note_url} controls className="w-full h-8" />
+                )}
+                {note.note && (
+                  <p className="text-mat-text-muted text-sm leading-relaxed whitespace-pre-wrap">{note.note}</p>
+                )}
               </div>
             ))}
           </div>

@@ -469,6 +469,9 @@ function SessionDetailModal({
   const queryClient = useQueryClient()
   const [editMode, setEditMode] = useState(false)
   const [editForm, setEditForm] = useState<Record<string, string | number | null>>({})
+  const [feedbackText, setFeedbackText] = useState('')
+  const [pendingVoice, setPendingVoice] = useState<Blob | null>(null)
+  const feedbackAudioUrl = pendingVoice ? URL.createObjectURL(pendingVoice) : null
 
   const { data, isLoading, isError } = useQuery<{ session: TrainingSession; pending_edit: CoachSessionEdit | null }>({
     queryKey: ['coaching-student-session', studentId, sessionId],
@@ -489,11 +492,13 @@ function SessionDetailModal({
       instructor: s.instructor,
       gym_location: s.gym_location,
     })
+    setFeedbackText('')
+    setPendingVoice(null)
     setEditMode(true)
   }
 
   const submitMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const changes: Record<string, string | number | null> = {}
       if (!session) return Promise.reject()
       const fields = ['title', 'notes', 'session_type', 'duration', 'performance_rating', 'energy_level', 'instructor', 'gym_location'] as const
@@ -507,14 +512,22 @@ function SessionDetailModal({
           changes[f] = null
         }
       }
-      return coachingApi.submitSessionEdit(studentId, sessionId, changes)
+      await coachingApi.submitSessionEdit(studentId, sessionId, changes)
+      if (feedbackText.trim() || pendingVoice) {
+        await coachingApi.saveSessionNote(studentId, sessionId, {
+          note: feedbackText,
+          ...(pendingVoice ? { voice_note: new File([pendingVoice], 'voice_note.webm', { type: 'audio/webm' }) } : {}),
+        })
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['coaching-student-session', studentId, sessionId] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-student', studentId, 'session-notes'] })
       setEditMode(false)
-      toast.success('Edit suggestion sent.')
+      setPendingVoice(null)
+      toast.success('Edits and feedback sent.')
     },
-    onError: () => toast.error('Failed to send edit suggestion.'),
+    onError: () => toast.error('Failed to send edits.'),
   })
 
   return (
@@ -522,7 +535,7 @@ function SessionDetailModal({
       <div className="bg-mat-card border border-mat-border w-full max-w-lg p-6 space-y-5 animate-slide-up max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl tracking-wider text-mat-text uppercase">
-            {editMode ? 'Suggest Edits' : 'Session Details'}
+            {editMode ? 'Edits & Feedback' : 'Session Details'}
           </h2>
           <button onClick={onClose} className="text-mat-text-dim hover:text-mat-text transition-colors"><X size={16} /></button>
         </div>
@@ -580,14 +593,33 @@ function SessionDetailModal({
               <label className="mat-label">Notes</label>
               <textarea value={String(editForm.notes ?? '')} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} className="mat-input resize-none" rows={5} placeholder="Session notes..." />
             </div>
+            <div className="border-t border-mat-border pt-4 space-y-3">
+              <p className="text-mat-gold text-xs uppercase tracking-widest flex items-center gap-1.5">
+                <MessageSquare size={11} /> Coach Feedback
+              </p>
+              {feedbackAudioUrl && (
+                <div>
+                  <p className="text-mat-text-muted text-xs uppercase tracking-widest mb-1">New Recording</p>
+                  <audio src={feedbackAudioUrl} controls className="w-full h-8" />
+                </div>
+              )}
+              <textarea
+                value={feedbackText}
+                onChange={e => setFeedbackText(e.target.value)}
+                className="mat-input resize-none w-full text-sm"
+                rows={3}
+                placeholder="Leave feedback for this session (optional)..."
+              />
+              <VoiceNoteRecorder onRecorded={setPendingVoice} />
+            </div>
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => submitMutation.mutate()}
                 disabled={submitMutation.isPending}
                 className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {submitMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Pencil size={13} />}
-                Send Edit Suggestion
+                {submitMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                Send
               </button>
               <button onClick={() => setEditMode(false)} className="btn-secondary flex-1 py-2.5">Back</button>
             </div>
@@ -679,7 +711,7 @@ function SessionDetailModal({
                 onClick={() => initEditForm(session)}
                 className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 text-sm"
               >
-                <Pencil size={13} /> Suggest Edits
+                <Pencil size={13} /> Edits & Feedback
               </button>
             </div>
           </div>
@@ -897,7 +929,7 @@ export default function StudentDetailPage() {
 
   const saveNoteMutation = useMutation({
     mutationFn: ({ sessionId, note }: { sessionId: number; note: string }) =>
-      coachingApi.saveSessionNote(id, sessionId, note),
+      coachingApi.saveSessionNote(id, sessionId, { note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['coaching-student', id, 'session-notes'] })
       toast.success('Note saved.')

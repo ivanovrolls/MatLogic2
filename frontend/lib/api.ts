@@ -149,8 +149,17 @@ export const coachingApi = {
   // Session notes (coach)
   getStudentSessionNotes: (studentId: number) =>
     api.get(`/coaching/students/${studentId}/session-notes/`),
-  saveSessionNote: (studentId: number, sessionId: number, note: string) =>
-    api.post(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`, { note }),
+  saveSessionNote: (studentId: number, sessionId: number, data: { note?: string; voice_note?: File }) => {
+    if (data.voice_note) {
+      const form = new FormData()
+      if (data.note !== undefined) form.append('note', data.note)
+      form.append('voice_note', data.voice_note)
+      return api.post(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    }
+    return api.post(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`, data)
+  },
   deleteSessionNote: (studentId: number, sessionId: number) =>
     api.delete(`/coaching/students/${studentId}/sessions/${sessionId}/notes/`),
   // Session notes (student)

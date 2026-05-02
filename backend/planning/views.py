@@ -144,6 +144,7 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def generate_checklist(self, request, pk=None):
+        import uuid
         plan = self.get_object()
         title = request.data.get('title', 'Session Checklist')
         date_val = request.data.get('date')
@@ -157,14 +158,30 @@ class WeeklyPlanViewSet(viewsets.ModelViewSet):
                 'id': str(technique.id),
                 'technique_id': technique.id,
                 'text': f"Drill: {technique.name}",
-                'completed': False
+                'completed': False,
             })
+
+        # Fall back to weekly_drills when no focus techniques are linked
+        if not items and plan.weekly_drills:
+            for drill in plan.weekly_drills:
+                technique_name = drill.get('technique_name', '')
+                if not technique_name:
+                    continue
+                item = {
+                    'id': str(uuid.uuid4()),
+                    'technique_id': drill.get('technique_id') or None,
+                    'text': f"Drill: {technique_name}",
+                    'completed': False,
+                }
+                if drill.get('reps'):
+                    item['reps'] = drill['reps']
+                items.append(item)
 
         checklist = SessionChecklist.objects.create(
             plan=plan,
             title=title,
             date=date_val,
-            items=items
+            items=items,
         )
         return Response(SessionChecklistSerializer(checklist).data)
 

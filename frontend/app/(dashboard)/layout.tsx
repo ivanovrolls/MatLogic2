@@ -226,10 +226,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null
 
   return (
-    <div className="min-h-screen bg-mat-black">
+    <div className="min-h-screen bg-mat-black overflow-x-hidden">
       <Sidebar />
       <Header />
-      <main className="app-main lg:ml-56 lg:pt-0 min-h-screen">
+      <main className="app-main lg:ml-56 lg:pt-0 min-h-screen overflow-x-hidden">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6">
           {children}
         </div>

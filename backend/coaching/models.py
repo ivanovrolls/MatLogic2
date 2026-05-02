@@ -73,7 +73,8 @@ class CoachSessionNote(models.Model):
         related_name='coach_notes',
         on_delete=models.CASCADE
     )
-    note = models.TextField()
+    note = models.TextField(blank=True)
+    voice_note = models.FileField(upload_to='session_voice_notes/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

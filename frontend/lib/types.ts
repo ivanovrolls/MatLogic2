@@ -217,6 +217,7 @@ export interface CoachSessionNote {
   coach_username: string
   session: number
   note: string
+  voice_note_url: string | null
   created_at: string
   updated_at: string
 }

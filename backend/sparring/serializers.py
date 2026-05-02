@@ -49,15 +49,22 @@ class SparringRoundSerializer(serializers.ModelSerializer):
         import re
         if not obj.video_url:
             return None
-        patterns = [
+        youtube_patterns = [
             r'youtu\.be/([A-Za-z0-9_-]+)',
             r'youtube\.com/watch\?v=([A-Za-z0-9_-]+)',
             r'youtube\.com/embed/([A-Za-z0-9_-]+)',
         ]
-        for pattern in patterns:
+        for pattern in youtube_patterns:
             m = re.search(pattern, obj.video_url)
             if m:
                 return f'https://www.youtube.com/embed/{m.group(1)}'
+        # Instagram reels and posts
+        ig_reel = re.search(r'instagram\.com/reel/([A-Za-z0-9_-]+)', obj.video_url)
+        if ig_reel:
+            return f'https://www.instagram.com/reel/{ig_reel.group(1)}/embed/'
+        ig_post = re.search(r'instagram\.com/p/([A-Za-z0-9_-]+)', obj.video_url)
+        if ig_post:
+            return f'https://www.instagram.com/p/{ig_post.group(1)}/embed/'
         return None
 
     def validate_dominant_positions(self, value):

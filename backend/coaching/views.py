@@ -336,7 +336,7 @@ class CoachStudentNotesView(APIView):
         except CoachRelationship.DoesNotExist:
             return Response({'detail':'Not authorized.'}, status=status.HTTP_403_FORBIDDEN)
         notes = CoachSessionNote.objects.filter(coach=request.user, student_id=student_id)
-        return Response(CoachSessionNoteSerializer(notes, many=True).data)
+        return Response(CoachSessionNoteSerializer(notes, many=True, context={'request': request}).data)
 
 
 class CoachSessionNoteView(APIView):
@@ -358,12 +358,21 @@ class CoachSessionNoteView(APIView):
             session = TrainingSession.objects.get(pk=session_id, user_id=student_id)
         except TrainingSession.DoesNotExist:
             return Response({'detail':'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
-        note_obj, _ = CoachSessionNote.objects.update_or_create(
+        note_obj, created = CoachSessionNote.objects.get_or_create(
             coach=request.user,
             session=session,
-            defaults={'student_id': student_id, 'note': request.data.get('note', '')},
+            defaults={'student_id': student_id},
         )
-        return Response(CoachSessionNoteSerializer(note_obj).data)
+        if 'note' in request.data:
+            note_obj.note = request.data.get('note', '')
+        if not created:
+            note_obj.student_id = student_id
+        if 'voice_note' in request.FILES:
+            if note_obj.voice_note:
+                note_obj.voice_note.delete(save=False)
+            note_obj.voice_note = request.FILES['voice_note']
+        note_obj.save()
+        return Response(CoachSessionNoteSerializer(note_obj, context={'request': request}).data)
 
     def delete(self, request, student_id, session_id):
         if not self._check_access(request, student_id):
@@ -381,7 +390,7 @@ class StudentSessionNotesView(APIView):
         qs = CoachSessionNote.objects.filter(student=request.user)
         if session_id:
             qs = qs.filter(session_id=session_id)
-        return Response(CoachSessionNoteSerializer(qs, many=True).data)
+        return Response(CoachSessionNoteSerializer(qs, many=True, context={'request': request}).data)
 
 
 class CoachUpdateTechniqueView(APIView):

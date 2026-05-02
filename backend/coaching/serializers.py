@@ -81,11 +81,20 @@ class CoachDrillingPlanSerializer(serializers.ModelSerializer):
 
 class CoachSessionNoteSerializer(serializers.ModelSerializer):
     coach_username = serializers.CharField(source='coach.username', read_only=True)
+    voice_note_url = serializers.SerializerMethodField()
 
     class Meta:
         model = CoachSessionNote
-        fields = ['id', 'coach_username', 'session', 'note', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'coach_username', 'created_at', 'updated_at']
+        fields = ['id', 'coach_username', 'session', 'note', 'voice_note_url', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'coach_username', 'voice_note_url', 'created_at', 'updated_at']
+
+    def get_voice_note_url(self, obj):
+        if not obj.voice_note:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.voice_note.url)
+        return obj.voice_note.url
 
 
 class CoachSessionEditSerializer(serializers.ModelSerializer):
