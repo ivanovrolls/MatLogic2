@@ -116,7 +116,10 @@ export function Header() {
 
       {/* Mobile nav overlay */}
       {open && (
-        <div className="lg:hidden fixed inset-0 z-20 mat-overlay pt-14 animate-fade-in">
+        <div
+          className="lg:hidden fixed inset-0 z-20 mat-overlay animate-fade-in overflow-y-auto"
+          style={{ paddingTop: 'max(3.5rem, calc(2.75rem + var(--sat)))' }}
+        >
           <nav className="px-4 py-6 space-y-1">
             {navItems.map(({ href, label, icon: Icon, tutorialId }) => {
               const active = pathname === href
