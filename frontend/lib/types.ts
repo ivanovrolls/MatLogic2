@@ -461,10 +461,12 @@ export interface PublicUser {
   bio: string
   avatar: string | null
   total_sessions: number
+  total_hours: number
   total_rounds: number
   win_rate: number | null
   equipped_title: EquippedTitle | null
-  grid_widgets: GridWidget[]
+  unlocked_titles: Array<{ slug: string; name: string; is_equipped: boolean }>
+  session_dates: string[]
 }
 
 export interface DojoMember {
@@ -565,7 +567,7 @@ export interface UserTitle {
   unlocked_at: string
 }
 
-export type WidgetType = 'title' | 'photo' | 'calendar' | 'stats'
+export type WidgetType = 'title' | 'calendar' | 'stats'
 
 export interface GridWidget {
   id: string

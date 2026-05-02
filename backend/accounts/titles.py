@@ -206,9 +206,15 @@ def check_and_award_titles(user):
 
 
 def award_default_titles(user):
-    """Award the two default titles to a new user."""
+    """Award the three default titles. Called on registration and after first session."""
     from .models import UserTitle
 
-    for i, slug in enumerate(['fresh_white_belt', 'mat_newcomer']):
+    defaults = ['fresh_white_belt', 'mat_newcomer']
+    for i, slug in enumerate(defaults):
         if not UserTitle.objects.filter(user=user, slug=slug).exists():
             UserTitle.objects.create(user=user, slug=slug, is_equipped=(i == 0))
+
+    # Tap Snapper — awarded as soon as any session exists
+    if (user.training_sessions.exists()
+            and not UserTitle.objects.filter(user=user, slug='tap_snapper').exists()):
+        UserTitle.objects.create(user=user, slug='tap_snapper')

@@ -117,21 +117,29 @@ class ProfileGridSerializer(serializers.ModelSerializer):
 class PublicProfileSerializer(serializers.ModelSerializer):
     display_belt = serializers.ReadOnlyField()
     total_sessions = serializers.SerializerMethodField()
+    total_hours = serializers.SerializerMethodField()
     total_rounds = serializers.SerializerMethodField()
     win_rate = serializers.SerializerMethodField()
     equipped_title = serializers.SerializerMethodField()
-    grid_widgets = serializers.SerializerMethodField()
+    unlocked_titles = serializers.SerializerMethodField()
+    session_dates = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'belt', 'stripes', 'display_belt',
-            'gym', 'bio', 'avatar', 'total_sessions', 'total_rounds', 'win_rate',
-            'equipped_title', 'grid_widgets',
+            'gym', 'bio', 'avatar',
+            'total_sessions', 'total_hours', 'total_rounds', 'win_rate',
+            'equipped_title', 'unlocked_titles', 'session_dates',
         ]
 
     def get_total_sessions(self, obj):
         return obj.training_sessions.count()
+
+    def get_total_hours(self, obj):
+        from django.db.models import Sum
+        total = obj.training_sessions.aggregate(t=Sum('duration'))['t'] or 0
+        return round(total / 60, 1)
 
     def get_total_rounds(self, obj):
         return obj.sparring_rounds.count()
@@ -151,11 +159,19 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         td = TITLE_MAP.get(title.slug, {})
         return {'slug': title.slug, 'name': td.get('name', title.slug)}
 
-    def get_grid_widgets(self, obj):
-        try:
-            return obj.profile_grid.widgets
-        except ProfileGrid.DoesNotExist:
-            return []
+    def get_unlocked_titles(self, obj):
+        return [
+            {
+                'slug': t.slug,
+                'name': TITLE_MAP.get(t.slug, {}).get('name', t.slug),
+                'is_equipped': t.is_equipped,
+            }
+            for t in obj.titles.all()
+        ]
+
+    def get_session_dates(self, obj):
+        dates = obj.training_sessions.values_list('date', flat=True).order_by('-date')[:365]
+        return [str(d) for d in dates]
 
 
 class MatPostSerializer(serializers.ModelSerializer):
