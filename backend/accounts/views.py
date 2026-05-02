@@ -7,11 +7,13 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
-from .models import WeightEntry, MatPost
+from .models import WeightEntry, MatPost, UserTitle, ProfileGrid
 from .serializers import (
     UserRegistrationSerializer, UserProfileSerializer,
     WeightEntrySerializer, PublicProfileSerializer, MatPostSerializer,
+    UserTitleSerializer, ProfileGridSerializer,
 )
+from .titles import TITLE_MAP, TITLE_DEFINITIONS, award_default_titles
 
 User = get_user_model()
 
@@ -25,6 +27,7 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        award_default_titles(user)
         refresh = RefreshToken.for_user(user)
         return Response({
             'user': UserProfileSerializer(user).data,
@@ -132,3 +135,76 @@ class UserPostsView(APIView):
             return Response({'detail': 'This profile is private.'}, status=status.HTTP_403_FORBIDDEN)
         posts = MatPost.objects.filter(user=user)
         return Response(MatPostSerializer(posts, many=True, context={'request': request}).data)
+
+
+class UserTitlesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        titles = UserTitle.objects.filter(user=request.user)
+        return Response(UserTitleSerializer(titles, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def equip_title(request, slug):
+    try:
+        title = UserTitle.objects.get(user=request.user, slug=slug)
+    except UserTitle.DoesNotExist:
+        return Response({'detail': 'Title not unlocked.'}, status=status.HTTP_404_NOT_FOUND)
+    title.is_equipped = True
+    title.save()
+    return Response(UserTitleSerializer(title).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def unequip_title(request):
+    UserTitle.objects.filter(user=request.user, is_equipped=True).update(is_equipped=False)
+    return Response({'detail': 'Title unequipped.'})
+
+
+class ProfileGridView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        grid, _ = ProfileGrid.objects.get_or_create(user=request.user)
+        return Response(ProfileGridSerializer(grid).data)
+
+    def put(self, request):
+        grid, _ = ProfileGrid.objects.get_or_create(user=request.user)
+        widgets = request.data.get('widgets', [])
+        grid.widgets = widgets
+        grid.save()
+        return Response(ProfileGridSerializer(grid).data)
+
+
+class PublicProfileGridView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, username):
+        try:
+            user = User.objects.get(username__iexact=username)
+        except User.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not user.is_public:
+            return Response({'detail': 'This profile is private.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            grid = user.profile_grid
+            widgets = grid.widgets
+        except ProfileGrid.DoesNotExist:
+            widgets = []
+        posts = {str(p.id): {'image': request.build_absolute_uri(p.image.url) if p.image else None, 'caption': p.caption}
+                 for p in MatPost.objects.filter(user=user)}
+        equipped = user.titles.filter(is_equipped=True).first()
+        equipped_title = None
+        if equipped:
+            td = TITLE_MAP.get(equipped.slug, {})
+            equipped_title = {'slug': equipped.slug, 'name': td.get('name', equipped.slug)}
+        session_dates = list(user.training_sessions.values_list('date', flat=True).order_by('-date')[:365])
+        return Response({
+            'widgets': widgets,
+            'posts': posts,
+            'equipped_title': equipped_title,
+            'session_dates': [str(d) for d in session_dates],
+        })

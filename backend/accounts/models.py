@@ -93,3 +93,32 @@ class MatPost(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.caption[:40]}"
+
+
+class UserTitle(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='titles')
+    slug = models.CharField(max_length=50)
+    is_equipped = models.BooleanField(default=False)
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'slug']
+        ordering = ['-unlocked_at']
+
+    def __str__(self):
+        return f"{self.user} — {self.slug}"
+
+    def save(self, *args, **kwargs):
+        if self.is_equipped:
+            UserTitle.objects.filter(user=self.user, is_equipped=True).exclude(pk=self.pk).update(is_equipped=False)
+        super().save(*args, **kwargs)
+
+
+class ProfileGrid(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile_grid')
+    widgets = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user} grid"

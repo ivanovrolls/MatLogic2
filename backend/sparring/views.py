@@ -21,6 +21,8 @@ class SparringRoundViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+        from accounts.titles import check_and_award_titles
+        check_and_award_titles(self.request.user)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

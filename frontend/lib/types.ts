@@ -463,6 +463,8 @@ export interface PublicUser {
   total_sessions: number
   total_rounds: number
   win_rate: number | null
+  equipped_title: EquippedTitle | null
+  grid_widgets: GridWidget[]
 }
 
 export interface DojoMember {
@@ -551,6 +553,34 @@ export interface MatPost {
   image: string | null
   tags: string[]
   created_at: string
+}
+
+// ---- Titles & Profile Grid ----
+export interface UserTitle {
+  id: number
+  slug: string
+  name: string
+  description: string
+  is_equipped: boolean
+  unlocked_at: string
+}
+
+export type WidgetType = 'title' | 'photo' | 'calendar' | 'stats'
+
+export interface GridWidget {
+  id: string
+  type: WidgetType
+  config: Record<string, unknown>
+}
+
+export interface ProfileGrid {
+  widgets: GridWidget[]
+  updated_at: string
+}
+
+export interface EquippedTitle {
+  slug: string
+  name: string
 }
 
 // ---- Weight tracking ----

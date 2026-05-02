@@ -2,7 +2,8 @@ import json
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from .models import WeightEntry, MatPost, Gym
+from .models import WeightEntry, MatPost, Gym, UserTitle, ProfileGrid
+from .titles import TITLE_MAP
 
 User = get_user_model()
 
@@ -92,17 +93,41 @@ class WeightEntrySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class UserTitleSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserTitle
+        fields = ['id', 'slug', 'name', 'description', 'is_equipped', 'unlocked_at']
+
+    def get_name(self, obj):
+        return TITLE_MAP.get(obj.slug, {}).get('name', obj.slug)
+
+    def get_description(self, obj):
+        return TITLE_MAP.get(obj.slug, {}).get('description', '')
+
+
+class ProfileGridSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProfileGrid
+        fields = ['widgets', 'updated_at']
+
+
 class PublicProfileSerializer(serializers.ModelSerializer):
     display_belt = serializers.ReadOnlyField()
     total_sessions = serializers.SerializerMethodField()
     total_rounds = serializers.SerializerMethodField()
     win_rate = serializers.SerializerMethodField()
+    equipped_title = serializers.SerializerMethodField()
+    grid_widgets = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'belt', 'stripes', 'display_belt',
             'gym', 'bio', 'avatar', 'total_sessions', 'total_rounds', 'win_rate',
+            'equipped_title', 'grid_widgets',
         ]
 
     def get_total_sessions(self, obj):
@@ -119,20 +144,22 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         wins = rounds.filter(outcome='win').count()
         return round(wins / total * 100, 1)
 
+    def get_equipped_title(self, obj):
+        title = obj.titles.filter(is_equipped=True).first()
+        if not title:
+            return None
+        td = TITLE_MAP.get(title.slug, {})
+        return {'slug': title.slug, 'name': td.get('name', title.slug)}
+
+    def get_grid_widgets(self, obj):
+        try:
+            return obj.profile_grid.widgets
+        except ProfileGrid.DoesNotExist:
+            return []
+
 
 class MatPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = MatPost
         fields = ['id', 'caption', 'image', 'tags', 'created_at']
         read_only_fields = ['id', 'created_at']
-
-    def to_internal_value(self, data):
-        # tags may arrive as a JSON string when sent via FormData
-        if isinstance(data.get('tags'), str):
-            mutable = data.copy() if hasattr(data, 'copy') else dict(data)
-            try:
-                mutable['tags'] = json.loads(mutable['tags'])
-            except (json.JSONDecodeError, ValueError):
-                mutable['tags'] = []
-            data = mutable
-        return super().to_internal_value(data)

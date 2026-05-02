@@ -297,6 +297,16 @@ export const notificationsApi = {
   markAllRead: () => api.post('/notifications/read-all/'),
 }
 
+// ---- Titles & Profile Grid ----
+export const titlesApi = {
+  list: () => api.get('/auth/titles/'),
+  equip: (slug: string) => api.post(`/auth/titles/${slug}/equip/`),
+  unequip: () => api.post('/auth/titles/unequip/'),
+  getGrid: () => api.get('/auth/profile-grid/'),
+  updateGrid: (widgets: object[]) => api.put('/auth/profile-grid/', { widgets }),
+  getPublicGrid: (username: string) => api.get(`/auth/users/${username}/grid/`),
+}
+
 // ---- Social ----
 export const socialApi = {
   dojo: () => api.get('/social/dojo/'),
