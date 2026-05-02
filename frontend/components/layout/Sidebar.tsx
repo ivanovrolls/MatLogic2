@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 import {
   LayoutDashboard, BookOpen, Database, CalendarDays,
   BarChart2, User, LogOut, ChevronRight, Swords,
-  Sun, Moon, GraduationCap, X,
+  Sun, Moon, GraduationCap, X, Settings,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -24,6 +24,7 @@ const navItems = [
   { href: '/techniques', label: 'Techniques', icon: Database, tutorialId: 'nav-techniques' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
+  { href: '/my-profile', label: 'My Profile', icon: User, tutorialId: 'nav-profile-public' },
 ]
 
 export function Sidebar() {
@@ -202,7 +203,7 @@ export function Sidebar() {
               : 'text-mat-text-muted hover:text-mat-text border-transparent'
           )}
         >
-          <User size={14} />
+          <Settings size={14} />
           <span>Profile Settings</span>
         </Link>
         <button

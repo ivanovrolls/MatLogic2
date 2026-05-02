@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import {
   Menu, X, LayoutDashboard, BookOpen, Database, CalendarDays,
-  BarChart2, User, LogOut, Sun, Moon, Swords, GraduationCap,
+  BarChart2, User, LogOut, Sun, Moon, Swords, GraduationCap, Settings,
 } from 'lucide-react'
 import { AndroidInstallButton } from '@/components/InstallPrompt'
 import { useThemeStore } from '@/stores/themeStore'
@@ -23,6 +23,7 @@ const navItems = [
   { href: '/techniques', label: 'Techniques', icon: Database, tutorialId: 'nav-techniques' },
   { href: '/planning', label: 'Planner', icon: CalendarDays, tutorialId: 'nav-planner' },
   { href: '/progress', label: 'Analytics', icon: BarChart2, tutorialId: 'nav-analytics' },
+  { href: '/my-profile', label: 'My Profile', icon: User, tutorialId: 'nav-profile-public' },
 ]
 
 export function Header() {
@@ -161,7 +162,7 @@ export function Header() {
                   : 'text-mat-text-muted border-transparent'
               )}
             >
-              <User size={16} /> Profile Settings
+              <Settings size={16} /> Profile Settings
             </Link>
             <div className="divider" />
             {isCoachMode ? (
