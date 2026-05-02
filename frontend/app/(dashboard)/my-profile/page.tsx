@@ -7,7 +7,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { BELT_COLORS } from '@/lib/utils'
 import { ALL_TITLES } from '@/lib/titles'
 import toast from 'react-hot-toast'
-import { Loader2, MapPin, Copy, Check, ExternalLink, Trophy, Lock } from 'lucide-react'
+import { Loader2, MapPin, Copy, Check, ExternalLink, Trophy, Lock, Settings } from 'lucide-react'
+import Link from 'next/link'
 import type { UserTitle } from '@/lib/types'
 
 export default function MyProfilePage() {
@@ -62,14 +63,22 @@ export default function MyProfilePage() {
           <p className="text-mat-text-muted text-xs uppercase tracking-widest">Public Profile</p>
           <h1 className="font-display text-4xl tracking-wider text-mat-text uppercase">My Profile</h1>
         </div>
-        <a
-          href={`/u/${user.username}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border hover:border-mat-gold/40 px-3 py-2"
-        >
-          <ExternalLink size={11} /> Preview
-        </a>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/profile"
+            className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border hover:border-mat-gold/40 px-3 py-2"
+          >
+            <Settings size={11} /> Edit Profile
+          </Link>
+          <a
+            href={`/u/${user.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-mat-text-muted hover:text-mat-gold transition-colors border border-mat-border hover:border-mat-gold/40 px-3 py-2"
+          >
+            <ExternalLink size={11} /> Preview
+          </a>
+        </div>
       </div>
 
       {/* Profile preview card */}

@@ -43,6 +43,14 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def retrieve(self, request, *args, **kwargs):
+        user = self.get_object()
+        if not user.titles.exists():
+            from .titles import check_and_award_titles
+            award_default_titles(user)
+            check_and_award_titles(user)
+        return super().retrieve(request, *args, **kwargs)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -121,7 +121,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-mat-black">
-      <div className="max-w-xl mx-auto px-4 pt-5 pb-12 space-y-5 animate-fade-in">
+      <div className="max-w-xl mx-auto px-4 pb-12 space-y-5 animate-fade-in" style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top, 0px))' }}>
 
         {/* Top nav */}
         <div className="flex items-center justify-between">
