@@ -15,6 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN addgroup --system app && adduser --system --ingroup app app
+RUN chown -R app:app /app
+USER app
+
+RUN python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && gunicorn matlogic.wsgi:application --bind 0.0.0.0:$PORT"]
+CMD ["sh", "-c", "python manage.py migrate && gunicorn matlogic.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2"]
