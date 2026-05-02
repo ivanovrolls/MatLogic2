@@ -18,56 +18,48 @@ function toLocalDateStr(date: Date): string {
 function TrainingHeatmap({ dates }: { dates: string[] }) {
   const trained = new Set(dates)
   const today = new Date()
+  const year = today.getFullYear()
+  const month = today.getMonth()
+  const todayStr = toLocalDateStr(today)
 
-  // Build 52 weeks × 7 days, newest week on the right
-  const weeks: string[][] = []
-  for (let w = 51; w >= 0; w--) {
-    const week: string[] = []
-    for (let d = 6; d >= 0; d--) {
-      const day = new Date(today)
-      day.setDate(today.getDate() - (w * 7 + d))
-      week.push(toLocalDateStr(day))
-    }
-    weeks.push(week)
-  }
+  const firstDay = new Date(year, month, 1)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const startDow = firstDay.getDay()
 
-  // Month labels: find first week index each month appears
-  const monthLabels: { label: string; col: number }[] = []
-  let lastMonth = ''
-  weeks.forEach((week, wi) => {
-    const m = new Date(week[0]).toLocaleString('default', { month: 'short' })
-    if (m !== lastMonth) { monthLabels.push({ label: m, col: wi }); lastMonth = m }
-  })
+  const cells: (string | null)[] = []
+  for (let i = 0; i < startDow; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(toLocalDateStr(new Date(year, month, d)))
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const weeks: (string | null)[][] = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+
+  const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const monthName = firstDay.toLocaleString('default', { month: 'long' })
 
   return (
     <div>
-      {/* Month labels */}
-      <div className="relative h-4 mb-1" style={{ minWidth: `${52 * 12}px` }}>
-        {monthLabels.map(({ label, col }) => (
-          <span
-            key={label + col}
-            className="absolute text-mat-text-dim text-xs"
-            style={{ left: `${col * 12}px` }}
-          >
-            {label}
-          </span>
+      <p className="text-mat-text-dim text-xs mb-2">{monthName} {year}</p>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {dayLabels.map((d, i) => (
+          <div key={i} className="text-center text-mat-text-dim text-xs">{d}</div>
         ))}
       </div>
-
-      {/* Grid */}
-      <div className="flex gap-0.5 overflow-x-auto pb-1" style={{ minWidth: `${52 * 12}px` }}>
+      <div className="space-y-1">
         {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-0.5">
-            {week.map(dateStr => (
+          <div key={wi} className="grid grid-cols-7 gap-1">
+            {week.map((dateStr, di) => (
               <div
-                key={dateStr}
-                title={dateStr}
-                className={`w-2.5 h-2.5 rounded-sm transition-colors ${
-                  dateStr > toLocalDateStr(today)
+                key={di}
+                title={dateStr || ''}
+                className={`h-9 rounded-sm transition-colors ${
+                  !dateStr
                     ? 'opacity-0'
+                    : dateStr > todayStr
+                    ? 'bg-mat-muted/20'
                     : trained.has(dateStr)
                     ? 'bg-mat-gold'
-                    : 'bg-mat-muted/50'
+                    : 'bg-mat-muted/40'
                 }`}
               />
             ))}
@@ -174,12 +166,17 @@ export default function PublicProfilePage() {
               )}
 
               {/* Belt */}
-              <div className="flex items-center gap-2 mt-2">
-                <div className={`h-2 w-12 rounded-sm ${bgColor}`} />
-                {Array.from({ length: profile.stripes }).map((_, i) => (
-                  <div key={i} className="w-1.5 h-3 bg-white/80 rounded-sm" />
-                ))}
-                <span className={`text-xs ${textColor}`}>{profile.display_belt}</span>
+              <div className="mt-2 w-full">
+                <div className={`relative h-4 w-full rounded-sm overflow-hidden ${bgColor}`}>
+                  {profile.stripes > 0 && (
+                    <div className="absolute right-0 top-0 bottom-0 flex items-center gap-0.5 px-1.5">
+                      {Array.from({ length: profile.stripes }).map((_, i) => (
+                        <div key={i} className="w-1 h-full bg-white/80" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <p className="text-mat-text-muted text-xs mt-1">{profile.display_belt}</p>
               </div>
 
               {/* Gym */}
