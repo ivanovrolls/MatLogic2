@@ -296,6 +296,8 @@ export const analyticsApi = {
 export const notificationsApi = {
   subscribe: (data: object) => api.post('/notifications/subscribe/', data),
   unsubscribe: (endpoint: string) => api.post('/notifications/unsubscribe/', { endpoint }),
+  nativeSubscribe: (data: { token: string; platform: string }) =>
+    api.post('/notifications/native-subscribe/', data),
   list: () => api.get('/notifications/'),
   unreadCount: () => api.get('/notifications/unread-count/'),
   markRead: (id: number) => api.post(`/notifications/${id}/read/`),

@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('subscribe/', views.subscribe),
+    path('native-subscribe/', views.native_subscribe),
     path('unsubscribe/', views.unsubscribe),
     path('', views.list_notifications),
     path('unread-count/', views.unread_count),

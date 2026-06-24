@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Download, Share, X } from 'lucide-react'
+import { isNative } from '@/lib/capacitor'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => void
@@ -15,6 +16,7 @@ export function useInstallPrompt() {
   const [isInstallable, setIsInstallable] = useState(false)
 
   useEffect(() => {
+    if (isNative()) return
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
@@ -81,6 +83,7 @@ export function IOSInstallBanner() {
   const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
+    if (isNative()) return
     const wasDismissed = sessionStorage.getItem('ios-banner-dismissed')
     if (!wasDismissed && isIOSSafari() && !isStandalone()) {
       setShow(true)

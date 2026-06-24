@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .models import PushSubscription, InAppNotification
+from .models import PushSubscription, NativePushToken, InAppNotification
 
 
 @api_view(['POST'])
@@ -17,6 +17,20 @@ def subscribe(request):
         defaults={'user': request.user, 'p256dh': p256dh, 'auth': auth},
     )
     return Response({'status': 'subscribed'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def native_subscribe(request):
+    token = request.data.get('token', '').strip()
+    platform = request.data.get('platform', '').strip()
+    if not token or platform not in ('ios', 'android'):
+        return Response({'detail': 'Missing or invalid fields.'}, status=400)
+    NativePushToken.objects.update_or_create(
+        token=token,
+        defaults={'user': request.user, 'platform': platform},
+    )
+    return Response({'status': 'registered'})
 
 
 @api_view(['POST'])

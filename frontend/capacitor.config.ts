@@ -1,9 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
-// Option A: the native app is a shell around your live hosted web app.
-// Set CAPACITOR_SERVER_URL before running `npx cap sync` for production builds:
-//   CAPACITOR_SERVER_URL=https://app.matlogic.com npx cap sync
-// Leave it unset during local development (Capacitor will use the local build).
+// Production:  CAPACITOR_SERVER_URL=https://app.matlogic.com npx cap sync
+// Local dev:   CAPACITOR_SERVER_URL=http://<LAN-IP>:3000 npx cap sync
+//              (Android emulator: http://10.0.2.2:3000)
 const serverUrl = process.env.CAPACITOR_SERVER_URL
 
 const config: CapacitorConfig = {
@@ -17,8 +16,21 @@ const config: CapacitorConfig = {
 
   plugins: {
     StatusBar: {
-      style: 'light',      // light icons on the dark MatLogic background
+      style: 'light',
       overlaysWebView: true,
+    },
+    SplashScreen: {
+      launchShowDuration: 0,
+      backgroundColor: '#080808',
+      showSpinner: false,
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
+      resizeOnFullScreen: true,
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
     },
   },
 

@@ -10,6 +10,7 @@ import { Tutorial } from '@/components/Tutorial'
 import { PushPrompt } from '@/components/PushPrompt'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useTutorialStore } from '@/stores/tutorialStore'
+import { initNativePush } from '@/hooks/usePushNotifications'
 import { Loader2, User } from 'lucide-react'
 
 function ProfileSetupModal() {
@@ -213,6 +214,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
     setupBackButton()
+    initNativePush()
   }, [isAuthenticated, router, fetchProfile])
 
   const needsBodyMetrics = user && (!user.gender || user.height_cm == null || user.weight_kg == null)

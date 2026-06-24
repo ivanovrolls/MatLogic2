@@ -194,3 +194,7 @@ if USE_S3:
 VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default='').replace('\\n', '\n')
 VAPID_PUBLIC_KEY = config('VAPID_PUBLIC_KEY', default='')
 VAPID_CLAIMS_EMAIL = config('VAPID_CLAIMS_EMAIL', default='admin@matlogic.app')
+
+# Native Push (Firebase / FCM)
+# Path to the Firebase service account JSON key file
+FIREBASE_CREDENTIALS_PATH = config('FIREBASE_CREDENTIALS_PATH', default='')
